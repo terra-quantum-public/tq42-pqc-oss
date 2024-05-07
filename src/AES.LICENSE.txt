@@ -1,0 +1,2 @@
+For AES ECB, AES CBC and AES CTR the following provision applies to this part of the software as an additional term to the license:
+This code is based on the code of Tiny AES in C (https://github.com/kokke/tiny-AES-c). Tiny AES in C is subject to the Unlicense and released into the public domain (https://unlicense.org/).

@@ -1,0 +1,3 @@
+The following provision applies to this part of the software as an additional term to the license:
+
+This code is based on the code of the Classic McEliece project (https://classic.mceliece.org/impl.html). The Classic McEliece software is in the public domain.

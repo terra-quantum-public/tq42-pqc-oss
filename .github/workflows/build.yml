@@ -1,0 +1,181 @@
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+      image:
+        required: true
+        type: string
+      configuration:
+        required: true
+        type: string
+      sanitize:
+        required: true
+        type: string
+      coverage:
+        required: true
+        type: string
+      haswell:
+        required: true
+        type: string
+      compiler:
+        required: true
+        type: string
+      architecture:
+        required: true
+        type: string
+      emulate:
+        required: true
+        type: boolean
+      platform:
+        required: false
+        type: string
+
+jobs:
+  build:
+    name: Build
+    runs-on: ${{ inputs.image }}
+
+    timeout-minutes: 60
+
+    steps:
+    - name: Check architecture
+      if: '!inputs.emulate'
+      shell: python
+      run: |
+        import platform
+        aliases = {'AMD64': 'x86_64', 'arm64': 'aarch64'}
+        assert aliases.get(platform.machine(), platform.machine()) == '${{ inputs.architecture }}', platform.machine()
+
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Create build environment
+      run: cmake -E make_directory '${{ github.workspace }}/build'
+
+    - name: Set up emulator
+      if: inputs.emulate
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: ${{ inputs.platform }}
+
+    - name: Start up emulator
+      if: inputs.emulate
+      run: |
+        docker run --detach --name emulator --workdir '${{ github.workspace }}/build' --platform ${{ inputs.platform }} --volume '${{ github.workspace }}:${{ github.workspace }}' gcc sleep 3600
+
+    # FIXME remove copy_paste
+
+    - name: Check architecture
+      if: inputs.emulate
+      run: |
+        arch=`docker exec emulator arch`
+        test "${arch}" = ${{ inputs.architecture }} || (echo "${arch}" && false)
+
+    - name: Get the number of CPUs to run on
+      id: cpus
+      shell: python
+      run: |
+        import multiprocessing
+        import os
+        output_file = os.environ['GITHUB_OUTPUT']
+        with open(output_file, 'a', encoding='utf-8') as output_stream:
+            output_stream.write(f'count={multiprocessing.cpu_count()+1}\n')
+
+    - name: Set up Python
+      if: '!inputs.emulate'
+      uses: actions/setup-python@v5
+      with:
+        cache: pip
+
+    - name: Install Python modules
+      if: '!inputs.emulate'
+      run: pip3 install pytest setuptools ${{ inputs.image == 'macos-latest' && '--break-system-packages' || '' }}
+
+    - name: Install CMake, Python and Python modules
+      if: inputs.emulate
+      run: |
+        docker exec emulator apt-get update
+        docker exec emulator apt-get install -y cmake python3-pip
+        docker exec emulator pip3 install pytest setuptools --break-system-packages
+
+    - name: Configure
+      if: '!inputs.emulate'
+      working-directory: ${{ github.workspace }}/build
+      run: cmake ${{ github.workspace }} -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON -DCMAKE_BUILD_TYPE=${{ inputs.configuration }} -DSANITIZE:BOOL=${{ inputs.sanitize }} -DCOVERAGE:BOOL=${{ inputs.coverage }} -DHASWELL:BOOL=${{ inputs.haswell }}
+
+    - name: Configure
+      if: inputs.emulate
+      run: |
+        docker exec emulator cmake ${{ github.workspace }} -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON -DCMAKE_BUILD_TYPE=${{ inputs.configuration }} -DSANITIZE:BOOL=${{ inputs.sanitize }} -DCOVERAGE:BOOL=${{ inputs.coverage }} -DHASWELL:BOOL=${{ inputs.haswell }}
+
+    - name: Check compiler
+      shell: python
+      working-directory: ${{ github.workspace }}/build
+      run: |
+        with open('compiler.id') as f:
+          compiler_id = f.read()
+        assert compiler_id == '${{ inputs.compiler }}', compiler_id
+
+    - name: Build
+      if: '!inputs.emulate'
+      working-directory: ${{ github.workspace }}/build
+      run: cmake --build . --parallel ${{ steps.cpus.outputs.count }} --config ${{ inputs.configuration }}
+
+    - name: Build
+      if: inputs.emulate
+      run: |
+        docker exec emulator cmake --build . --parallel ${{ steps.cpus.outputs.count }} --config ${{ inputs.configuration }}
+
+    - name: Test
+      if: '!inputs.emulate'
+      working-directory: ${{ github.workspace }}/build
+      run: ctest --build-config ${{ inputs.configuration }} --parallel ${{ steps.cpus.outputs.count }} --stop-on-failure --verbose --timeout 1200
+
+    - name: Test
+      if: inputs.emulate
+      run: |
+        docker exec emulator ctest --build-config ${{ inputs.configuration }} --parallel ${{ steps.cpus.outputs.count }} --stop-on-failure --verbose --timeout 1200
+
+    - name: Generate coverage report
+      if: github.event_name == 'pull_request' && inputs.coverage == 'ON'
+      shell: bash
+      run: |
+        pip3 install gcovr
+        COVERAGE_REPORT=`gcovr -s -r ${{ github.workspace }} -e ${{ github.workspace }}/build ${{ github.workspace }}/build`
+        echo 'COVERAGE_REPORT<<EOF' >> ${GITHUB_ENV}
+        echo "${COVERAGE_REPORT}" >> ${GITHUB_ENV}
+        echo 'EOF' >> ${GITHUB_ENV}
+
+    - name: Add coverage comment
+      if: github.event_name == 'pull_request' && inputs.coverage == 'ON'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const {data: comments} = await github.rest.issues.listComments({
+            issue_number: context.issue.number,
+            per_page: 100,
+            owner: context.repo.owner,
+            repo: context.repo.repo
+          })
+          const comment = comments.find(comment => {
+            return comment.user.type === 'Bot' && comment.body.startsWith('Coverage report:')
+          })
+          if (comment) {
+            github.rest.issues.updateComment({
+              comment_id: comment.id,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `Coverage report:\n\`\`\`\n${{ env.COVERAGE_REPORT }}\n\`\`\``
+            })
+          }
+          else
+          {
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `Coverage report:\n\`\`\`\n${{ env.COVERAGE_REPORT }}\n\`\`\``
+            })
+          }

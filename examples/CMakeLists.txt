@@ -1,0 +1,8 @@
+add_subdirectory(aes)
+add_subdirectory(container)
+add_subdirectory(asymmetric_container)
+add_subdirectory(key_exchange)
+add_subdirectory(sha3)
+add_subdirectory(prng)
+add_subdirectory(ssd_hdd_removal)
+add_subdirectory(signature)

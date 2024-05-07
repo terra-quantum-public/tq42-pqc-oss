@@ -1,0 +1,52 @@
+name: Special build
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: Linux
+          image: ubuntu-latest
+          configuration: Release
+          sanitize: OFF
+          haswell: OFF
+          compiler: GCC
+          architecture: armv7l
+          platform: arm
+
+        - os: Linux
+          image: ubuntu-latest
+          configuration: Release
+          sanitize: OFF
+          haswell: OFF
+          compiler: GCC
+          architecture: ppc64le
+          platform: ppc64le
+
+        - os: Linux
+          image: ubuntu-latest
+          configuration: Release
+          sanitize: OFF
+          haswell: OFF
+          compiler: GCC
+          architecture: s390x
+          platform: s390x
+
+    name: ${{ matrix.architecture }}, ${{ matrix.os }}, ${{ matrix.compiler }}, ${{ matrix.configuration }}${{ matrix.sanitize == 'ON' && ', SANITIZE=ON' || '' }}${{ matrix.coverage == 'ON' && ', COVERAGE=ON' || '' }}${{ matrix.haswell == 'ON' && ', HASWELL=ON' || '' }}
+
+    uses: ./.github/workflows/build.yml
+    with:
+      os: ${{ matrix.os }}
+      image: ${{ matrix.image }}
+      configuration: ${{ matrix.configuration }}
+      sanitize: ${{ matrix.sanitize }}
+      coverage: OFF
+      haswell: ${{ matrix.haswell }}
+      compiler: ${{ matrix.compiler }}
+      architecture: ${{ matrix.architecture }}
+      emulate: true
+      platform: ${{ matrix.platform }}

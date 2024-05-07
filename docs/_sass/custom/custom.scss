@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif !important;
+    background-color: #1C1C29 !important;
+}
+
+.side-bar {
+    background-color: black !important;
+    border-right: 1px solid #45465B !important;
+}
+
+a.nav-list-link:hover,
+a.nav-list-link.active {
+    background-color: #1C1C29 !important;
+    background-image: none !important;
+    color: #10A4A4 !important;
+}
+
+
+/*a.nav-list-link {
+    color: white !important;
+}*/
+
+
+.nav-list .nav-list-item .nav-list-expander:hover,
+.nav-list .nav-list-item .nav-list-expander {
+    color: #10A4A4 !important;
+    background-image: none !important;
+}
+
+a.site-title:hover {
+    background-image: none !important;
+}
+
+.site-header {
+    border-bottom: 1px solid #45465B !important;
+}
+
+.main-header {
+    border-bottom: 1px solid #45465B !important;
+}
+
+
+h1, h2, h3, h4, h5, h6 {
+    color: #10A4A4 !important;
+}
+
+.main-content h2, .main-content h3, .main-content h4, .main-content h5, .main-content h6 {
+    font-size: 1.25rem !important;
+}
+
+h3 code, h4 code{
+    color: white !important;    
+}
+
+a {
+color: white !important;
+}
+
+.search, .search-input {
+    background-color: #1C1C29 !important;
+}
+
+.search-label {
+    color: white !important;
+}

@@ -1,0 +1,87 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+        - os: Windows
+          image: windows-latest
+          configuration: Release
+          sanitize: OFF
+          coverage: OFF
+          haswell: OFF
+          compiler: MSVC
+          architecture: x86_64
+
+        - os: Linux
+          image: ubuntu-latest
+          configuration: Release
+          sanitize: OFF
+          coverage: OFF
+          haswell: OFF
+          compiler: GCC
+          architecture: x86_64
+
+        - os: Linux
+          image: ubuntu-latest
+          configuration: Release
+          sanitize: OFF
+          coverage: OFF
+          haswell: ON
+          compiler: GCC
+          architecture: x86_64
+
+        - os: Linux
+          image: ubuntu-latest
+          configuration: Release
+          sanitize: ON
+          coverage: OFF
+          haswell: OFF
+          compiler: GCC
+          architecture: x86_64
+
+        - os: Linux
+          image: ubuntu-latest
+          configuration: Debug
+          sanitize: OFF
+          coverage: ON
+          haswell: OFF
+          compiler: GCC
+          architecture: x86_64
+
+        - os: OS X
+          image: macos-13
+          configuration: Release
+          sanitize: OFF
+          coverage: OFF
+          haswell: OFF
+          compiler: Clang
+          architecture: x86_64
+
+        - os: OS X
+          image: macos-latest
+          configuration: Release
+          sanitize: OFF
+          coverage: OFF
+          haswell: OFF
+          compiler: Clang
+          architecture: aarch64
+
+    name: ${{ matrix.architecture }}, ${{ matrix.os }}, ${{ matrix.compiler }}, ${{ matrix.configuration }}${{ matrix.sanitize == 'ON' && ', SANITIZE=ON' || '' }}${{ matrix.coverage == 'ON' && ', COVERAGE=ON' || '' }}${{ matrix.haswell == 'ON' && ', HASWELL=ON' || '' }}
+
+    uses: ./.github/workflows/build.yml
+    with:
+      os: ${{ matrix.os }}
+      image: ${{ matrix.image }}
+      configuration: ${{ matrix.configuration }}
+      sanitize: ${{ matrix.sanitize }}
+      coverage: ${{ matrix.coverage }}
+      haswell: ${{ matrix.haswell }}
+      compiler: ${{ matrix.compiler }}
+      architecture: ${{ matrix.architecture }}
+      emulate: false
