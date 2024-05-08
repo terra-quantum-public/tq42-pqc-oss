@@ -1,0 +1,24 @@
+name: GitHub Issue Notification to Slack
+
+on:
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created]
+
+jobs:
+  notifySlack:
+    runs-on: ubuntu-latest
+    env:
+      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      SLACK_CHANNEL: 'C071XET3G4S'
+    steps:
+      - name: Notify Slack on Issue or Comment
+        run: |
+          if [ "${{ github.event_name }}" == "issues" ]; then
+            PAYLOAD='{"channel":"'"$SLACK_CHANNEL"'","text":"New or edited issue: <${{ github.event.issue.html_url }}|${{ github.event.issue.title }}>"}'
+          elif [ "${{ github.event_name }}" == "issue_comment" ]; then
+            PAYLOAD='{"channel":"'"$SLACK_CHANNEL"'","text":"New comment on issue <${{ github.event.issue.html_url }}|${{ github.event.issue.title }}> by @${{ github.event.comment.user.login }}:\n<${{ github.event.comment.html_url }}|View Comment>"}'
+          fi
+
+          curl -X POST -H 'Authorization: Bearer ${{ secrets.SLACK_BOT_TOKEN }}' -H 'Content-type: application/json; charset=utf-8' --data "$PAYLOAD" https://slack.com/api/chat.postMessage
