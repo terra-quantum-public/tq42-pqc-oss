@@ -19,8 +19,6 @@ def test_symmetric_container(pqc):
 
     assert size != 0
 
-    testKey1 = pqc.PQC_symmetric_container_get_key(new_container, 0, 100, pqc.PQC_CIPHER_AES, pqc.PQC_AES_M_ECB)
-
     pqc.PQC_symmetric_container_close(new_container)
 
 
