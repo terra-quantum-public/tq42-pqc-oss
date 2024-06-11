@@ -3,7 +3,7 @@ email: support@terraquantum.swiss
 description: >-
   Discover TQ42 Cryptography by Terra Quantum, an advanced low-level library featuring Encryption, Hashing, Electronic Signatures, and Key Management Systems. Enhanced with true entropy from a Single Photon Quantum Random Number Generator (QRNG), it is perfect for developers and organizations gearing up for the quantum era to strengthen data security.
 baseurl: "tq42-pqc-oss" # the subpath of your site, e.g. /blog
-url: "" # the base hostname & protocol for your site, e.g. http://example.com
+url: "https://docs.tq42.com" # the base hostname & protocol for your site, e.g. http://example.com
 
 logo: "img/TQ42_logo.png"
 color_scheme: dark
