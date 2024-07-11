@@ -105,8 +105,9 @@ TEST(FALCON, VERIFY_CHECK_SIGNATURE_SIZE)
 
     pqc_falcon_signature signature;
 
-    EXPECT_EQ(PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, (uint8_t *)&signature, sizeof(signature)), PQC_OK)
-        << "signing should succeed";
+    EXPECT_EQ(
+        PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, (uint8_t *)&signature, sizeof(signature)), PQC_OK
+    ) << "signing should succeed";
 
     EXPECT_EQ(
         PQC_verify(
@@ -141,8 +142,9 @@ TEST(FALCON, VERIFY_CHECK_KEY_SIZE)
     pqc_falcon_signature signature;
 
 
-    EXPECT_EQ(PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, (uint8_t *)&signature, sizeof(signature)), PQC_OK)
-        << "signing should succeed";
+    EXPECT_EQ(
+        PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, (uint8_t *)&signature, sizeof(signature)), PQC_OK
+    ) << "signing should succeed";
 
 
     EXPECT_EQ(
@@ -178,8 +180,9 @@ TEST(FALCON, CHECK_SIGNATURE)
 
     pqc_falcon_signature signature;
 
-    EXPECT_EQ(PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, (uint8_t *)&signature, sizeof(signature)), PQC_OK)
-        << "signing should succeed";
+    EXPECT_EQ(
+        PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, (uint8_t *)&signature, sizeof(signature)), PQC_OK
+    ) << "signing should succeed";
 
     EXPECT_EQ(
         PQC_verify(
@@ -215,8 +218,9 @@ TEST(FALCON, BAD_SIGNATURE)
 
     pqc_falcon_signature signature;
 
-    EXPECT_EQ(PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, (uint8_t *)&signature, sizeof(signature)), PQC_OK)
-        << "signing should succeed";
+    EXPECT_EQ(
+        PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, (uint8_t *)&signature, sizeof(signature)), PQC_OK
+    ) << "signing should succeed";
 
     EXPECT_EQ(
         PQC_verify(
@@ -534,7 +538,7 @@ TEST(FALCON, KAT1024_Round3)
         std::getline(responses, expected);
         EXPECT_TRUE(expected == ("count = " + std::to_string(i)));
 
-        std::getline(responses, expected); //seed line
+        std::getline(responses, expected); // seed line
 
         std::getline(responses, expected);
         unsigned long long mlen = Hex::to_ull(expected, "mlen = ");

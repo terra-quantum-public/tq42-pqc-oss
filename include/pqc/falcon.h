@@ -6,14 +6,14 @@
 #define PQC_CIPHER_FALCON 5
 
 
-#define PQC_FALCON_PRIVKEY_SIZE(logn)                                                                                   \
+#define PQC_FALCON_PRIVKEY_SIZE(logn)                                                                                  \
     (((logn) <= 3 ? (3u << (logn)) : ((10u - ((logn) >> 1)) << ((logn)-2)) + (1 << (logn))) + 1)
 
 #define PQC_FALCON_PUBKEY_SIZE(logn) (((logn) <= 1 ? 4u : (7u << ((logn)-2))) + 1)
 
 #define PQC_FALCON_SIG_COMPRESSED_MAXSIZE(logn) (((((11u << (logn)) + (101u >> (10 - (logn)))) + 7) >> 3) + 41)
 
-#define PQC_FALCON_SIG_PADDED_SIZE(logn)                                                                                \
+#define PQC_FALCON_SIG_PADDED_SIZE(logn)                                                                               \
     (44u + 3 * (256u >> (10 - (logn))) + 2 * (128u >> (10 - (logn))) + 3 * (64u >> (10 - (logn))) +                    \
      2 * (16u >> (10 - (logn))) - 2 * (2u >> (10 - (logn))) - 8 * (1u >> (10 - (logn))))
 

@@ -1,4 +1,4 @@
-﻿#include "falcon.h"
+#include "falcon.h"
 
 #include <cstdint>
 

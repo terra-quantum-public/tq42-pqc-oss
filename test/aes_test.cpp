@@ -1,13 +1,17 @@
+#include <filesystem>
+#include <fstream>
 #include <gtest/gtest.h>
 
 #include <pqc/aes.h>
+
+#include "rsp_parser.h"
 
 TEST(AES, AES_init_badSize)
 {
     CIPHER_HANDLE context;
 
     uint8_t key[PQC_AES_KEYLEN] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2', '3', '4', '5', '6',
-                                  '7', '8', '9', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2'};
+                                   '7', '8', '9', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2'};
 
     context = PQC_init_context(PQC_CIPHER_AES, key, PQC_AES_KEYLEN - 1);
 
@@ -19,7 +23,7 @@ TEST(AES, AES_ECB_badSize)
     CIPHER_HANDLE context;
 
     uint8_t key[PQC_AES_KEYLEN] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2', '3', '4', '5', '6',
-                                  '7', '8', '9', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2'};
+                                   '7', '8', '9', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2'};
 
     const int data_len = PQC_AES_BLOCKLEN * 3;
     uint8_t data[data_len] = {0};
@@ -29,7 +33,7 @@ TEST(AES, AES_ECB_badSize)
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
     EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_ECB, data, data_len), PQC_BAD_LEN)
-        << "ECB mechanism accept only data blocks of size == PQC_AES_BLOCKLEN, so we should return PG_BAD_LEN";
+        << "ECB mode accept only data blocks of size == PQC_AES_BLOCKLEN, so we should return PG_BAD_LEN";
 
     EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass";
 }
@@ -39,7 +43,7 @@ TEST(AES, AES_ECB_encodeDecode)
     CIPHER_HANDLE context;
 
     uint8_t key[PQC_AES_KEYLEN] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'A', 'B', 'C', 'D', 'E', 'F',
-                                  'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
+                                   'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
 
     const int data_len = PQC_AES_BLOCKLEN;
     uint8_t data[data_len] = {89, 234, 87, 91, 40, 83, 179, 255, 80, 66, 19, 45, 89, 0, 64, 123};
@@ -68,7 +72,7 @@ TEST(AES, AES_CBC_badSize)
     CIPHER_HANDLE context;
 
     uint8_t key[PQC_AES_KEYLEN] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2', '3', '4', '5', '6',
-                                  '7', '8', '9', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2'};
+                                   '7', '8', '9', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2'};
 
     const int data_len = PQC_AES_BLOCKLEN * 3 + 1;
     uint8_t data[data_len] = {0};
@@ -80,7 +84,7 @@ TEST(AES, AES_CBC_badSize)
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
     EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_CBC, data, data_len), PQC_BAD_LEN)
-        << "ECB mechanism accept only data blocks of size == PQC_AES_BLOCKLEN, so we should return PG_BAD_LEN";
+        << "ECB mode accept only data blocks of size == PQC_AES_BLOCKLEN, so we should return PG_BAD_LEN";
 
     EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass";
 }
@@ -90,7 +94,7 @@ TEST(AES, AES_CBC_encodeDecode)
     CIPHER_HANDLE context;
 
     uint8_t key[PQC_AES_KEYLEN] = {1,   2,   3,   4,   5,  6,  7,  8,  9,  10, '1', '2', '3', '4', '5', '6',
-                                  '7', '8', '9', '0', 21, 22, 23, 24, 25, 26, 27,  28,  29,  30,  'A', 'B'};
+                                   '7', '8', '9', '0', 21, 22, 23, 24, 25, 26, 27,  28,  29,  30,  'A', 'B'};
 
     const int data_len = PQC_AES_BLOCKLEN * 2;
 
@@ -129,7 +133,7 @@ TEST(AES, AES_CBC_encodeDecode_parallel_context)
     CIPHER_HANDLE context2;
 
     uint8_t key[PQC_AES_KEYLEN] = {1,   2,   3,   4,   5,  6,  7,  8,  9,  10, '1', '2', '3', '4', '5', '6',
-                                  '7', '8', '9', '0', 21, 22, 23, 24, 25, 26, 27,  28,  29,  30,  'A', 'B'};
+                                   '7', '8', '9', '0', 21, 22, 23, 24, 25, 26, 27,  28,  29,  30,  'A', 'B'};
 
     const int data_len = PQC_AES_BLOCKLEN * 2;
 
@@ -170,7 +174,7 @@ TEST(AES, AES_CBC_require_iv)
     CIPHER_HANDLE context;
 
     uint8_t key[PQC_AES_KEYLEN] = {1,   2,   3,   4,   5,  6,  7,  8,  9,  10, '1', '2', '3', '4', '5', '6',
-                                  '7', '8', '9', '0', 21, 22, 23, 24, 25, 26, 27,  28,  29,  30,  'A', 'B'};
+                                   '7', '8', '9', '0', 21, 22, 23, 24, 25, 26, 27,  28,  29,  30,  'A', 'B'};
 
     const int data_len = PQC_AES_BLOCKLEN * 2;
 
@@ -198,7 +202,7 @@ TEST(AES, AES_OFB_require_iv)
     CIPHER_HANDLE context;
 
     uint8_t key[PQC_AES_KEYLEN] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'A', 'B', 'C', 'D', 'E', 'F',
-                                  'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
+                                   'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
 
     const int data_len = 12;
 
@@ -227,7 +231,7 @@ TEST(AES, AES_OFB_encodeDecode)
     CIPHER_HANDLE context;
 
     uint8_t key[PQC_AES_KEYLEN] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 11,  12,  13,  14,  15, 16,
-                                  17,  18,  19,  20,  '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 31, 32};
+                                   17,  18,  19,  20,  '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 31, 32};
 
     const int data_len = PQC_AES_BLOCKLEN * 2;
 
@@ -265,7 +269,7 @@ TEST(AES, AES_OFB2_encodeDecode)
     CIPHER_HANDLE context;
 
     uint8_t key[PQC_AES_KEYLEN] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'A', 'B', 'C', 'D', 'E', 'F',
-                                  'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
+                                   'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
 
     const int data_len = PQC_AES_BLOCKLEN + 1;
     uint8_t data[data_len] = {89, 234, 87, 91, 40, 83, 179, 255, 80, 66, 19, 45, 89, 0, 64, 78, 1};
@@ -296,7 +300,7 @@ TEST(AES, AES_CTR_require_iv)
     CIPHER_HANDLE context;
 
     uint8_t key[PQC_AES_KEYLEN] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'A', 'B', 'C', 'D', 'E', 'F',
-                                  'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
+                                   'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
 
     const int data_len = 12;
 
@@ -326,12 +330,12 @@ TEST(AES, AES_CTR_encodeDecode)
     CIPHER_HANDLE context;
 
     uint8_t key[PQC_AES_KEYLEN] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'A', 'B', 'C', 'D', 'E', 'F',
-                                  'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
+                                   'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
 
     const int data_len = PQC_AES_BLOCKLEN - 1;
     uint8_t data[data_len] = {89, 234, 87, 91, 40, 83, 179, 255, 80, 66, 19, 45, 89, 0, 64};
     uint8_t iv[PQC_AES_IVLEN] = {0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7,
-                                0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF};
+                                 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF};
 
     uint8_t data_copy[data_len];
     memcpy(data_copy, data, data_len);
@@ -363,21 +367,21 @@ TEST(AES, AES_CTR_counterOverflow)
     CIPHER_HANDLE context;
 
     uint8_t key[PQC_AES_KEYLEN] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'A', 'B', 'C', 'D', 'E', 'F',
-                                  'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
+                                   'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
 
     uint8_t iv[PQC_AES_IVLEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-                                0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+                                 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
     uint8_t data[PQC_AES_BLOCKLEN * 2] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+                                          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
     // Create expected data
     // As input data is all zeros, output of CTR will be exaclty counter encrypted by AES
     // For first block counter is FF..FF, for next, it is 00...00
     uint8_t expected[PQC_AES_BLOCKLEN * 2] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-                                             0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+                                              0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
     context = PQC_init_context(PQC_CIPHER_AES, key, PQC_AES_KEYLEN);
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
@@ -414,10 +418,10 @@ TEST(AES, AES_CTR_encode_partial)
                                     0xB6, 0x7A, 0xAD, 0xA6, 0x13, 0xC2, 0xDD, 0x08, 0x45, 0x79, 0x41, 0xA6};
 
     uint8_t key[PQC_AES_KEYLEN] = {0x60, 0x3D, 0xEB, 0x10, 0x15, 0xCA, 0x71, 0xBE, 0x2B, 0x73, 0xAE,
-                                  0xF0, 0x85, 0x7D, 0x77, 0x81, 0x1F, 0x35, 0x2C, 0x07, 0x3B, 0x61,
-                                  0x08, 0xD7, 0x2D, 0x98, 0x10, 0xA3, 0x09, 0x14, 0xDF, 0xF4};
+                                   0xF0, 0x85, 0x7D, 0x77, 0x81, 0x1F, 0x35, 0x2C, 0x07, 0x3B, 0x61,
+                                   0x08, 0xD7, 0x2D, 0x98, 0x10, 0xA3, 0x09, 0x14, 0xDF, 0xF4};
     uint8_t iv[PQC_AES_IVLEN] = {0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7,
-                                0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF};
+                                 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF};
 
 
     for (int step = 1; step < data_len; ++step)
@@ -448,9 +452,9 @@ class AES_test_data
 public:
     AES_test_data(
         std::vector<uint8_t> plaintext, std::vector<uint8_t> ciphertext, std::vector<uint8_t> key,
-        std::vector<uint8_t> iv, uint32_t mechanism
+        std::vector<uint8_t> iv, uint32_t mode
     )
-        : _plaintext(plaintext), _ciphertext(ciphertext), _key(key), _iv(iv), _mechanism(mechanism)
+        : _plaintext(plaintext), _ciphertext(ciphertext), _key(key), _iv(iv), _mode(mode)
     {
     }
 
@@ -458,7 +462,7 @@ public:
     std::vector<uint8_t> _ciphertext;
     std::vector<uint8_t> _key;
     std::vector<uint8_t> _iv;
-    uint32_t _mechanism;
+    uint32_t _mode;
 };
 
 
@@ -483,7 +487,7 @@ TEST_P(AESVectorTestSuite, test_encrypt)
 
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_encrypt(context, param._mechanism, param._plaintext.data(), param._plaintext.size()), PQC_OK)
+    EXPECT_EQ(PQC_encrypt(context, param._mode, param._plaintext.data(), param._plaintext.size()), PQC_OK)
         << "Encryption should pass";
 
     EXPECT_EQ(memcmp(param._plaintext.data(), param._ciphertext.data(), param._plaintext.size()), 0)
@@ -508,7 +512,7 @@ TEST_P(AESVectorTestSuite, test_decrypt)
     }
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_decrypt(context, param._mechanism, param._ciphertext.data(), param._ciphertext.size()), PQC_OK)
+    EXPECT_EQ(PQC_decrypt(context, param._mode, param._ciphertext.data(), param._ciphertext.size()), PQC_OK)
         << "Encryption should pass";
 
     EXPECT_EQ(memcmp(param._ciphertext.data(), param._plaintext.data(), param._plaintext.size()), 0)
@@ -597,3 +601,174 @@ INSTANTIATE_TEST_SUITE_P(
 
     )
 );
+
+
+TEST(AES, AES_CBC_KAT)
+{
+    static const std::filesystem::path current(__FILE__);
+    static const std::filesystem::path base_path = current.parent_path() / "aes" / "kat" / "cbc";
+
+    const std::vector<std::string> files_to_test = {
+        "CBCGFSbox256.rsp", "CBCKeySbox256.rsp", "CBCVarKey256.rsp", "CBCVarTxt256.rsp"};
+
+    for (const std::string & filename : files_to_test)
+    {
+        const std::filesystem::path rsp_path = base_path / filename;
+
+        std::ifstream rsp_stream(rsp_path);
+
+        AESRSPParser parser(rsp_stream);
+
+        AESRSPDataset dataset = parser.parse();
+
+        /// Encoding
+
+        for (AESRSPRecord record : dataset.encrypt_)
+        {
+            CIPHER_HANDLE context;
+
+            context = PQC_init_context_iv(
+                PQC_CIPHER_AES, record.key_.data(), record.key_.size(), record.iv_.data(), record.iv_.size()
+            );
+            EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass, file " << filename;
+
+            EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_CBC, record.plaintext_.data(), record.plaintext_.size()), PQC_OK)
+                << "Encryption should pass, file " << filename;
+
+            EXPECT_EQ(record.plaintext_, record.ciphertext_) << "Encryption result should match, file " << filename;
+
+            EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass, file " << filename;
+        }
+
+        /// Decoding
+
+        for (AESRSPRecord record : dataset.decrypt_)
+        {
+            CIPHER_HANDLE context;
+
+            context = PQC_init_context_iv(
+                PQC_CIPHER_AES, record.key_.data(), record.key_.size(), record.iv_.data(), record.iv_.size()
+            );
+            EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass, file " << filename;
+
+            EXPECT_EQ(PQC_decrypt(context, PQC_AES_M_CBC, record.ciphertext_.data(), record.ciphertext_.size()), PQC_OK)
+                << "Decryption should pass, file " << filename;
+
+            EXPECT_EQ(record.plaintext_, record.ciphertext_) << "Decryption result should match, file " << filename;
+
+            EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass, file " << filename;
+        }
+    }
+}
+
+TEST(AES, AES_OFB_KAT)
+{
+    static const std::filesystem::path current(__FILE__);
+    static const std::filesystem::path base_path = current.parent_path() / "aes" / "kat" / "ofb";
+
+    const std::vector<std::string> files_to_test = {
+        "OFBGFSbox256.rsp", "OFBKeySbox256.rsp", "OFBVarKey256.rsp", "OFBVarTxt256.rsp"};
+
+    for (const std::string & filename : files_to_test)
+    {
+        const std::filesystem::path rsp_path = base_path / filename;
+
+        std::ifstream rsp_stream(rsp_path);
+
+        AESRSPParser parser(rsp_stream);
+
+        AESRSPDataset dataset = parser.parse();
+
+        /// Encoding
+
+        for (AESRSPRecord record : dataset.encrypt_)
+        {
+            CIPHER_HANDLE context;
+
+            context = PQC_init_context_iv(
+                PQC_CIPHER_AES, record.key_.data(), record.key_.size(), record.iv_.data(), record.iv_.size()
+            );
+            EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass, file " << filename;
+
+            EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_OFB, record.plaintext_.data(), record.plaintext_.size()), PQC_OK)
+                << "Encryption should pass, file " << filename;
+
+            EXPECT_EQ(record.plaintext_, record.ciphertext_) << "Encryption result should match, file " << filename;
+
+            EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass, file " << filename;
+        }
+
+        /// Decoding
+
+        for (AESRSPRecord record : dataset.decrypt_)
+        {
+            CIPHER_HANDLE context;
+
+            context = PQC_init_context_iv(
+                PQC_CIPHER_AES, record.key_.data(), record.key_.size(), record.iv_.data(), record.iv_.size()
+            );
+            EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass, file " << filename;
+
+            EXPECT_EQ(PQC_decrypt(context, PQC_AES_M_OFB, record.ciphertext_.data(), record.ciphertext_.size()), PQC_OK)
+                << "Decryption should pass, file " << filename;
+
+            EXPECT_EQ(record.plaintext_, record.ciphertext_) << "Decryption result should match, file " << filename;
+
+            EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass, file " << filename;
+        }
+    }
+}
+
+TEST(AES, AES_ECB_KAT)
+{
+    static const std::filesystem::path current(__FILE__);
+    static const std::filesystem::path base_path = current.parent_path() / "aes" / "kat" / "ecb";
+
+    const std::vector<std::string> files_to_test = {
+        "ECBGFSbox256.rsp", "ECBKeySbox256.rsp", "ECBVarKey256.rsp", "ECBVarTxt256.rsp"};
+
+    for (const std::string & filename : files_to_test)
+    {
+        const std::filesystem::path rsp_path = base_path / filename;
+
+        std::ifstream rsp_stream(rsp_path);
+
+        AESRSPParser parser(rsp_stream);
+
+        AESRSPDataset dataset = parser.parse();
+
+        /// Encoding
+
+        for (AESRSPRecord record : dataset.encrypt_)
+        {
+            CIPHER_HANDLE context;
+
+            context = PQC_init_context(PQC_CIPHER_AES, record.key_.data(), record.key_.size());
+            EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass, file " << filename;
+
+            EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_ECB, record.plaintext_.data(), record.plaintext_.size()), PQC_OK)
+                << "Encryption should pass, file " << filename;
+
+            EXPECT_EQ(record.plaintext_, record.ciphertext_) << "Encryption result should match, file " << filename;
+
+            EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass, file " << filename;
+        }
+
+        /// Decoding
+
+        for (AESRSPRecord record : dataset.decrypt_)
+        {
+            CIPHER_HANDLE context;
+
+            context = PQC_init_context(PQC_CIPHER_AES, record.key_.data(), record.key_.size());
+            EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass, file " << filename;
+
+            EXPECT_EQ(PQC_decrypt(context, PQC_AES_M_ECB, record.ciphertext_.data(), record.ciphertext_.size()), PQC_OK)
+                << "Decryption should pass, file " << filename;
+
+            EXPECT_EQ(record.plaintext_, record.ciphertext_) << "Decryption result should match, file " << filename;
+
+            EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass, file " << filename;
+        }
+    }
+}

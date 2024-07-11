@@ -1,6 +1,7 @@
 #include <cstring>
 #include <iostream>
 
+#include <pqc/container.h>
 #include <pqc/mceliece.h>
 
 /*
@@ -32,7 +33,7 @@ int main()
     Now let's try to save the container to a file.
     */
     size_t result = PQC_asymmetric_container_save_as(
-        PQC_CIPHER_MCELIECE, new_container, "server", "client", "device1", "password", "salt"
+        PQC_CIPHER_MCELIECE, new_container, "some-unique-container-name-mceliece.pqc", "password", "salt"
     );
     if (result != PQC_OK)
     {
@@ -42,8 +43,9 @@ int main()
     /*
     Let's create new container, get kes from file and compare with old keys
     */
-    PQC_CONTAINER_HANDLE resultContainer =
-        PQC_asymmetric_container_open(PQC_CIPHER_MCELIECE, "server", "client", "device1", "password", "salt");
+    PQC_CONTAINER_HANDLE resultContainer = PQC_asymmetric_container_open(
+        PQC_CIPHER_MCELIECE, "some-unique-container-name-mceliece.pqc", "password", "salt"
+    );
     if (resultContainer == PQC_FAILED_TO_CREATE_CONTAINER)
         std::cout << "\nERROR!!! Failed of container creation!\n";
 

@@ -1,5 +1,4 @@
 #pragma once
-#include "aes.h"
 #include <array>
 #include <cstdint>
 #include <fstream>
@@ -13,26 +12,21 @@
 
 #define PQC_SYMMETRIC_CONTAINER_MAX_USE_COUNT 1099511627776ull
 
+const uint32_t PQC_SYMMETRIC_CONTAINER_VERSION = 1;
+const uint64_t PQC_SYMMETRIC_CONTAINER_EXPIRATION_TIME = 365 * 24 * 3600;
+
 class SymmetricKeyContainerFile
 {
 public:
-    SymmetricKeyContainerFile(bool create_new, const char * server, const char * client, const char * device);
-    SymmetricKeyContainerFile(bool create_new, const char * client_m, const char * client_k);
+    SymmetricKeyContainerFile(bool create_new, const char * filename);
 
     bool read(uint8_t * data);
     bool write(const uint8_t * data);
 
-    static std::string get_filename(const char * server, const char * client, const char * device);
-    static std::string get_filename(const char * client_m, const char * client_k);
-
 private:
-    //	SymmetricKeyContainer _file;
     std::string _fileName;
     std::fstream _file;
 };
-
-
-const uint32_t SimmetricContainerCurrentVersion = 1;
 
 
 class SymmetricKeyContainer
@@ -45,8 +39,16 @@ public:
     {
     public:
         uint64_t use_count = PQC_SYMMETRIC_CONTAINER_MAX_USE_COUNT;
-        uint32_t version = SimmetricContainerCurrentVersion;
         Key key;
+    };
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+    struct SymmetricKeyContainerData
+    {
+        uint32_t version = PQC_SYMMETRIC_CONTAINER_VERSION;
+        uint64_t creation_ts;
+        KeyData key_data[PQC_SYMMETRIC_CONTAINER_NUM_KEYS];
     };
 #pragma pack(pop)
 
@@ -54,37 +56,41 @@ public:
     SymmetricKeyContainer();
     SymmetricKeyContainer(const uint8_t * data, const pqc_aes_key * key, const pqc_aes_iv * iv);
     SymmetricKeyContainer(
-        std::shared_ptr<SymmetricKeyContainerFile> file, std::shared_ptr<pqc_aes_key> key, std::shared_ptr<pqc_aes_iv> iv
+        std::shared_ptr<SymmetricKeyContainerFile> file, std::shared_ptr<pqc_aes_key> key,
+        std::shared_ptr<pqc_aes_iv> iv
     );
 
-    static void set_container_path(const char * path);
+    int get(int index, size_t encrypted_bytes, uint32_t cipher, uint32_t mode, const BufferView & key);
 
-    int get(int index, size_t encrypted_bytes, uint32_t cipher, uint32_t mechanism, const BufferView & key);
-
-    static size_t data_size() { return sizeof(KeyData) * PQC_SYMMETRIC_CONTAINER_KEY_LENGTH; }
+    static size_t data_size() { return sizeof(SymmetricKeyContainerData); }
 
     void get_data(uint8_t * data, const pqc_aes_key * key, const pqc_aes_iv * iv);
 
     bool save_as(
-        std::shared_ptr<SymmetricKeyContainerFile> file, std::shared_ptr<pqc_aes_key> key, std::shared_ptr<pqc_aes_iv> iv
+        std::shared_ptr<SymmetricKeyContainerFile> file, std::shared_ptr<pqc_aes_key> key,
+        std::shared_ptr<pqc_aes_iv> iv
     );
 
-    uint32_t get_version() { return _data->version; };
+    uint32_t get_version() { return _data.version; }
+
+    uint64_t get_creation_ts() { return _data.creation_ts; }
+
+    uint64_t get_expiration_ts() { return _data.creation_ts + PQC_SYMMETRIC_CONTAINER_EXPIRATION_TIME; }
 
 private:
     int get(int index, uint64_t useCount, const BufferView & key);
 
     bool save();
 
-    static void encrypt(KeyData * data, const pqc_aes_key & master_key, const pqc_aes_iv & iv);
-    static void decrypt(KeyData * data, const pqc_aes_key & master_key, const pqc_aes_iv & iv);
+    static void encrypt(SymmetricKeyContainerData * data, const pqc_aes_key & master_key, const pqc_aes_iv & iv);
+    static void decrypt(SymmetricKeyContainerData * data, const pqc_aes_key & master_key, const pqc_aes_iv & iv);
 
-    void mask(KeyData * data);
-    void unmask(KeyData * data);
+    void mask(SymmetricKeyContainerData * data);
+    void unmask(SymmetricKeyContainerData * data);
     void unmask(const BufferView & key, int index);
 
 private:
-    KeyData _data[PQC_SYMMETRIC_CONTAINER_NUM_KEYS];
+    SymmetricKeyContainerData _data;
 
     using Mask = StackBuffer<4096>;
 

@@ -14,8 +14,8 @@ public:
     AES(const pqc_aes_key * key);
     AES(const pqc_aes_key * key, const pqc_aes_iv * iv);
 
-    virtual void encrypt(uint32_t mechanism, const BufferView & data) override;
-    virtual void decrypt(uint32_t mechanism, const BufferView & data) override;
+    virtual void encrypt(uint32_t mode, const BufferView & data) override;
+    virtual void decrypt(uint32_t mode, const BufferView & data) override;
 
     virtual void set_iv(const ConstBufferView & iv) override;
 

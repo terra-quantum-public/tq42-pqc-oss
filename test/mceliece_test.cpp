@@ -49,7 +49,8 @@ TEST(MCELIECE, MCELIECE_CREATE_SECRET)
 {
     MCELIECE_PRIVATE(priv_bob);
     MCELIECE_PUBLIC(pub_bob);
-    std::vector<uint8_t> shared_alice(sizeof(pqc_mceliece_shared_secret)), shared_bob(sizeof(pqc_mceliece_shared_secret));
+    std::vector<uint8_t> shared_alice(sizeof(pqc_mceliece_shared_secret)),
+        shared_bob(sizeof(pqc_mceliece_shared_secret));
 
     std::vector<uint8_t> message(sizeof(pqc_mceliece_message));
 
@@ -68,7 +69,9 @@ TEST(MCELIECE, MCELIECE_CREATE_SECRET)
         PQC_OK
     );
 
-    EXPECT_EQ(PQC_kem_decode_secret(bob, message.data(), message.size(), shared_bob.data(), shared_alice.size()), PQC_OK);
+    EXPECT_EQ(
+        PQC_kem_decode_secret(bob, message.data(), message.size(), shared_bob.data(), shared_alice.size()), PQC_OK
+    );
 
     EXPECT_EQ(memcmp(shared_alice.data(), shared_bob.data(), sizeof(pqc_mceliece_shared_secret)), 0);
 }
@@ -227,8 +230,8 @@ TEST(MCELIECE, MCELIECE_KNOWN_ANSWERS)
         std::vector<uint8_t> secret(sizeof(pqc_mceliece_shared_secret));
         EXPECT_EQ(
             PQC_kem_encode_secret(
-                PQC_CIPHER_MCELIECE, message.data(), message.size(), public_key.data(), public_key.size(), secret.data(),
-                secret.size()
+                PQC_CIPHER_MCELIECE, message.data(), message.size(), public_key.data(), public_key.size(),
+                secret.data(), secret.size()
             ),
             PQC_OK
         );
@@ -244,7 +247,9 @@ TEST(MCELIECE, MCELIECE_KNOWN_ANSWERS)
 
         std::vector<uint8_t> decoded_secret(sizeof(pqc_mceliece_shared_secret));
         EXPECT_EQ(
-            PQC_kem_decode_secret(context, message.data(), message.size(), decoded_secret.data(), decoded_secret.size()),
+            PQC_kem_decode_secret(
+                context, message.data(), message.size(), decoded_secret.data(), decoded_secret.size()
+            ),
             PQC_OK
         );
         EXPECT_TRUE(secret == decoded_secret);

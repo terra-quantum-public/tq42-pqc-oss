@@ -62,7 +62,7 @@ PQC_CONTAINER_HANDLE PQC_symmetric_container_create();
 When the container is created, it fetches keys from a selected randomness source. This step ensures that the keys generated for the container are sufficiently random and secure for cryptographic operations.
     
 **File Association Clarification**:
- It's important to note that upon creation, the new container is not automatically linked to a file on disk. This means that the container is purely in memory and needs to be saved explicitly to disk if persistent storage is required. This can be achieved using functions like  `PQC_symmetric_container_save_as()`  or  `PQC_symmetric_container_save_as_pair()`.
+ It's important to note that upon creation, the new container is not automatically linked to a file on disk. This means that the container is purely in memory and needs to be saved explicitly to disk if persistent storage is required. This can be achieved using function  `PQC_symmetric_container_save_as()`.
  
 **Handling Container Data**:
     If there is a need to work with the contents of the container, such as transferring it over a network or performing other operations, the data within the container can be extracted using a function like  `PQC_symmetric_container_get_data()`. This function retrieves the contents of the container in a suitable format for further processing or transmission.
@@ -71,7 +71,7 @@ When the container is created, it fetches keys from a selected randomness source
 
 **Function signature**:  
 ```cpp
-PQC_symmetric_container_size(PQC_CONTAINER_HANDLE container)     
+size_t PQC_symmetric_container_size(PQC_CONTAINER_HANDLE container)     
 ```
 - is designed to determine the size of the buffer needed to store the data extracted from the container.
 - This step is crucial for ensuring that the buffer allocated for storing the container data is of the appropriate size to prevent data loss or truncation.
@@ -84,6 +84,44 @@ PQC_symmetric_container_size(PQC_CONTAINER_HANDLE container)
     
    - The return value of this function is the size of the data required to store the contents of the specified container.
    - This size value is essential for allocating a buffer with sufficient capacity to accommodate the extracted container data without loss or overflow.
+
+### `PQC_symmetric_container_get_version`
+
+**Function signature**:  
+```cpp
+uint32_t PQC_symmetric_container_get_version(PQC_CONTAINER_HANDLE container)
+```
+- is designed to determine the container version.
+
+**Parameters**:
+    
+   - `container`: This parameter represents the handle of the container from which the version is being queried. It serves as a reference to the specific container being processed.
+
+**Return Value**:
+    
+   - The return value of this function is the container version.
+
+####  `PQC_symmetric_container_get_creation_time`
+**Function signature**
+```cpp
+uint64_t PQC_symmetric_container_get_creation_time(PQC_CONTAINER_HANDLE container);
+```
+
+-   **Parameters**:
+   -   `container`: Handle of the container for which the creation timestamp (seconds since UNIX epoch) needs to be determined.
+-   **Return values**:
+    -   Returns the creation timestamp (seconds since UNIX epoch) of the container.
+
+####  `PQC_symmetric_container_get_expiration_time`
+**Function signature**
+```cpp
+uint64_t PQC_symmetric_container_get_expiration_time(PQC_CONTAINER_HANDLE container);
+```
+
+-   **Parameters**:
+   -   `container`: Handle of the container for which the expiration timestamp (seconds since UNIX epoch) needs to be determined.
+-   **Return values**:
+    -   Returns the expiration timestamp (seconds since UNIX epoch) of the container. After this timestamp getting keys is not available.
 
 
 ### `PQC_symmetric_container_get_data`
@@ -144,31 +182,19 @@ is designed to reconstruct a container from the extracted data, allowing for the
 **File Association Reminder**:
 - It's highlighted that the new container, once reconstructed, is not automatically linked to a file on disk. It's recommended to save the container using functions like `PQC_symmetric_container_save_as()`  or  `PQC_symmetric_container_save_as_pair()`  for persistence or further utilization.
 
-### `PQC_symmetric_container_save_as` or `PQC_symmetric_container_save_as_pair`
+### `PQC_symmetric_container_save_as`
 **Function Signature**:
 ```cpp
 int PQC_symmetric_container_save_as(PQC_CONTAINER_HANDLE container, 
-                                    const char* server,
-                                    const char* client,
-                                    const char* device,
+                                    const char* filename,
                                     const char* password,
                                     const char *salt);
 ```
- or
-```cpp
-int PQC_symmetric_container_save_as_pair(PQC_CONTAINER_HANDLE container, 
-                                            const char* client_m,
-                                            const char* client_k,
-                                            const char* password,
-                                            const char* salt);
-```
-- are utilized to save a container, possibly created earlier in the program, to a file. The primary difference between the functions lies in the naming scheme used for generating the file name.
+- is utilized to save a container, possibly created earlier in the program, to a file.
 
 **Parameters**:
 - `container`: Handle of the container that needs to be saved to the file.
-- `server`: Server name used in filename generation.
-- `client`: Client name used in filename generation.
-- `device`: Device name used in filename generation.
+- `filename`: File name that will be used to save container.
 - `client_m`: Client name used for file name generation.
 - `client_k`: Client name used for file name generation.
 - `password`: Password used to encrypt the file for security.
@@ -180,30 +206,18 @@ int PQC_symmetric_container_save_as_pair(PQC_CONTAINER_HANDLE container,
 - `PQC_BAD_CONTAINER`: Denotes an invalid container handle, signifying issues with the container reference.
 - `PQC_IO_ERROR`: Indicates an error occurred during the process of saving the file, flagging potential issues with file I/O operations.
 
-### `PQC_symmetric_container_open` or `PQC_symmetric_container_pair_open`
+### `PQC_symmetric_container_open`
 **Function signature**
 ```cpp
-PQC_CONTAINER_HANDLE PQC_symmetric_container_open(const char* server,
-                                                    const char* client,
-                                                    const char* device,
+PQC_CONTAINER_HANDLE PQC_symmetric_container_open(const char* filename,
                                                     const char* password,
                                                     const char* salt);
 ```
-or
-
-```cpp
-PQC_CONTAINER_HANDLE PQC_symmetric_container_pair_open(const char* client_m,
-                                                        const char* client_k,
-                                                        const char* password,
-                                                        const char* salt);
-```
-- are designed to load a container from a file. The primary distinction between the functions is the naming scheme used for generating the file name.
+- is designed to load a container from a file.
 
 **Parameters**:    
 
-- `server`: Server name used in filename generation.
-- `client`: Client name used in filename generation.
-- `device`: Device name used in filename generation.
+- `filename`: File name that will be used to save container.
 - `client_m`: Client name used for filename generation.
 - `client_k`: Client name used for filename generation.
 - `password`: Password used to encrypt the file for security.
@@ -248,9 +262,10 @@ PQC_AES_M_CTR = 6
 **Return Values**:
 - `PQC_OK`: Indicates that the operation of retrieving the key from the container was successful.
 - `PQC_CONTAINER_DEPLETED`: Indicates that the key at the specified index was used above the allowed capacity, potentially exceeding the usage limits of the container.
+- `PQC_CONTAINER_EXPIRED`: Indicates that the key exceeded the usage time limits of the container.
 - `PQC_BAD_CONTAINER`: Denotes an invalid container handle or index out of range, highlighting issues with the container reference or index value.
 - `PQC_BAD_CIPHER`: Indicates an unsupported cipher.
-- `PQC_BAD_MECHANISM`: Denotes an unsupported encryption method.
+- `PQC_BAD_MODE`: Denotes an unsupported encryption method.
 - `PQC_BAD_LEN`: Denotes the wrong length of the key buffer, reflecting a mismatch between the expected and actual buffer size.
 - `PQC_IO_ERROR`: Denotes an I/O error, potentially occurring while saving the modified container.
 
@@ -275,6 +290,26 @@ PQC_symmetric_container_close(PQC_CONTAINER_HANDLE container)
 
 -   **`PQC_OK`**: This return value indicates that the operation was successful, meaning the container was closed without any issues.
 -   **`PQC_BAD_CONTAINER`**: This return value indicates an invalid container handle was provided, which means the function failed to find or recognize the specified container, and therefore, could not close it. This could occur if the container handle is incorrect, has already been closed, or never existed.
+
+### `PQC_symmetric_container_delete`
+**Function signature:**    
+```cpp
+size_t PQC_API PQC_symmetric_container_delete(const char * filename)
+```
+
+- This function deletes a file with the specified name.
+
+**Parameters**:
+
+- `filename`: A string representing the name of the file to be deleted.
+
+
+**Return Values:**
+
+-  **`PQC_OK`**: Indicates that the operation was successful.
+-  **`PQC_IO_ERROR`**: Indicates that the operation was not performed due to an input/output error.
+
+
 
 ### Symmetric container example
 
@@ -339,6 +374,39 @@ size_t PQC_asymmetric_container_size_special(uint32_t cipher, uint16_t mode);
     -   `mode`: Additional mode specifier which should always be set to zero as per the requirement.
 -   **Return values**:
     -   Returns the size of the data required to store the container, given a specific type of cipher.
+
+####  `PQC_asymmetric_container_get_version`
+**Function signature**
+```cpp
+uint32_t PQC_API PQC_asymmetric_container_get_version(PQC_CONTAINER_HANDLE container);
+```
+
+-   **Parameters**:
+   -   `container`: Handle of the container for which the version needs to be determined.
+-   **Return values**:
+    -   Returns the container version.
+    
+####  `PQC_asymmetric_container_get_creation_time`
+**Function signature**
+```cpp
+uint64_t PQC_API PQC_asymmetric_container_get_creation_time(PQC_CONTAINER_HANDLE container);
+```
+
+-   **Parameters**:
+   -   `container`: Handle of the container for which the creation timestamp (seconds since UNIX epoch) needs to be determined.
+-   **Return values**:
+    -   Returns the creation timestamp (seconds since UNIX epoch) of the container.
+
+####  `PQC_asymmetric_container_get_expiration_time`
+**Function signature**
+```cpp
+uint64_t PQC_API PQC_asymmetric_container_get_expiration_time(PQC_CONTAINER_HANDLE container);
+```
+
+-   **Parameters**:
+   -   `container`: Handle of the container for which the expiration timestamp (seconds since UNIX epoch) needs to be determined.
+-   **Return values**:
+    -   Returns the expiration timestamp (seconds since UNIX epoch) of the container. After this timestamp getting keys is not available.
 
 ### `PQC_asymmetric_container_get_data`
 **Function signature**
@@ -459,7 +527,7 @@ int PQC_asymmetric_container_get_keys(uint32_t cipher,
 -   `PQC_OK`: Indicates a successful operation of retrieving keys from the container.
 -   `PQC_BAD_CONTAINER`: Represents an invalid container handle or index out of range.
 -   `PQC_BAD_CIPHER`: Indicates an unsupported cipher.
--   `PQC_BAD_MECHANISM`: Indicates an unsupported encryption method.
+-   `PQC_BAD_MODE`: Indicates an unsupported encryption method.
 -   `PQC_BAD_LEN`: Signifies a wrong length of the key buffer.
 
 **Additional Notes**
@@ -473,9 +541,7 @@ int PQC_asymmetric_container_get_keys(uint32_t cipher,
 ```cpp
 int PQC_asymmetric_container_save_as(uint32_t cipher, 
                                         PQC_CONTAINER_HANDLE container,
-                                        const char* server,
-                                        const char* client,
-                                        const char* device,
+                                        const char* filename,
                                         const char* password,
                                         const char* salt);
 ```
@@ -484,9 +550,7 @@ is responsible for saving a container to a file.
 **Parameters**
 -   `cipher`: A constant used to select the cipher algorithm, with possible values being  `PQC_CIPHER_FALCON`  (5). The chosen cipher should match the cipher used for the container.
 -   `container`: The handle of the container to be saved.
--   `server`: The server name, which is used to generate the file name.
--   `client`: The client name, which is used to generate the file name.
--   `device`: The device name, which is used to generate the file name.
+-   `filename`: File name that will be used to save container.
 -   `password`: The password used to encrypt the file.
 -   `salt`: The salt used in file encryption. It is recommended to set it to some constant string specific to the application.
 
@@ -498,7 +562,7 @@ is responsible for saving a container to a file.
 
 **Additional Notes**
 
--   This function is responsible for persisting the container to a file, and the naming of the file is based on the server, client, and device names to ensure uniqueness.
+-   This function is responsible for persisting the container to a file, it is essential to provide the unique naming of the file to avoid collisions.
 -   It is essential to provide the appropriate password and salt for file encryption to ensure security.
 
 ### `PQC_asymmetric_container_open` 
@@ -506,9 +570,7 @@ is responsible for saving a container to a file.
 **Function signature:**
 ```cpp
 PQC_CONTAINER_HANDLE PQC_asymmetric_container_open(uint32_t cipher,
-                                                    const char* server,
-                                                    const char* client,
-                                                    const char* device,
+                                                    const char* filename,
                                                     const char* password,
                                                     const char* salt);
 ```
@@ -517,9 +579,7 @@ The function is responsible for creating a container handle based on the provide
 **Parameters**
 
 -   `cipher`: A constant used to select the cipher algorithm, with possible values being  `PQC_CIPHER_FALCON` (5). The chosen cipher should match the cipher used for the container.
--   `server`: The server name, used to generate the file name.
--   `client`: The client name, used to generate the file name.
--   `device`: The device name, used to generate the file name.
+-   `filename`: File name that will be used to save container.
 -   `password`: The password used to decrypt the file.
 -   `salt`: The salt used in file decryption. It is recommended to set it to a constant string specific to the application.
 
@@ -530,7 +590,7 @@ The function is responsible for creating a container handle based on the provide
 
 **Additional Notes**
 
--   This function is responsible for loading a container from a file, and the file naming is based on the server, client, and device names to ensure consistency with the naming scheme used during the saving process.
+-   This function is responsible for loading a container from a file, it is essential to provide the unique naming of the file to avoid collisions.
 -   The function requires the correct password and salt for successful decryption of the file and creation of the container handle.
 
 ### `PQC_asymmetric_container_close`
@@ -554,6 +614,21 @@ is utilized to close a container handle when it is no longer in use.
 -   This function is used to release the resources associated with a container handle, ensuring proper memory management and resource cleanup.
 -   It is important to provide a valid container handle as a parameter to successfully close the container.
 
+### `PQC_asymmetric_container_delete`
+**Function signature:**    
+```cpp
+size_t PQC_API PQC_asymmetric_container_delete(const char * filename)
+```
+- This function deletes a file with the specified name.
+
+**Parameters**:
+
+- `filename`: A string representing the name of the file to be deleted.
+
+**Return Values:**
+
+-  **`PQC_OK`**: Indicates that the operation was successful.
+-  **`PQC_IO_ERROR`**: Indicates that the operation was not performed due to an input/output error.
 
 ## Asymmetric container example
 

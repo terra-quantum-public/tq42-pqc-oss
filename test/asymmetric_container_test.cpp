@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include <pqc/aes.h>
+#include <pqc/container.h>
 #include <pqc/falcon.h>
 #include <pqc/mceliece.h>
 
@@ -37,7 +38,6 @@ TEST(ASYMMETRIC_CONTAINER, ASYMMETRIC_CONTAINER_KeyGen_Put)
         ),
         PQC_OK
     );
-
 
     EXPECT_EQ(
         PQC_asymmetric_container_put_keys(
@@ -87,7 +87,7 @@ TEST(ASYMMETRIC_CONTAINER, ASYMMETRIC_CONTAINER_ToFrom_DATA)
     std::vector<uint8_t> container_data(PQC_asymmetric_container_size(new_container));
 
     uint8_t creation_key[PQC_AES_KEYLEN] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6,
-                                           7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2};
+                                            7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2};
     uint8_t creation_iv[PQC_AES_IVLEN] = {9, 8, 7, 6, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6};
 
     EXPECT_EQ(
@@ -103,6 +103,18 @@ TEST(ASYMMETRIC_CONTAINER, ASYMMETRIC_CONTAINER_ToFrom_DATA)
         PQC_AES_IVLEN
     );
     EXPECT_NE(resultContainer, PQC_FAILED_TO_CREATE_CONTAINER);
+
+    EXPECT_EQ(
+        PQC_asymmetric_container_get_version(new_container), PQC_asymmetric_container_get_version(resultContainer)
+    );
+    EXPECT_EQ(
+        PQC_asymmetric_container_get_creation_time(new_container),
+        PQC_asymmetric_container_get_creation_time(resultContainer)
+    );
+    EXPECT_EQ(
+        PQC_asymmetric_container_get_expiration_time(new_container),
+        PQC_asymmetric_container_get_expiration_time(resultContainer)
+    );
 
     MCELIECE_PRIVATE(sk_test);
     MCELIECE_PUBLIC(pk_test);
@@ -146,17 +158,29 @@ TEST(ASYMMETRIC_CONTAINER, ASYMMETRIC_CONTAINER_ToFromFile)
 
     EXPECT_EQ(
         PQC_asymmetric_container_save_as(
-            PQC_CIPHER_MCELIECE, new_container, "ASYMMETRIC_CONTAINER.ASYMMETRIC_CONTAINER_ToFromFile", "client",
-            "device1", "password", "salt"
+            PQC_CIPHER_MCELIECE, new_container,
+            "ASYMMETRIC_CONTAINER.ASYMMETRIC_CONTAINER_ToFromFile-client-device1.pqc", "password", "salt"
         ),
         PQC_OK
     );
 
     PQC_CONTAINER_HANDLE resultContainer = PQC_asymmetric_container_open(
-        PQC_CIPHER_MCELIECE, "ASYMMETRIC_CONTAINER.ASYMMETRIC_CONTAINER_ToFromFile", "client", "device1", "password",
+        PQC_CIPHER_MCELIECE, "ASYMMETRIC_CONTAINER.ASYMMETRIC_CONTAINER_ToFromFile-client-device1.pqc", "password",
         "salt"
     );
     EXPECT_NE(resultContainer, PQC_FAILED_TO_CREATE_CONTAINER);
+
+    EXPECT_EQ(
+        PQC_asymmetric_container_get_version(new_container), PQC_asymmetric_container_get_version(resultContainer)
+    );
+    EXPECT_EQ(
+        PQC_asymmetric_container_get_creation_time(new_container),
+        PQC_asymmetric_container_get_creation_time(resultContainer)
+    );
+    EXPECT_EQ(
+        PQC_asymmetric_container_get_expiration_time(new_container),
+        PQC_asymmetric_container_get_expiration_time(resultContainer)
+    );
 
     MCELIECE_PRIVATE(sk_test);
     MCELIECE_PUBLIC(pk_test);
@@ -201,7 +225,7 @@ TEST(ASYMMETRIC_CONTAINER, ASYMMETRIC_CONTAINER_McEliece_ToFrom_DATA)
     std::vector<uint8_t> container_data(PQC_asymmetric_container_size(new_container));
 
     uint8_t creation_key[PQC_AES_KEYLEN] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6,
-                                           7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2};
+                                            7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2};
     uint8_t creation_iv[PQC_AES_IVLEN] = {9, 8, 7, 6, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6};
 
     EXPECT_EQ(
@@ -217,6 +241,18 @@ TEST(ASYMMETRIC_CONTAINER, ASYMMETRIC_CONTAINER_McEliece_ToFrom_DATA)
         PQC_AES_IVLEN
     );
     EXPECT_NE(resultContainer, PQC_FAILED_TO_CREATE_CONTAINER);
+
+    EXPECT_EQ(
+        PQC_asymmetric_container_get_version(new_container), PQC_asymmetric_container_get_version(resultContainer)
+    );
+    EXPECT_EQ(
+        PQC_asymmetric_container_get_creation_time(new_container),
+        PQC_asymmetric_container_get_creation_time(resultContainer)
+    );
+    EXPECT_EQ(
+        PQC_asymmetric_container_get_expiration_time(new_container),
+        PQC_asymmetric_container_get_expiration_time(resultContainer)
+    );
 
     std::vector<uint8_t> sk_test(sizeof(pqc_mceliece_private_key));
     std::vector<uint8_t> pk_test(sizeof(pqc_mceliece_public_key));
@@ -260,7 +296,7 @@ TEST(ASYMMETRIC_CONTAINER, ASYMMETRIC_CONTAINER_ToFrom_DATA_IncorrectedCiphers)
     std::vector<uint8_t> container_data(PQC_asymmetric_container_size(new_container));
 
     uint8_t creation_key[PQC_AES_KEYLEN] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6,
-                                           7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2};
+                                            7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2};
     uint8_t creation_iv[PQC_AES_IVLEN] = {9, 8, 7, 6, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6};
 
     EXPECT_EQ(
@@ -294,6 +330,10 @@ TEST(ASYMMETRIC_CONTAINER, ASYMMETRIC_CONTAINER_ToFrom_DATA_IncorrectedCiphers)
 TEST(ASYMMETRIC_CONTAINER, Special)
 {
     PQC_CONTAINER_HANDLE container1_ = PQC_asymmetric_container_create(PQC_CIPHER_MCELIECE);
+    EXPECT_EQ(PQC_asymmetric_container_get_version(container1_), 1);
+    uint64_t creation_ts = PQC_asymmetric_container_get_creation_time(container1_);
+    uint64_t expiration_ts = PQC_asymmetric_container_get_expiration_time(container1_);
+    EXPECT_EQ(creation_ts + 365 * 24 * 3600, expiration_ts);
     EXPECT_EQ(PQC_asymmetric_container_close(container1_), PQC_OK);
 
     PQC_CONTAINER_HANDLE container2_ = PQC_asymmetric_container_create(PQC_CIPHER_MCELIECE);

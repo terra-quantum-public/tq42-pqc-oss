@@ -50,7 +50,7 @@ class IVNotSet : public PQException
 {
 };
 
-class BadMechanism : public PQException
+class BadMode : public PQException
 {
 };
 
@@ -77,8 +77,8 @@ public:
 class SymmetricContext : public PQC_Context
 {
 public:
-    virtual void encrypt(uint32_t mechanism, const BufferView & data) { throw UnsupportedOperation(); }
-    virtual void decrypt(uint32_t mechanism, const BufferView & data) { throw UnsupportedOperation(); }
+    virtual void encrypt(uint32_t mode, const BufferView & data) { throw UnsupportedOperation(); }
+    virtual void decrypt(uint32_t mode, const BufferView & data) { throw UnsupportedOperation(); }
 };
 
 class KEMContext : public PQC_Context

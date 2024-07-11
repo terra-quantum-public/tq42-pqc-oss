@@ -50,7 +50,9 @@ static void ff_sampling_fft_dyntree(
 
     z1 = temp + elemNum;
     poly_split_fft(z1, z1 + use, t1, degIndx);
-    ff_sampling_fft_dyntree(samp, sampCtx, z1, z1 + use, c2, c2 + use, c1 + use, origDegIndx, degIndx - 1, z1 + elemNum);
+    ff_sampling_fft_dyntree(
+        samp, sampCtx, z1, z1 + use, c2, c2 + use, c1 + use, origDegIndx, degIndx - 1, z1 + elemNum
+    );
     poly_merge_fft(temp + (elemNum << 1), z1, z1 + use, degIndx);
 
     memcpy(z1, t1, elemNum * sizeof *t1);

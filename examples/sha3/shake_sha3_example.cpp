@@ -6,7 +6,7 @@
 #include <pqc/sha3.h>
 
 /*
-The hash taking mechanism SHAKE is the mechanism of the sha 3 hash function, but with a variable output size.
+The hash taking mode SHAKE is the mode of the sha 3 hash function, but with a variable output size.
 Simply put, you can take hash with any hash size.
 The SHAKE function exists in two instances: SHAKE 128 and SHAKE 256. They differ somewhat in their internal
 structure. In particular, SHAKE 256 will do more permutations with larger output hash sizes, which means it

@@ -1,6 +1,7 @@
 #include <cstring>
 #include <iostream>
 
+#include <pqc/container.h>
 #include <pqc/mceliece.h>
 
 /*
@@ -52,7 +53,6 @@ int main()
         PQC_CIPHER_MCELIECE, (uint8_t *)&pub_alice, sizeof(pub_alice), (uint8_t *)&priv_alice, sizeof(priv_alice)
     );
 
-
     PQC_asymmetric_container_put_keys(
         PQC_CIPHER_MCELIECE, new_container, (uint8_t *)&pub_alice, sizeof(pub_alice), (uint8_t *)&priv_alice,
         sizeof(priv_alice)
@@ -68,7 +68,6 @@ int main()
         PQC_CIPHER_MCELIECE, new_container, (uint8_t *)&pk_test, sizeof(pk_test), (uint8_t *)&sk_test, sizeof(sk_test)
     );
 
-
     /*
     keys sould be same with others we had put in. Checking:
     */
@@ -80,7 +79,6 @@ int main()
     {
         std::cout << "\nERROR!!! Bad secret key!\n";
     }
-
 
     // delete container
     if (PQC_asymmetric_container_close(new_container) != PQC_OK)

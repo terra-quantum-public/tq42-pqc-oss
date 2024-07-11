@@ -144,16 +144,16 @@ The provided code snippet describes a function for encrypting data using an init
 **Function signature:**
 
 ```cpp
-int PQC_encrypt(CIPHER_HANDLE ctx, uint32_t mechanism, uint8_t* buffer, size_t length);
+int PQC_encrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t* buffer, size_t length);
 ```
 
-**Purpose**: This function is used to encrypt data using the specified encryption context and encryption mechanism.
+**Purpose**: This function is used to encrypt data using the specified encryption context and encryption mode.
 
 **Parameters**:
 
 *   `ctx`: Handle of the initialized encryption context.
     
-*   `mechanism`: Constant to select the encryption mechanism. The possible values depend on the selected cipher. For PQC\_CIPHER\_AES, the available mechanisms are PQC\_AES\_M\_ECB, PQC\_AES\_M\_CBC, and PQC\_AES\_M\_OFB.
+*   `mode`: Constant to select the encryption mode. The possible values depend on the selected cipher. For PQC\_CIPHER\_AES, the available modes are PQC\_AES\_M\_ECB, PQC\_AES\_M\_CBC, and PQC\_AES\_M\_OFB.
     
 *   `buffer` (in/out): Pointer to the data array. The data is encrypted in place within the same buffer.
     
@@ -166,11 +166,11 @@ The function returns the following values:
     
 *   `PQC_BAD_CONTEXT`: Indicates that the context was not properly initialized, suggesting an issue with the encryption context handle.
     
-*   `PQC_BAD_LEN`: Indicates that the length of the data does not match the requirements for the selected cipher/mechanism.
+*   `PQC_BAD_LEN`: Indicates that the length of the data does not match the requirements for the selected cipher/mode.
     
-*   `PQC_NO_IV`: Indicates that an initialization vector is required for the selected cipher/mechanism, but it was not set.
+*   `PQC_NO_IV`: Indicates that an initialization vector is required for the selected cipher/mode, but it was not set.
     
-*   `PQC_BAD_MECHANISM`: Indicates that the mechanism parameter provided is invalid.
+*   `PQC_BAD_MODE`: Indicates that the mode parameter provided is invalid.
     
 *   `PQC_BAD_CIPHER`: Indicates that the selected cipher does not support symmetric encryption.
     
@@ -180,16 +180,16 @@ The function returns the following values:
 **Function signature:**
 
 ```cpp
-int PQC_decrypt(CIPHER_HANDLE ctx, uint32_t mechanism, uint8_t* buffer, size_t length);
+int PQC_decrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t* buffer, size_t length);
 ```
 
-**Purpose**: This function is used to decrypt data using the specified encryption context and encryption mechanism.
+**Purpose**: This function is used to decrypt data using the specified encryption context and encryption mode.
 
 **Parameters**:
 
 *   `ctx`: Handle of the initialized encryption context.
     
-*   `mechanism`: Constant to select the encryption mechanism. The possible values depend on the selected cipher. For PQC\_CIPHER\_AES, the available mechanisms are PQC\_AES\_M\_ECB, PQC\_AES\_M\_CBC and PQC\_AES\_M\_OFB.
+*   `mode`: Constant to select the encryption mode. The possible values depend on the selected cipher. For PQC\_CIPHER\_AES, the available modes are PQC\_AES\_M\_ECB, PQC\_AES\_M\_CBC and PQC\_AES\_M\_OFB.
     
 *   `buffer` (in/out): Pointer to the data array. The data is decrypted in place within the same buffer.
     
@@ -202,11 +202,11 @@ The function returns the following values:
     
 *   `P_BAD_CONTEXT`: Indicates that the context was not properly initialized, suggesting an issue with the encryption context handle.
     
-*   `PQC_BAD_LEN`: Indicates that the length of the data does not match the requirements for the selected cipher/mechanism.
+*   `PQC_BAD_LEN`: Indicates that the length of the data does not match the requirements for the selected cipher/mode.
     
-*   `PQC_NO_IV`: Indicates that an initialization vector is required for the selected cipher/mechanism, but it was not set.
+*   `PQC_NO_IV`: Indicates that an initialization vector is required for the selected cipher/mode, but it was not set.
     
-*   `PQC_BAD_MECHANISM`: Indicates that the mechanism parameter provided is invalid.
+*   `PQC_BAD_MODE`: Indicates that the mode parameter provided is invalid.
     
 *   `PQC_BAD_CIPHER`: Indicates that the selected cipher does not support symmetric encryption.
     

@@ -273,7 +273,7 @@ void SHA3::padding(int withCopy)
 
 
 void SHA3::shake_squeezing(const BufferView & HASH, int withCopy) // uint64_t hashShakeSize, uint8_t* ShakeHash, int
-                                                                 // withCopy)
+                                                                  // withCopy)
 {
     uint8_t message[200]; // 200 because there  is the state size
     uint64_t gamma = 0xffLL;

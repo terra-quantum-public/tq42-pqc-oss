@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include <pqc/aes.h>
+#include <pqc/container.h>
 
 /*
 In this example, we will create a container, get a key from it, and delete the container.

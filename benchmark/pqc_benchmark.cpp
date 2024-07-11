@@ -3,14 +3,14 @@
 
 #include <pqc/aes.h>
 
-template <uint32_t Mechanism> void aes_encrypt(benchmark::State & state)
+template <uint32_t mode> void aes_encrypt(benchmark::State & state)
 {
     CIPHER_HANDLE context;
 
     uint8_t iv[PQC_AES_IVLEN] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 
     uint8_t key[PQC_AES_KEYLEN] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'A', 'B', 'C', 'D', 'E', 'F',
-                                  'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
+                                   'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
 
     const int64_t data_len = state.range(0);
     uint8_t * data = new uint8_t[data_len];
@@ -20,7 +20,7 @@ template <uint32_t Mechanism> void aes_encrypt(benchmark::State & state)
     size_t res = 0;
     for (auto _ : state)
     {
-        res = PQC_encrypt(context, Mechanism, data, data_len);
+        res = PQC_encrypt(context, mode, data, data_len);
     }
 
     if (res != PQC_OK)
@@ -36,14 +36,14 @@ template <uint32_t Mechanism> void aes_encrypt(benchmark::State & state)
 }
 
 
-template <uint32_t Mechanism> void aes_decrypt(benchmark::State & state)
+template <uint32_t mode> void aes_decrypt(benchmark::State & state)
 {
     CIPHER_HANDLE context;
 
     uint8_t iv[PQC_AES_IVLEN] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 
     uint8_t key[PQC_AES_KEYLEN] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'A', 'B', 'C', 'D', 'E', 'F',
-                                  'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
+                                   'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
 
     const int64_t data_len = state.range(0);
     uint8_t * data = new uint8_t[data_len];
@@ -53,7 +53,7 @@ template <uint32_t Mechanism> void aes_decrypt(benchmark::State & state)
     size_t res = 0;
     for (auto _ : state)
     {
-        res = PQC_decrypt(context, Mechanism, data, data_len);
+        res = PQC_decrypt(context, mode, data, data_len);
     }
 
     if (res != PQC_OK)

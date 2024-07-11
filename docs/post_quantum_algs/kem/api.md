@@ -122,6 +122,55 @@ This complements `PQC_kem_encode`, allowing the receiver to derive the shared en
 
 Successful operation returns `PQC_OK`, with failure modes similarly denoted by specific return codes.
 
+#### `PQC_kem_encode_secret`
+
+Function signature:
+
+```cpp
+size_t PQC_API PQC_kem_encode_secret(  uint32_t cipher, 
+                                       uint8_t* message, 
+                                       size_t message_length, 
+                                       const uint8_t * public_key, 
+                                       size_t publickey_length,
+                                       uint8_t * shared_secret, 
+                                       size_t shared_secret_length);
+```
+
+This function generates a shared secret key using a given encryption algorithm, a message, and a pre-generated public key. The message is then intended to be sent to the second user, who owns the public key, for decryption.
+
+*   `cipher`: An identifier for selecting the encryption algorithm. [`Cipher constants`](common_functions.html#cipher)
+    
+*   `uint8_t * message`, `size_t message_length`: A pointer to the memory area for the message and its length. The message, which contains ciphertext encrypted with the public key, will be written here to be sent to the other party.
+    
+*   `const uint8_t * public_key`, `size_t publickey_length`: A pointer to the memory area for the public key and its length. The public key must be pre-generated and will be used to encrypt the message.
+*   
+*   `uint8_t * shared_secret`, `size_t shared_secret_length`: A pointer to the memory area for the shared secret and its length. The shared secret, generated after executing the function, will be written here.
+
+The return code `PQC_OK` denotes success, with other codes specifying potential errors.
+
+#### `PQC_kem_decode_secret`
+
+Function signature:
+
+```cpp
+size_t PQC_kem_decode_secret(  CIPHER_HANDLE ctx, 
+                    const uint8_t* message, 
+                    size_t message_length, 
+                    uint8_t * shared_secret,
+                    size_t shared_secret_length);
+```
+
+his function complements PQC_kem_encode_secret, enabling the receiver to derive the shared encryption key from the received message. It requires an already initialized encryption context.
+
+- `ctx`: The encryption context handle.
+- `message`: A pointer to the message received from the sender.
+- `message_length`: The length of the received message.
+- `shared_secret`: A pointer to the memory area for the shared secret.
+- `shared_secret_length`: The length of the shared secret.
+    
+
+Successful operation returns `PQC_OK`, with failure modes similarly denoted by specific return codes.
+
 #### `PQC_close_context`
 
 Function signature:

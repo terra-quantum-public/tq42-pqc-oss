@@ -10,7 +10,7 @@ int main(void)
 {
     const int sha_len =
         PQC_SHA3_512; // fixed size of hash. It can be one of PQC_SHA3_224, PQC_SHA3_256, PQC_SHA3_384, PQC_SHA3_512
-                     // Please note that expected value of SHA3 hash is valid only for PQC_SHA3_512.
+                      // Please note that expected value of SHA3 hash is valid only for PQC_SHA3_512.
     const int message_len = 200;
 
     // Message is a data to get hash from.

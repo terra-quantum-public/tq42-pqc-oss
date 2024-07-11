@@ -1,6 +1,7 @@
 #include <cstring>
 #include <iostream>
 
+#include <pqc/container.h>
 #include <pqc/falcon.h>
 
 /*
@@ -32,7 +33,7 @@ int main()
     Now let's try to save the container to a file.
     */
     size_t result = PQC_asymmetric_container_save_as(
-        PQC_CIPHER_FALCON, new_container, "server", "client", "device1", "password", "salt"
+        PQC_CIPHER_FALCON, new_container, "some-unique-container-name-falcon.pqc", "password", "salt"
     );
     if (result != PQC_OK)
     {
@@ -40,10 +41,10 @@ int main()
     }
 
     /*
-    Let's create new container, get kes from file and compare with old keys
+    Let's create new container, get keys from file and compare with old keys
     */
     PQC_CONTAINER_HANDLE resultContainer =
-        PQC_asymmetric_container_open(PQC_CIPHER_FALCON, "server", "client", "device1", "password", "salt");
+        PQC_asymmetric_container_open(PQC_CIPHER_FALCON, "some-unique-container-name-falcon.pqc", "password", "salt");
     if (resultContainer == PQC_FAILED_TO_CREATE_CONTAINER)
         std::cout << "\nERROR!!! Failed of container creation!\n";
 

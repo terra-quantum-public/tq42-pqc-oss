@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <pqc/aes.h>
+#include <pqc/container.h>
 
 TEST(CONTAINER, CONTAINER_WORKFLOW)
 {
@@ -36,7 +37,7 @@ TEST(CONTAINER, CONTAINER_WORKFLOW)
 
         EXPECT_EQ(
             PQC_symmetric_container_save_as(
-                container_a, "CONTAINER.CONTAINER_WORKFLOW", "client", "device1", "password", "salt"
+                container_a, "CONTAINER.CONTAINER_WORKFLOW-client-device1.pqc", "password", "salt"
             ),
             PQC_OK
         );
@@ -45,7 +46,7 @@ TEST(CONTAINER, CONTAINER_WORKFLOW)
     }
 
     PQC_CONTAINER_HANDLE container_a_bis =
-        PQC_symmetric_container_open("CONTAINER.CONTAINER_WORKFLOW", "client", "device1", "password", "salt");
+        PQC_symmetric_container_open("CONTAINER.CONTAINER_WORKFLOW-client-device1.pqc", "password", "salt");
     EXPECT_NE(container_a_bis, PQC_FAILED_TO_CREATE_CONTAINER);
 
     PQC_CONTAINER_HANDLE container_b = PQC_symmetric_container_from_data(
@@ -62,7 +63,8 @@ TEST(CONTAINER, CONTAINER_WORKFLOW)
         PQC_OK
     );
     EXPECT_EQ(
-        PQC_symmetric_container_get_key(container_b, 0, 100, PQC_CIPHER_AES, PQC_AES_M_OFB, key_b, sizeof(key_b)), PQC_OK
+        PQC_symmetric_container_get_key(container_b, 0, 100, PQC_CIPHER_AES, PQC_AES_M_OFB, key_b, sizeof(key_b)),
+        PQC_OK
     );
 
     EXPECT_EQ(memcmp(key_a, key_b, sizeof(key_a)), 0);
@@ -105,7 +107,7 @@ TEST(CONTAINER, CONTAINER_WORKFLOW_2)
 
     EXPECT_EQ(
         PQC_symmetric_container_save_as(
-            container_a, "CONTAINER.CONTAINER_WORKFLOW_2", "client", "device1", "password", "salt"
+            container_a, "CONTAINER.CONTAINER_WORKFLOW_2-client-device1.pqc", "password", "salt"
         ),
         PQC_OK
     );
@@ -120,10 +122,12 @@ TEST(CONTAINER, CONTAINER_WORKFLOW_2)
     uint8_t empty_key[PQC_AES_KEYLEN] = {0};
 
     EXPECT_EQ(
-        PQC_symmetric_container_get_key(container_a, 0, 100, PQC_CIPHER_AES, PQC_AES_M_OFB, key_a, sizeof(key_a)), PQC_OK
+        PQC_symmetric_container_get_key(container_a, 0, 100, PQC_CIPHER_AES, PQC_AES_M_OFB, key_a, sizeof(key_a)),
+        PQC_OK
     );
     EXPECT_EQ(
-        PQC_symmetric_container_get_key(container_b, 0, 100, PQC_CIPHER_AES, PQC_AES_M_OFB, key_b, sizeof(key_b)), PQC_OK
+        PQC_symmetric_container_get_key(container_b, 0, 100, PQC_CIPHER_AES, PQC_AES_M_OFB, key_b, sizeof(key_b)),
+        PQC_OK
     );
 
     EXPECT_EQ(memcmp(key_a, key_b, sizeof(key_a)), 0);
@@ -136,9 +140,14 @@ TEST(CONTAINER, CONTAINER_WORKFLOW_2)
 TEST(CONTAINER, Special)
 {
     PQC_CONTAINER_HANDLE container1 = PQC_symmetric_container_create();
+    EXPECT_EQ(PQC_symmetric_container_get_version(container1), 1);
+    uint64_t creation_ts = PQC_symmetric_container_get_creation_time(container1);
+    uint64_t expiration_ts = PQC_symmetric_container_get_expiration_time(container1);
+    EXPECT_EQ(creation_ts + 365 * 24 * 3600, expiration_ts);
     EXPECT_EQ(PQC_symmetric_container_close(container1), PQC_OK);
 
     PQC_CONTAINER_HANDLE container2 = PQC_symmetric_container_create();
+    EXPECT_EQ(PQC_symmetric_container_get_version(container2), 1);
     EXPECT_EQ(PQC_symmetric_container_close(container2), PQC_OK);
 
     PQC_CONTAINER_HANDLE containerCl0 = PQC_symmetric_container_create();

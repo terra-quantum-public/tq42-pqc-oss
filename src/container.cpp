@@ -1,8 +1,10 @@
 #include <cstring>
+#include <ctime>
 #include <fstream>
 #include <string>
 
 #include <pqc/aes.h>
+#include <pqc/container.h>
 #include <pqc/sha3.h>
 
 #include <aes.h>
@@ -12,30 +14,30 @@
 #include <sha3.h>
 
 
-static std::string containerDirectory;
-
 SymmetricKeyContainer::SymmetricKeyContainer()
 {
     for (int i = 0; i < PQC_SYMMETRIC_CONTAINER_NUM_KEYS; ++i)
     {
-        randombytes(_data[i].key);
+        randombytes(_data.key_data[i].key);
     }
+
+    _data.creation_ts = std::time(nullptr);
 
     _mask = std::make_shared<Mask>();
     randombytes(*_mask);
 
-    mask(_data);
+    mask(&_data);
 }
 
 SymmetricKeyContainer::SymmetricKeyContainer(const uint8_t * data, const pqc_aes_key * key, const pqc_aes_iv * iv)
 {
-    memcpy(_data, data, sizeof(_data));
-    decrypt(_data, *key, *iv);
+    memcpy(&_data, data, sizeof(_data));
+    decrypt(&_data, *key, *iv);
 
     _mask = std::make_shared<Mask>();
     randombytes(*_mask);
 
-    mask(_data);
+    mask(&_data);
 }
 
 SymmetricKeyContainer::SymmetricKeyContainer(
@@ -43,22 +45,20 @@ SymmetricKeyContainer::SymmetricKeyContainer(
 )
     : _file_master_key(key), _file_iv(iv), _file(file)
 {
-    file->read(reinterpret_cast<uint8_t *>(_data));
-    decrypt(_data, *key, *iv);
+    file->read(reinterpret_cast<uint8_t *>(&_data));
+    decrypt(&_data, *key, *iv);
 
     _mask = std::make_shared<Mask>();
     randombytes(*_mask);
 
-    mask(_data);
+    mask(&_data);
 }
-
-void SymmetricKeyContainer::set_container_path(const char * path) { containerDirectory = path; }
 
 void SymmetricKeyContainer::get_data(uint8_t * data, const pqc_aes_key * key, const pqc_aes_iv * iv)
 {
-    memcpy(data, _data, sizeof(_data));
-    unmask(reinterpret_cast<KeyData *>(data));
-    encrypt(reinterpret_cast<KeyData *>(data), *key, *iv);
+    memcpy(data, &_data, sizeof(_data));
+    unmask(reinterpret_cast<SymmetricKeyContainerData *>(data));
+    encrypt(reinterpret_cast<SymmetricKeyContainerData *>(data), *key, *iv);
 }
 
 bool SymmetricKeyContainer::save_as(
@@ -83,14 +83,20 @@ int SymmetricKeyContainer::get(int index, uint64_t useCount, const BufferView & 
         return PQC_BAD_LEN;
     }
 
-    if (_data[index].use_count < useCount)
+    if (_data.key_data[index].use_count < useCount)
     {
         return PQC_CONTAINER_DEPLETED;
     }
 
-    _data[index].use_count -= useCount;
+    uint64_t current_ts = std::time(nullptr);
+    if (current_ts > get_expiration_ts())
+    {
+        return PQC_CONTAINER_EXPIRED;
+    }
 
-    key.store(_data[index].key);
+    _data.key_data[index].use_count -= useCount;
+
+    key.store(_data.key_data[index].key);
     unmask(key, index);
     return PQC_OK;
 }
@@ -102,19 +108,21 @@ bool SymmetricKeyContainer::save()
         return !_file;
     }
 
-    unmask(_data);
+    unmask(&_data);
 
-    encrypt(_data, *_file_master_key, *_file_iv);
+    encrypt(&_data, *_file_master_key, *_file_iv);
 
-    _file->write(reinterpret_cast<const uint8_t *>(_data));
+    _file->write(reinterpret_cast<const uint8_t *>(&_data));
 
-    decrypt(_data, *_file_master_key, *_file_iv);
-    mask(_data);
+    decrypt(&_data, *_file_master_key, *_file_iv);
+    mask(&_data);
 
     return true;
 }
 
-void SymmetricKeyContainer::encrypt(KeyData * data, const pqc_aes_key & master_key, const pqc_aes_iv & iv)
+void SymmetricKeyContainer::encrypt(
+    SymmetricKeyContainerData * data, const pqc_aes_key & master_key, const pqc_aes_iv & iv
+)
 {
     for (int key = 0; key < PQC_SYMMETRIC_CONTAINER_NUM_KEYS; ++key)
     {
@@ -126,12 +134,14 @@ void SymmetricKeyContainer::encrypt(KeyData * data, const pqc_aes_key & master_k
         memcpy(&local_key, hash.get_hash(), std::min((int)hash.hash_size(), PQC_AES_KEYLEN));
 
         AES cipher(&local_key, &iv);
-        BufferView dataBuf = BufferView(reinterpret_cast<uint8_t *>(&data[key]), sizeof(KeyData));
+        BufferView dataBuf = BufferView(reinterpret_cast<uint8_t *>(&data->key_data[key]), sizeof(KeyData));
         cipher.ofb_xcrypt(dataBuf);
     }
 }
 
-void SymmetricKeyContainer::decrypt(KeyData * data, const pqc_aes_key & master_key, const pqc_aes_iv & iv)
+void SymmetricKeyContainer::decrypt(
+    SymmetricKeyContainerData * data, const pqc_aes_key & master_key, const pqc_aes_iv & iv
+)
 {
     for (int key = 0; key < PQC_SYMMETRIC_CONTAINER_NUM_KEYS; ++key)
     {
@@ -143,24 +153,24 @@ void SymmetricKeyContainer::decrypt(KeyData * data, const pqc_aes_key & master_k
         memcpy(&local_key, hash.get_hash(), std::min((int)hash.hash_size(), PQC_AES_KEYLEN));
 
         AES cipher(&local_key, &iv);
-        BufferView dataBuf = BufferView(reinterpret_cast<uint8_t *>(&data[key]), sizeof(KeyData));
+        BufferView dataBuf = BufferView(reinterpret_cast<uint8_t *>(&data->key_data[key]), sizeof(KeyData));
         cipher.ofb_xcrypt(dataBuf);
     }
 }
 
-void SymmetricKeyContainer::mask(KeyData * data)
+void SymmetricKeyContainer::mask(SymmetricKeyContainerData * data)
 {
     for (int i = 0; i < PQC_SYMMETRIC_CONTAINER_NUM_KEYS; ++i)
     {
-        unmask(data[i].key, i);
+        unmask(data->key_data[i].key, i);
     }
 }
 
-void SymmetricKeyContainer::unmask(KeyData * data)
+void SymmetricKeyContainer::unmask(SymmetricKeyContainerData * data)
 {
     for (int i = 0; i < PQC_SYMMETRIC_CONTAINER_NUM_KEYS; ++i)
     {
-        unmask(data[i].key, i);
+        unmask(data->key_data[i].key, i);
     }
 }
 
@@ -179,24 +189,7 @@ void SymmetricKeyContainer::unmask(const BufferView & key, int index)
     }
 }
 
-SymmetricKeyContainerFile::SymmetricKeyContainerFile(
-    bool create_new, const char * server, const char * client, const char * device
-)
-    : _fileName(get_filename(server, client, device))
-{
-    if (create_new)
-        _file.open(_fileName, _file.out | _file.binary);
-    else
-        _file.open(_fileName, _file.in | _file.out | _file.binary);
-
-    if (!_file.is_open())
-    {
-        throw std::ios_base::failure("failed to open container file");
-    }
-}
-
-SymmetricKeyContainerFile::SymmetricKeyContainerFile(bool create_new, const char * client_m, const char * client_k)
-    : _fileName(get_filename(client_m, client_k))
+SymmetricKeyContainerFile::SymmetricKeyContainerFile(bool create_new, const char * filename) : _fileName(filename)
 {
     if (create_new)
         _file.open(_fileName, _file.out | _file.binary);
@@ -212,9 +205,7 @@ SymmetricKeyContainerFile::SymmetricKeyContainerFile(bool create_new, const char
 bool SymmetricKeyContainerFile::read(uint8_t * data)
 {
     _file.seekg(0);
-    _file.read(
-        reinterpret_cast<char *>(data), sizeof(SymmetricKeyContainer::KeyData) * PQC_SYMMETRIC_CONTAINER_NUM_KEYS
-    );
+    _file.read(reinterpret_cast<char *>(data), sizeof(SymmetricKeyContainer::SymmetricKeyContainerData));
 
     if (!_file.good())
     {
@@ -226,9 +217,7 @@ bool SymmetricKeyContainerFile::read(uint8_t * data)
 bool SymmetricKeyContainerFile::write(const uint8_t * data)
 {
     _file.seekp(0);
-    _file.write(
-        reinterpret_cast<const char *>(data), sizeof(SymmetricKeyContainer::KeyData) * PQC_SYMMETRIC_CONTAINER_NUM_KEYS
-    );
+    _file.write(reinterpret_cast<const char *>(data), sizeof(SymmetricKeyContainer::SymmetricKeyContainerData));
 
     if (!_file.good())
     {
@@ -238,7 +227,7 @@ bool SymmetricKeyContainerFile::write(const uint8_t * data)
 }
 
 int SymmetricKeyContainer::get(
-    int index, size_t encrypted_bytes, uint32_t cipher, uint32_t mechanism, const BufferView & key
+    int index, size_t encrypted_bytes, uint32_t cipher, uint32_t mode, const BufferView & key
 )
 {
     uint64_t useCount;
@@ -248,7 +237,7 @@ int SymmetricKeyContainer::get(
         return static_cast<int>(PQC_BAD_CIPHER);
     }
 
-    switch (mechanism)
+    switch (mode)
     {
     case PQC_AES_M_ECB:
         useCount = PQC_SYMMETRIC_CONTAINER_MAX_USE_COUNT;
@@ -263,15 +252,10 @@ int SymmetricKeyContainer::get(
         break;
 
     default:
-        return PQC_BAD_MECHANISM;
+        return PQC_BAD_MODE;
     }
 
     int result = get(index, useCount, key);
-
-    if (result != PQC_OK)
-    {
-        return result;
-    }
 
     if (result != PQC_OK)
     {
@@ -282,14 +266,4 @@ int SymmetricKeyContainer::get(
         return PQC_IO_ERROR;
 
     return PQC_OK;
-}
-
-std::string SymmetricKeyContainerFile::get_filename(const char * server, const char * client, const char * device)
-{
-    return std::string(server) + "-" + client + "-" + device + ".qkey";
-}
-
-std::string SymmetricKeyContainerFile::get_filename(const char * client_m, const char * client_k)
-{
-    return std::string("2") + client_m + "-" + client_k + ".qkey";
 }

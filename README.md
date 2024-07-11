@@ -1,4 +1,11 @@
-![TQ42_Cryptography_Banner.png](https://terra-quantum-public.github.io/tq42-pqc-oss/img/TQ42_Banner.png)
+![TQ42_Cryptography_Banner.png](https://terra-quantum-public.github.io/tq42-pqc-oss/img/readme_banner.png)
+
+<p align="center">
+  <a href="https://terra-quantum-public.github.io/tq42-pqc-oss">Documentation</a> &nbsp;&bull;&nbsp;
+  <a href="https://terra-quantum-public.github.io/tq42-pqc-oss/getting_started.html">Getting Started</a> &nbsp;&bull;&nbsp;
+  <a href="https://terra-quantum-public.github.io/tq42-pqc-oss/use_cases.html">Use Cases</a> &nbsp;&bull;&nbsp;
+  <a href="https://terra-quantum-public.github.io/tq42-pqc-oss/api_reference.html">API reference</a>
+</p>
 
 # Introduction to TQ42 Cryptography
 TQ42 Cryptography by [Terra Quantum](https://terraquantum.swiss) is a comprehensive, low-level cryptography library designed to cover Encryption, Hashing, Electronic Signatures, and Key Management Systems. It is specifically crafted to help individual developers, businesses, and governmental entities prepare for the quantum era and enhance the security of their data, and expands upon the existing functionality offered in [TQ42](https://tq42.com), the quantum-as-a-service ecosystem by Terra Quantum.

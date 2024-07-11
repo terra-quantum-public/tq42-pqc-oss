@@ -1,4 +1,13 @@
-Terra Quantum AG - Licensee | AGPLv3
+# TQ42 Cryptography Licenses
+
+## Available Licenses
+The TQ42 Cryptography library is available under two primary licensing options to accommodate the diverse needs of organizations at different stages of their post-quantum migration journeys:
+- Free Use is permitted under **AGPLv3**
+- A **Commercial license** is available by contacting Terra Quantum at [info@terraquantum.swiss](mailto:info@terraquantum.swiss)
+
+Contributions will be welcomed in the near future under a **Contributor license**.
+
+## Open-Source License AGPLv3
 
 Version: 2024-01
 
@@ -8,7 +17,7 @@ Date: May 7, 2024
 
 Version 3, 19 November 2007
 
-Copyright © 2007 Free Software Foundation, Inc. <<https://fsf.org/>>
+Copyright Â© 2007 Free Software Foundation, Inc. <<https://fsf.org/>>
 
 Everyone is permitted to copy and distribute verbatim copies of this license document, but changing it is not allowed.
 

@@ -25,8 +25,8 @@ std::unique_ptr<PQC_Context> McElieceFactory::create_context(const ConstBufferVi
     {
         throw BadLength();
     }
-    return std::make_unique<McElieceContext>(reinterpret_cast<const pqc_mceliece_private_key *>(private_key.const_data())
-    );
+    return std::make_unique<McElieceContext>(reinterpret_cast<const pqc_mceliece_private_key *>(private_key.const_data()
+    ));
 }
 
 void McElieceFactory::generate_keypair(const BufferView & public_key, const BufferView & private_key) const
@@ -141,9 +141,8 @@ void McElieceContext::kem_decode_secret(ConstBufferView message, BufferView shar
     std::array<uint8_t, (SYS_N >> 3)> k = {0};
     std::array<uint8_t, 1 + (SYS_N >> 3) + SYND_BYTES> prePic;
 
-    uint16_t l = mceliece_8192128_f_decrypt(
-        k.data(), ConstBufferView(private_key_).mid(40, std::nullopt), message.const_data()
-    );
+    uint16_t l =
+        mceliece_8192128_f_decrypt(k.data(), ConstBufferView(private_key_).mid(40, std::nullopt), message.const_data());
     l -= 1;
     l >>= 8;
 

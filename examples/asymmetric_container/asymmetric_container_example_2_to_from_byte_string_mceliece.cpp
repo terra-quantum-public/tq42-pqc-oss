@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include <pqc/aes.h>
+#include <pqc/container.h>
 #include <pqc/mceliece.h>
 
 /*
@@ -30,7 +31,6 @@ int main()
         sizeof(priv_alice)
     );
 
-
     /*
     We can transform container to the encrypted byte string. Let's do it
     */
@@ -38,7 +38,7 @@ int main()
 
     // aes will use for string encryption
     uint8_t creation_key[PQC_AES_KEYLEN] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6,
-                                           7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2};
+                                            7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2};
     uint8_t creation_iv[PQC_AES_IVLEN] = {9, 8, 7, 6, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6};
 
     size_t result = PQC_asymmetric_container_get_data(
@@ -79,7 +79,6 @@ int main()
     {
         std::cout << "\nERROR!!! Keys are not equal!!!\n";
     }
-
 
     delete[] container_data;
 

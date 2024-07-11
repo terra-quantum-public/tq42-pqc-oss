@@ -24,6 +24,8 @@ Below you may find the reference to the all API methods or examples that exist i
 - [`PQC_init_context`](post_quantum_algs/kem/api.html#pqc_init_context)
 - [`PQC_kem_encode`](post_quantum_algs/kem/api.html#pqc_kem_encode)
 - [`PQC_kem_decode`](post_quantum_algs/kem/api.html#pqc_kem_decode)
+- [`PQC_kem_encode_secret`](post_quantum_algs/kem/api.html#pqc_kem_encode_secret)
+- [`PQC_kem_decode_secret`](post_quantum_algs/kem/api.html#pqc_kem_decode_secret)
 - [`PQC_close_context`](post_quantum_algs/kem/api.html#pqc_close_context)
 - [McEliece Example](post_quantum_algs/kem/mceliece.html#example)
 
@@ -58,18 +60,25 @@ Below you may find the reference to the all API methods or examples that exist i
 ### Symmetric Key Containers
 - [`PQC_symmetric_container_create`](keys/keys_container.html#pqc_symmetric_container_create)
 - [`PQC_symmetric_container_size`](keys/keys_container.html#pqc_symmetric_container_size)
+- [`PQC_symmetric_container_get_version`](keys/keys_container.html#pqc_symmetric_container_get_version)
+- [`PQC_symmetric_container_get_creation_time`](keys/keys_container.html#pqc_symmetric_container_get_creation_time)
+- [`PQC_symmetric_container_get_expiration_time`](keys/keys_container.html#pqc_symmetric_container_get_expiration_time)
 - [`PQC_symmetric_container_get_data`](keys/keys_container.html#pqc_symmetric_container_get_data)
 - [`PQC_symmetric_container_from_data`](keys/keys_container.html#pqc_symmetric_container_from_data)
-- [`PQC_symmetric_container_save_as` or `PQC_symmetric_container_save_as_pair`](keys/keys_container.html#pqc_symmetric_container_save_as-or-pqc_symmetric_container_save_as_pair)
-- [`PQC_symmetric_container_open` or `PQC_symmetric_container_pair_open`](keys/keys_container.html#pqc_symmetric_container_save_as-or-pqc_symmetric_container_save_as_pair)
+- [`PQC_symmetric_container_save_as`](keys/keys_container.html#pqc_symmetric_container_save_as)
+- [`PQC_symmetric_container_open`](keys/keys_container.html#pqc_symmetric_container_save_as)
 - [`PQC_symmetric_container_get_key`](keys/keys_container.html#pqc_symmetric_container_get_key)
 - [`PQC_symmetric_container_close`](keys/keys_container.html#pqc_symmetric_container_close)
+- [`PQC_symmetric_container_delete`](keys/keys_container.html#pqc_symmetric_container_delete)
 - [Example](keys/keys_container.html#symmetric-container-example)
 
 ### Asymmetric Key Containers
 - [`PQC_asymmetric_container_create`](keys/keys_container.html#pqc_asymmetric_container_create)
 - [`PQC_asymmetric_container_size`](keys/keys_container.html#pqc_asymmetric_container_size)
 - [`PQC_asymmetric_container_size_special`](keys/keys_container.html#pqc_asymmetric_container_size_special)
+- [`PQC_asymmetric_container_get_version`](keys/keys_container.html#pqc_asymmetric_container_get_version)
+- [`PQC_asymmetric_container_get_creation_time`](keys/keys_container.html#pqc_asymmetric_container_get_creation_time)
+- [`PQC_asymmetric_container_get_expiration_time`](keys/keys_container.html#pqc_asymmetric_container_get_expiration_time)
 - [`PQC_asymmetric_container_get_data`](keys/keys_container.html#pqc_asymmetric_container_get_data)
 - [`PQC_asymmetric_container_from_data`](keys/keys_container.html#pqc_asymmetric_container_from_data)
 - [`PQC_asymmetric_container_put_keys`](keys/keys_container.html#pqc_asymmetric_container_put_keys)
@@ -77,6 +86,7 @@ Below you may find the reference to the all API methods or examples that exist i
 - [`PQC_asymmetric_container_save_as`](keys/keys_container.html#pqc_asymmetric_container_save_as)
 - [`PQC_asymmetric_container_open`](keys/keys_container.html#pqc_asymmetric_container_open)
 - [`PQC_asymmetric_container_close`](keys/keys_container.html#pqc_asymmetric_container_close)
+- [`PQC_asymmetric_container_delete`](keys/keys_container.html#pqc_asymmetric_container_delete)
 - [Example](keys/keys_container.html#asymmetric-container-example)
 
 ### Randomness Source
@@ -88,3 +98,8 @@ Below you may find the reference to the all API methods or examples that exist i
 ### Secure file removal (HDD & SSD)
 - [`PQC_file_delete`](keys/secureHDD&SSDRemoval.html#pqc_file_delete)
 - [Example](keys/secureHDD&SSDRemoval.html#example)
+
+## Common functions
+- [`PQC_get_length`](common_functions.html#pqc_get_length)
+- [`PQC_context_get_length`](common_functions.html#pqc_context_get_length)
+- [Constants](common_functions.html#сonstants)

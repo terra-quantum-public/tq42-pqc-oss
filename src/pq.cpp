@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <pqc/aes.h>
+#include <pqc/container.h>
 #include <pqc/delete.h>
 #include <pqc/mceliece.h>
 #include <pqc/random.h>
@@ -114,7 +115,7 @@ bool is_valid_context(CIPHER_HANDLE ctx) { return ctx < contexts.size() && conte
 #define CHECK_CONTEXT(ctx)                                                                                             \
     if (!is_valid_context(ctx))                                                                                        \
     {                                                                                                                  \
-        return PQC_BAD_CONTEXT;                                                                                         \
+        return PQC_BAD_CONTEXT;                                                                                        \
     }
 
 CIPHER_HANDLE PQC_API PQC_init_context(uint32_t cipher, const uint8_t * key, size_t key_length)
@@ -182,14 +183,14 @@ size_t PQC_API PQC_set_iv(CIPHER_HANDLE ctx, const uint8_t * iv, size_t iv_len)
     }
 }
 
-size_t PQC_API PQC_encrypt(CIPHER_HANDLE ctx, uint32_t mechanism, uint8_t * buffer, size_t length)
+size_t PQC_API PQC_encrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t * buffer, size_t length)
 {
 
     CHECK_CONTEXT(ctx)
 
     try
     {
-        to_symmetric(contexts[ctx])->encrypt(mechanism, BufferView(buffer, length));
+        to_symmetric(contexts[ctx])->encrypt(mode, BufferView(buffer, length));
         return PQC_OK;
     }
     catch (UnsupportedOperation)
@@ -204,20 +205,20 @@ size_t PQC_API PQC_encrypt(CIPHER_HANDLE ctx, uint32_t mechanism, uint8_t * buff
     {
         return PQC_NO_IV;
     }
-    catch (BadMechanism)
+    catch (BadMode)
     {
-        return PQC_BAD_MECHANISM;
+        return PQC_BAD_MODE;
     }
 }
 
 
-size_t PQC_API PQC_decrypt(CIPHER_HANDLE ctx, uint32_t mechanism, uint8_t * buffer, size_t length)
+size_t PQC_API PQC_decrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t * buffer, size_t length)
 {
     CHECK_CONTEXT(ctx)
 
     try
     {
-        to_symmetric(contexts[ctx])->decrypt(mechanism, BufferView(buffer, length));
+        to_symmetric(contexts[ctx])->decrypt(mode, BufferView(buffer, length));
         return PQC_OK;
     }
     catch (UnsupportedOperation)
@@ -232,9 +233,9 @@ size_t PQC_API PQC_decrypt(CIPHER_HANDLE ctx, uint32_t mechanism, uint8_t * buff
     {
         return PQC_NO_IV;
     }
-    catch (BadMechanism)
+    catch (BadMode)
     {
-        return PQC_BAD_MECHANISM;
+        return PQC_BAD_MODE;
     }
 }
 
@@ -523,8 +524,6 @@ size_t PQC_API PQC_random_from_pq_17(const uint8_t * key, size_t key_len, const 
 
 void PQC_API PQC_random_bytes(void * x, size_t length) { return randombytes(BufferView(x, length)); }
 
-void PQC_API PQC_set_container_path(const char * path) { SymmetricKeyContainer::set_container_path(path); }
-
 //---------------------------------------------------- Symmetric Container
 //----------------------------------------------------
 
@@ -550,8 +549,6 @@ PQC_CONTAINER_HANDLE PQC_API PQC_symmetric_container_create()
     return store_new_symmetric_container(std::make_shared<SymmetricKeyContainer>());
 }
 
-size_t PQC_symmetric_container_size(PQC_CONTAINER_HANDLE container) { return SymmetricKeyContainer::data_size(); }
-
 bool is_valid_container(PQC_CONTAINER_HANDLE ctx)
 {
     return ctx < symmetric_containers.size() && symmetric_containers[ctx];
@@ -560,13 +557,32 @@ bool is_valid_container(PQC_CONTAINER_HANDLE ctx)
 #define CHECK_CONTAINER(ctx)                                                                                           \
     if (!is_valid_container(ctx))                                                                                      \
     {                                                                                                                  \
-        return PQC_BAD_CONTAINER;                                                                                       \
+        return PQC_BAD_CONTAINER;                                                                                      \
     }
 
+size_t PQC_symmetric_container_size(PQC_CONTAINER_HANDLE container) { return SymmetricKeyContainer::data_size(); }
+
+uint32_t PQC_API PQC_symmetric_container_get_version(PQC_CONTAINER_HANDLE container)
+{
+    CHECK_CONTAINER(container);
+    return symmetric_containers[container]->get_version();
+}
+
+uint64_t PQC_API PQC_symmetric_container_get_creation_time(PQC_CONTAINER_HANDLE container)
+{
+    CHECK_CONTAINER(container);
+    return symmetric_containers[container]->get_creation_ts();
+}
+
+uint64_t PQC_API PQC_symmetric_container_get_expiration_time(PQC_CONTAINER_HANDLE container)
+{
+    CHECK_CONTAINER(container);
+    return symmetric_containers[container]->get_expiration_ts();
+}
 
 size_t PQC_API PQC_symmetric_container_get_data(
-    PQC_CONTAINER_HANDLE container, uint8_t * container_data, size_t data_length, const uint8_t * key, size_t key_length,
-    const uint8_t * iv, size_t iv_length
+    PQC_CONTAINER_HANDLE container, uint8_t * container_data, size_t data_length, const uint8_t * key,
+    size_t key_length, const uint8_t * iv, size_t iv_length
 )
 {
     CHECK_CONTAINER(container);
@@ -608,39 +624,8 @@ size_t PQC_API PQC_symmetric_container_get_key(
     return symmetric_containers[container]->get(index, bytes_encoded, cipher, method, BufferView(key, key_length));
 }
 
-PQC_CONTAINER_HANDLE PQC_API PQC_symmetric_container_open(
-    const char * server, const char * client, const char * device, const char * password, const char * salt
-)
-{
-    try
-    {
-        std::shared_ptr<pqc_aes_key> master_key = std::make_shared<pqc_aes_key>();
-
-        uint8_t buffer[64] = {0};
-        SHA3 sha3(PQC_SHA3_512);
-        sha3.add_data(ConstBufferView(salt, strlen(salt)));
-        memcpy(buffer, sha3.get_hash(), std::min<size_t>(sha3.hash_size(), 64));
-
-        pbkdf_2(
-            strlen(password), reinterpret_cast<const uint8_t *>(password), PQC_AES_KEYLEN / sizeof(int),
-            reinterpret_cast<int *>(master_key.get()), buffer + PQC_AES_IVLEN, 64 - PQC_AES_IVLEN
-        );
-
-        std::shared_ptr<pqc_aes_iv> iv = std::make_shared<pqc_aes_iv>();
-        memcpy(iv.get(), buffer, PQC_AES_IVLEN);
-
-        return store_new_symmetric_container(std::make_shared<SymmetricKeyContainer>(
-            std::make_shared<SymmetricKeyContainerFile>(false, server, client, device), master_key, iv
-        ));
-    }
-    catch (const std::ios_base::failure &)
-    {
-        return PQC_FAILED_TO_CREATE_CONTAINER;
-    }
-}
-
 PQC_CONTAINER_HANDLE PQC_API
-PQC_symmetric_container_pair_open(const char * client_m, const char * client_k, const char * password, const char * salt)
+PQC_symmetric_container_open(const char * filename, const char * password, const char * salt)
 {
     try
     {
@@ -660,7 +645,7 @@ PQC_symmetric_container_pair_open(const char * client_m, const char * client_k, 
         memcpy(iv.get(), buffer, PQC_AES_IVLEN);
 
         return store_new_symmetric_container(std::make_shared<SymmetricKeyContainer>(
-            std::make_shared<SymmetricKeyContainerFile>(false, client_m, client_k), master_key, iv
+            std::make_shared<SymmetricKeyContainerFile>(false, filename), master_key, iv
         ));
     }
     catch (const std::ios_base::failure &)
@@ -668,18 +653,17 @@ PQC_symmetric_container_pair_open(const char * client_m, const char * client_k, 
         return PQC_FAILED_TO_CREATE_CONTAINER;
     }
 }
+
 
 size_t PQC_API PQC_symmetric_container_save_as(
-    PQC_CONTAINER_HANDLE container, const char * server, const char * client, const char * device, const char * password,
-    const char * salt
+    PQC_CONTAINER_HANDLE container, const char * filename, const char * password, const char * salt
 )
 {
     CHECK_CONTAINER(container);
 
     try
     {
-        std::shared_ptr<SymmetricKeyContainerFile> file =
-            std::make_shared<SymmetricKeyContainerFile>(true, server, client, device);
+        std::shared_ptr<SymmetricKeyContainerFile> file = std::make_shared<SymmetricKeyContainerFile>(true, filename);
 
         std::shared_ptr<pqc_aes_key> master_key = std::make_shared<pqc_aes_key>();
 
@@ -707,43 +691,6 @@ size_t PQC_API PQC_symmetric_container_save_as(
     }
 }
 
-size_t PQC_API PQC_symmetric_container_save_as_pair(
-    PQC_CONTAINER_HANDLE container, const char * client_m, const char * client_k, const char * password,
-    const char * salt
-)
-{
-    CHECK_CONTAINER(container);
-
-    try
-    {
-        std::shared_ptr<SymmetricKeyContainerFile> file =
-            std::make_shared<SymmetricKeyContainerFile>(true, client_m, client_k);
-
-        std::shared_ptr<pqc_aes_key> master_key = std::make_shared<pqc_aes_key>();
-
-        uint8_t buffer[64] = {0};
-        SHA3 sha3(PQC_SHA3_512);
-        sha3.add_data(ConstBufferView(salt, strlen(salt)));
-        memcpy(buffer, sha3.get_hash(), std::min<size_t>(sha3.hash_size(), 64));
-
-        std::shared_ptr<pqc_aes_iv> iv = std::make_shared<pqc_aes_iv>();
-        memcpy(iv.get(), buffer, PQC_AES_IVLEN);
-
-        pbkdf_2(
-            strlen(password), reinterpret_cast<const uint8_t *>(password), PQC_AES_KEYLEN / sizeof(int),
-            reinterpret_cast<int *>(master_key.get()), buffer + PQC_AES_IVLEN, 64 - PQC_AES_IVLEN
-        );
-
-        if (symmetric_containers[container]->save_as(file, master_key, iv))
-            return PQC_OK;
-        else
-            return PQC_IO_ERROR;
-    }
-    catch (const std::ios_base::failure &)
-    {
-        return PQC_IO_ERROR;
-    }
-}
 
 size_t PQC_API PQC_symmetric_container_close(PQC_CONTAINER_HANDLE container)
 {
@@ -772,7 +719,7 @@ bool is_valid_asymmetric_container(PQC_CONTAINER_HANDLE ctx)
 #define CHECK_ASYMMETRIC_CONTAINER(ctx)                                                                                \
     if (!is_valid_asymmetric_container(ctx))                                                                           \
     {                                                                                                                  \
-        return PQC_BAD_CONTAINER;                                                                                       \
+        return PQC_BAD_CONTAINER;                                                                                      \
     }
 
 PQC_CONTAINER_HANDLE store_new_asymmetric_container(std::shared_ptr<AsymmetricContainer> container)
@@ -802,6 +749,24 @@ size_t PQC_API PQC_asymmetric_container_size(PQC_CONTAINER_HANDLE container)
     return asymmetric_containers[container]->data_size();
 }
 
+uint32_t PQC_API PQC_asymmetric_container_get_version(PQC_CONTAINER_HANDLE container)
+{
+    CHECK_ASYMMETRIC_CONTAINER(container);
+    return asymmetric_containers[container]->get_version();
+}
+
+uint64_t PQC_API PQC_asymmetric_container_get_creation_time(PQC_CONTAINER_HANDLE container)
+{
+    CHECK_ASYMMETRIC_CONTAINER(container);
+    return asymmetric_containers[container]->get_creation_ts();
+}
+
+uint64_t PQC_API PQC_asymmetric_container_get_expiration_time(PQC_CONTAINER_HANDLE container)
+{
+    CHECK_ASYMMETRIC_CONTAINER(container);
+    return asymmetric_containers[container]->get_expiration_ts();
+}
+
 size_t PQC_asymmetric_container_size_special(uint32_t cipher, uint16_t mode)
 {
     // it is cipher check! Not public key
@@ -819,8 +784,8 @@ size_t PQC_asymmetric_container_size_special(uint32_t cipher, uint16_t mode)
 
 
 size_t PQC_API PQC_asymmetric_container_get_data(
-    PQC_CONTAINER_HANDLE container, uint8_t * container_data, size_t data_length, const uint8_t * key, size_t key_length,
-    const uint8_t * iv, size_t iv_length
+    PQC_CONTAINER_HANDLE container, uint8_t * container_data, size_t data_length, const uint8_t * key,
+    size_t key_length, const uint8_t * iv, size_t iv_length
 )
 {
     CHECK_ASYMMETRIC_CONTAINER(container);
@@ -884,8 +849,7 @@ size_t PQC_API PQC_asymmetric_container_get_keys(
 
 
 size_t PQC_API PQC_asymmetric_container_save_as(
-    uint32_t cipher, PQC_CONTAINER_HANDLE container, const char * server, const char * client, const char * device,
-    const char * password, const char * salt
+    uint32_t cipher, PQC_CONTAINER_HANDLE container, const char * filename, const char * password, const char * salt
 )
 {
     CHECK_ASYMMETRIC_CONTAINER(container);
@@ -893,7 +857,7 @@ size_t PQC_API PQC_asymmetric_container_save_as(
     try
     {
         std::shared_ptr<AsymmetricContainerFile> file =
-            std::make_shared<AsymmetricContainerFile>(cipher, true, server, client, device);
+            std::make_shared<AsymmetricContainerFile>(cipher, true, filename);
 
         std::shared_ptr<pqc_aes_key> master_key = std::make_shared<pqc_aes_key>();
 
@@ -923,16 +887,14 @@ size_t PQC_API PQC_asymmetric_container_save_as(
 }
 
 
-PQC_CONTAINER_HANDLE PQC_API PQC_asymmetric_container_open(
-    uint32_t cipher, const char * server, const char * client, const char * device, const char * password,
-    const char * salt
-)
+PQC_CONTAINER_HANDLE PQC_API
+PQC_asymmetric_container_open(uint32_t cipher, const char * filename, const char * password, const char * salt)
 {
     PQC_CONTAINER_HANDLE returnContainer = PQC_FAILED_TO_CREATE_CONTAINER;
     try
     {
         std::shared_ptr<AsymmetricContainerFile> file =
-            std::make_shared<AsymmetricContainerFile>(cipher, true, server, client, device);
+            std::make_shared<AsymmetricContainerFile>(cipher, true, filename);
 
         std::shared_ptr<pqc_aes_key> master_key = std::make_shared<pqc_aes_key>();
 
@@ -1014,20 +976,6 @@ size_t PQC_API PQC_file_delete(const char * filename)
     return PQC_OK;
 }
 
-size_t PQC_API PQC_symmetric_container_delete(const char * server, const char * client, const char * device)
-{
-    std::string filename = SymmetricKeyContainerFile::get_filename(server, client, device);
-    return PQC_file_delete(filename.c_str());
-}
+size_t PQC_API PQC_symmetric_container_delete(const char * filename) { return PQC_file_delete(filename); }
 
-size_t PQC_API PQC_symmetric_container_pair_delete(const char * client_m, const char * client_k)
-{
-    std::string filename = SymmetricKeyContainerFile::get_filename(client_m, client_k);
-    return PQC_file_delete(filename.c_str());
-}
-
-size_t PQC_API PQC_asymmetric_container_delete(const char * server, const char * client, const char * device)
-{
-    std::string filename = AsymmetricContainerFile::get_filename(server, client, device);
-    return PQC_file_delete(filename.c_str());
-}
+size_t PQC_API PQC_asymmetric_container_delete(const char * filename) { return PQC_file_delete(filename); }

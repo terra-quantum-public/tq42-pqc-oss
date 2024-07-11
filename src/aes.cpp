@@ -457,9 +457,9 @@ size_t AESFactory::get_length(uint32_t type) const
     return 0;
 }
 
-void AES::encrypt(uint32_t mechanism, const BufferView & data)
+void AES::encrypt(uint32_t mode, const BufferView & data)
 {
-    switch (mechanism)
+    switch (mode)
     {
     case PQC_AES_M_CBC:
         if (!is_iv_set())
@@ -502,13 +502,13 @@ void AES::encrypt(uint32_t mechanism, const BufferView & data)
         return;
 
     default:
-        throw BadMechanism();
+        throw BadMode();
     }
 }
 
-void AES::decrypt(uint32_t mechanism, const BufferView & data)
+void AES::decrypt(uint32_t mode, const BufferView & data)
 {
-    switch (mechanism)
+    switch (mode)
     {
     case PQC_AES_M_CBC:
         if (!is_iv_set())
@@ -551,6 +551,6 @@ void AES::decrypt(uint32_t mechanism, const BufferView & data)
         return;
 
     default:
-        throw BadMechanism();
+        throw BadMode();
     }
 }

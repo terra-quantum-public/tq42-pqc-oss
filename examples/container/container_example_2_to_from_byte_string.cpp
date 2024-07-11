@@ -2,6 +2,7 @@
 #include <memory>
 
 #include <pqc/aes.h>
+#include <pqc/container.h>
 
 /*
 In this example, we will create a container, transform it into a special string of bytes,
@@ -38,9 +39,9 @@ int main()
         1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 9}; // Key AES key used to encrypt container, should point to
                                                          // pqc_aes_key structure or any buffer of size PQC_AES_KEYLEN
     uint8_t creation_iv[PQC_AES_IVLEN] = {
-        3, 5, 6, 1, 2, 3, 1, 2, 3,
-        1, 2, 3, 1, 2, 3, 9}; // AES initialization vector for container encryption, should point to pqc_aes_iv structure
-                              // or any buffer of size PQC_AES_IVLEN
+        3, 5, 6, 1, 2, 3, 1, 2,
+        3, 1, 2, 3, 1, 2, 3, 9}; // AES initialization vector for container encryption, should point to pqc_aes_iv
+                                 // structure or any buffer of size PQC_AES_IVLEN
     PQC_symmetric_container_get_data(
         new_container, container_data.get(), size, creation_key, sizeof(creation_key), creation_iv, sizeof(creation_iv)
     );

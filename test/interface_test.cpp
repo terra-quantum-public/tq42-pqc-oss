@@ -7,13 +7,14 @@
 TEST(PQ, PQC_badCipher)
 {
     uint8_t key[PQC_AES_KEYLEN] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2', '3', '4', '5', '6',
-                                  '7', '8', '9', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2'};
+                                   '7', '8', '9', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2'};
 
     EXPECT_EQ(PQC_init_context(100500, key, 32), PQC_BAD_CIPHER) << "Should return error for unknown cipher";
     uint8_t iv[PQC_AES_IVLEN] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 
 
-    EXPECT_EQ(PQC_init_context(100500, key, PQC_AES_KEYLEN), PQC_BAD_CIPHER) << "Should return error for unknown cipher";
+    EXPECT_EQ(PQC_init_context(100500, key, PQC_AES_KEYLEN), PQC_BAD_CIPHER)
+        << "Should return error for unknown cipher";
 
     EXPECT_EQ(PQC_init_context_iv(100500, key, PQC_AES_KEYLEN, iv, PQC_AES_IVLEN), PQC_BAD_CIPHER)
         << "Should return error for unknown cipher";
@@ -34,7 +35,7 @@ TEST(PQ, PQC_AES_BadChipher_Sign)
     CIPHER_HANDLE context;
 
     uint8_t key[PQC_AES_KEYLEN] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'A', 'B', 'C', 'D', 'E', 'F',
-                                  'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
+                                   'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
 
     const int data_len = PQC_AES_BLOCKLEN;
     uint8_t data[data_len] = {89, 234, 87, 91, 40, 83, 179, 255, 80, 66, 19, 45, 89, 0, 64, 123};
@@ -69,7 +70,7 @@ TEST(PQ, PQC_AES_BadChipher_Hash)
     CIPHER_HANDLE context;
 
     uint8_t key[PQC_AES_KEYLEN] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'A', 'B', 'C', 'D', 'E', 'F',
-                                  'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
+                                   'G', 'H', 'I', 'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'K', 'L'};
 
     const int data_len = PQC_AES_BLOCKLEN;
     uint8_t data[data_len] = {89, 234, 87, 91, 40, 83, 179, 255, 80, 66, 19, 45, 89, 0, 64, 123};
@@ -118,8 +119,9 @@ TEST(PQ, PQC_BadChipher_Verify)
 
     pqc_falcon_signature signature;
 
-    EXPECT_EQ(PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, (uint8_t *)&signature, sizeof(signature)), PQC_OK)
-        << "signing should succeed";
+    EXPECT_EQ(
+        PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, (uint8_t *)&signature, sizeof(signature)), PQC_OK
+    ) << "signing should succeed";
 
     EXPECT_EQ(
         PQC_verify(

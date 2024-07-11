@@ -8,44 +8,38 @@
 
 
 const int OIDnumbers = 10;
+const uint32_t PQC_ASYMMETRIC_CONTAINER_VERSION = 1;
+const uint64_t PQC_ASYMMETRIC_CONTAINER_EXPIRATION_TIME = 365 * 24 * 3600;
 
 #pragma pack(push, 1)
 struct DataAsymmetricContainer
 {
     uint32_t version;
     uint32_t AlgType;
-    // uint32_t length;
     uint32_t OID[OIDnumbers];
-    std::vector<uint8_t> KeyBytes; // first ALLWAYS public key; second ALLWAYS secret key
+    uint64_t creation_ts;
+    std::vector<uint8_t> KeyBytes; // always first is public key, second is secret key
 };
 #pragma pack(pop)
 
 class AsymmetricContainerFile
 {
 public:
-    AsymmetricContainerFile(
-        uint32_t algType, bool create_new, const char * server, const char * client, const char * device
-    );
-    size_t data_size();
+    AsymmetricContainerFile(uint32_t algType, bool create_new, const char * filename);
     bool read(uint32_t cipher, uint8_t * data);
     bool write(uint32_t cipher, const uint8_t * data);
 
     uint32_t cipher;
-
-    static std::string get_filename(const char * server, const char * client, const char * device);
-    static std::string get_filename(const char * client_m, const char * client_k);
 
 private:
     std::string _fileName;
     std::fstream _file;
 };
 
-const uint32_t AsymmetricContainerCurrentVersion = 1;
 
 class AsymmetricContainer
 {
 public:
-    int asymmetricContainerValid;
     AsymmetricContainer(uint32_t algType);
     AsymmetricContainer(uint32_t algType, uint8_t * container_data, const pqc_aes_key * key, const pqc_aes_iv * iv);
     size_t data_size();
@@ -55,7 +49,12 @@ public:
     int save_as(
         std::shared_ptr<AsymmetricContainerFile> file, std::shared_ptr<pqc_aes_key> key, std::shared_ptr<pqc_aes_iv> iv
     );
+
     uint32_t get_version() { return data.version; }
+
+    uint64_t get_creation_ts() { return data.creation_ts; }
+
+    uint64_t get_expiration_ts() { return data.creation_ts + PQC_ASYMMETRIC_CONTAINER_EXPIRATION_TIME; }
 
 private:
     struct DataAsymmetricContainer data;

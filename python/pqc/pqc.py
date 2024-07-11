@@ -17,7 +17,7 @@ except OSError:
 PQC_OK = 0
 PQC_BAD_CONTEXT = 1
 PQC_BAD_LEN = 2
-PQC_BAD_MECHANISM = 3
+PQC_BAD_MODE = 3
 PQC_NO_IV = 4
 PQC_INTERNAL_ERROR = 5
 PQC_BAD_SIGNATURE = 6
@@ -25,6 +25,7 @@ PQC_CONTAINER_DEPLETED = 7
 PQC_IO_ERROR = 8
 PQC_BAD_CIPHER = 0xFFFFFFFFFFFFFFFF
 PQC_NO_AUT_TAG = 9
+PQC_CONTAINER_EXPIRED = 11
 
 
 class PQException(Exception):
@@ -43,7 +44,7 @@ class PQBadLen(PQException):
     pass
 
 
-class PQBadMechanism(PQException):
+class PQBadMode(PQException):
     pass
 
 
@@ -60,6 +61,10 @@ class PQBadSignature(PQException):
 
 
 class PQContainerDepleted(PQException):
+    pass
+
+
+class PQContainerExpired(PQException):
     pass
 
 
@@ -90,8 +95,8 @@ def _check_return_code(retcode):
         raise PQBadContext()
     if retcode == PQC_BAD_LEN:
         raise PQBadLen()
-    if retcode == PQC_BAD_MECHANISM:
-        raise PQBadMechanism
+    if retcode == PQC_BAD_MODE:
+        raise PQBadMode
     if retcode == PQC_NO_IV:
         raise PQNoIV()
     if retcode == PQC_INTERNAL_ERROR:
@@ -100,6 +105,8 @@ def _check_return_code(retcode):
         raise PQBadSignature()
     if retcode == PQC_CONTAINER_DEPLETED:
         raise PQContainerDepleted()
+    if retcode == PQC_CONTAINER_EXPIRED:
+        raise PQContainerExpired()
     if retcode == PQC_IO_ERROR:
         raise PQIOError()
     if retcode == PQC_BAD_CIPHER:
@@ -237,19 +244,19 @@ pqc_lib.PQC_encrypt.argtypes = [CIPHER_HANDLE, ctypes.c_uint32, ctypes.POINTER(c
 pqc_lib.PQC_encrypt.restype = ctypes.c_int
 
 
-def PQC_encrypt(ctx, mechanism, buffer):
+def PQC_encrypt(ctx, mode, buffer):
     length = len(buffer)
     buffer_ptr = (ctypes.c_uint8 * length)(*buffer)
-    result = pqc_lib.PQC_encrypt(ctx, mechanism, buffer_ptr, length)
+    result = pqc_lib.PQC_encrypt(ctx, mode, buffer_ptr, length)
     _check_return_code(result)
     return bytes(buffer_ptr)
 
 
 
-def PQC_decrypt(ctx, mechanism, buffer):
+def PQC_decrypt(ctx, mode, buffer):
     length = len(buffer)
     buffer_ptr = (ctypes.c_uint8 * length)(*buffer)
-    result = pqc_lib.PQC_decrypt(ctx, mechanism, buffer_ptr, length)
+    result = pqc_lib.PQC_decrypt(ctx, mode, buffer_ptr, length)
     _check_return_code(result)
     return bytes(buffer_ptr)
 
@@ -514,14 +521,6 @@ def PQC_random_bytes(length):
     return bytes(buffer)
 
 
-pqc_lib.PQC_set_container_path.argtypes = [ctypes.c_char_p]
-pqc_lib.PQC_set_container_path.restype = None
-
-
-def PQC_set_container_path(path):
-    pqc_lib.PQC_set_container_path(path.encode('utf-8'))
-
-
 pqc_lib.PQC_symmetric_container_create.argtypes = []
 pqc_lib.PQC_symmetric_container_create.restype = PQC_CONTAINER_HANDLE
 
@@ -593,37 +592,16 @@ pqc_lib.PQC_symmetric_container_save_as.argtypes = [
     ctypes.c_char_p,
     ctypes.c_char_p,
     ctypes.c_char_p,
-    ctypes.c_char_p,
-    ctypes.c_char_p,
 ]
 pqc_lib.PQC_symmetric_container_save_as.restype = ctypes.c_int
 
 
-def PQC_symmetric_container_save_as(container, server, client, device, password, salt):
+def PQC_symmetric_container_save_as(container, filename, password, salt):
     result = pqc_lib.PQC_symmetric_container_save_as(
         container,
-        server.encode('utf-8'),
-        client.encode('utf-8'),
-        device.encode('utf-8'),
+        filename.encode('utf-8'),
         password.encode('utf-8'),
         salt.encode('utf-8'),
-    )
-    _check_return_code(result)
-
-
-pqc_lib.PQC_symmetric_container_save_as_pair.argtypes = [
-    PQC_CONTAINER_HANDLE,
-    ctypes.c_char_p,
-    ctypes.c_char_p,
-    ctypes.c_char_p,
-    ctypes.c_char_p,
-]
-pqc_lib.PQC_symmetric_container_save_as_pair.restype = ctypes.c_int
-
-
-def PQC_symmetric_container_save_as_pair(container, client_m, client_k, password, salt):
-    result = pqc_lib.PQC_symmetric_container_save_as_pair(
-        container, client_m.encode('utf-8'), client_k.encode('utf-8'), password.encode('utf-8'), salt.encode('utf-8')
     )
     _check_return_code(result)
 
@@ -661,9 +639,34 @@ def PQC_symmetric_container_size(container):
     return container_size
 
 
+pqc_lib.PQC_symmetric_container_get_version.argtypes = [PQC_CONTAINER_HANDLE]
+pqc_lib.PQC_symmetric_container_get_version.restype = ctypes.c_uint32
+
+
+def PQC_symmetric_container_get_version(container):
+    version = pqc_lib.PQC_symmetric_container_get_version(container)
+    return version
+
+
+pqc_lib.PQC_symmetric_container_get_creation_time.argtypes = [PQC_CONTAINER_HANDLE]
+pqc_lib.PQC_symmetric_container_get_creation_time.restype = ctypes.c_uint64
+
+
+def PQC_symmetric_container_get_creation_time(container):
+    creation_ts = pqc_lib.PQC_symmetric_container_get_creation_time(container)
+    return creation_ts
+
+
+pqc_lib.PQC_symmetric_container_get_expiration_time.argtypes = [PQC_CONTAINER_HANDLE]
+pqc_lib.PQC_symmetric_container_get_expiration_time.restype = ctypes.c_uint64
+
+
+def PQC_symmetric_container_get_expiration_time(container):
+    expiration_ts = pqc_lib.PQC_symmetric_container_get_expiration_time(container)
+    return expiration_ts
+
+
 pqc_lib.PQC_symmetric_container_open.argtypes = [
-    ctypes.c_char_p,
-    ctypes.c_char_p,
     ctypes.c_char_p,
     ctypes.c_char_p,
     ctypes.c_char_p,
@@ -671,27 +674,11 @@ pqc_lib.PQC_symmetric_container_open.argtypes = [
 pqc_lib.PQC_symmetric_container_open.restype = PQC_CONTAINER_HANDLE
 
 
-def PQC_symmetric_container_open(server, client, device, password, salt):
+def PQC_symmetric_container_open(filename, password, salt):
     container_handle = pqc_lib.PQC_symmetric_container_open(
-        server.encode('utf-8'),
-        client.encode('utf-8'),
-        device.encode('utf-8'),
+        filename.encode('utf-8'),
         password.encode('utf-8'),
         salt.encode('utf-8'),
-    )
-    if container_handle == PQC_BAD_CIPHER:
-        raise PQFailedCreateContainer()
-
-    return container_handle
-
-
-pqc_lib.PQC_symmetric_container_pair_open.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
-pqc_lib.PQC_symmetric_container_pair_open.restype = PQC_CONTAINER_HANDLE
-
-
-def PQC_symmetric_container_pair_open(client_m, client_k, password, salt):
-    container_handle = pqc_lib.PQC_symmetric_container_pair_open(
-        client_m.encode('utf-8'), client_k.encode('utf-8'), password.encode('utf-8'), salt.encode('utf-8')
     )
     if container_handle == PQC_BAD_CIPHER:
         raise PQFailedCreateContainer()
@@ -737,6 +724,33 @@ pqc_lib.PQC_asymmetric_container_size_special.restype = ctypes.c_size_t
 def PQC_asymmetric_container_size_special(cipher, mode):
     container_size = pqc_lib.PQC_asymmetric_container_size_special(cipher, mode)
     return container_size
+
+
+pqc_lib.PQC_asymmetric_container_get_version.argtypes = [PQC_CONTAINER_HANDLE]
+pqc_lib.PQC_asymmetric_container_get_version.restype = ctypes.c_uint32
+
+
+def PQC_asymmetric_container_get_version(container):
+    version = pqc_lib.PQC_asymmetric_container_get_version(container)
+    return version
+
+
+pqc_lib.PQC_asymmetric_container_get_creation_time.argtypes = [PQC_CONTAINER_HANDLE]
+pqc_lib.PQC_asymmetric_container_get_creation_time.restype = ctypes.c_uint64
+
+
+def PQC_asymmetric_container_get_creation_time(container):
+    creation_ts = pqc_lib.PQC_asymmetric_container_get_creation_time(container)
+    return creation_ts
+
+
+pqc_lib.PQC_asymmetric_container_get_expiration_time.argtypes = [PQC_CONTAINER_HANDLE]
+pqc_lib.PQC_asymmetric_container_get_expiration_time.restype = ctypes.c_uint64
+
+
+def PQC_asymmetric_container_get_expiration_time(container):
+    expiration_ts = pqc_lib.PQC_asymmetric_container_get_expiration_time(container)
+    return expiration_ts
 
 
 pqc_lib.PQC_asymmetric_container_get_data.argtypes = [
@@ -843,15 +857,13 @@ pqc_lib.PQC_asymmetric_container_save_as.argtypes = [
     ctypes.c_char_p,
     ctypes.c_char_p,
     ctypes.c_char_p,
-    ctypes.c_char_p,
-    ctypes.c_char_p,
 ]
 pqc_lib.PQC_asymmetric_container_save_as.restype = ctypes.c_int
 
 
-def PQC_asymmetric_container_save_as(cipher, container_handle, server, client, device, password, salt):
+def PQC_asymmetric_container_save_as(cipher, container_handle, filename, password, salt):
     result = pqc_lib.PQC_asymmetric_container_save_as(
-        cipher, container_handle, server.encode(), client.encode(), device.encode(), password.encode(), salt.encode()
+        cipher, container_handle, filename.encode(), password.encode(), salt.encode()
     )
     _check_return_code(result)
 
@@ -861,15 +873,13 @@ pqc_lib.PQC_asymmetric_container_open.argtypes = [
     ctypes.c_char_p,
     ctypes.c_char_p,
     ctypes.c_char_p,
-    ctypes.c_char_p,
-    ctypes.c_char_p,
 ]
 pqc_lib.PQC_asymmetric_container_open.restype = PQC_CONTAINER_HANDLE
 
 
-def PQC_asymmetric_container_open(cipher, server, client, device, password, salt):
+def PQC_asymmetric_container_open(cipher, filename, password, salt):
     container_handle = pqc_lib.PQC_asymmetric_container_open(
-        cipher, server.encode(), client.encode(), device.encode(), password.encode(), salt.encode()
+        cipher, filename.encode(), password.encode(), salt.encode()
     )
     if container_handle == PQC_BAD_CIPHER:
         raise PQFailedCreateContainer()
@@ -917,29 +927,21 @@ def PQC_file_delete(filename):
     _check_return_code(result)
 
 
-pqc_lib.PQC_symmetric_container_delete.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
+pqc_lib.PQC_symmetric_container_delete.argtypes = [ctypes.c_char_p]
 pqc_lib.PQC_symmetric_container_delete.restype = ctypes.c_int
 
 
-def PQC_symmetric_container_delete(server, client, device):
+def PQC_symmetric_container_delete(filename):
     _check_return_code(
-        pqc_lib.PQC_symmetric_container_delete(server.encode('utf-8'), client.encode('utf-8'), device.encode('utf-8'))
+        pqc_lib.PQC_symmetric_container_delete(filename.encode('utf-8'))
     )
 
 
-pqc_lib.PQC_symmetric_container_pair_delete.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
-pqc_lib.PQC_symmetric_container_pair_delete.restype = ctypes.c_int
-
-
-def PQC_symmetric_container_pair_delete(client_m, client_k):
-    _check_return_code(pqc_lib.PQC_symmetric_container_pair_delete(client_m.encode('utf-8'), client_k.encode('utf-8')))
-
-
-pqc_lib.PQC_asymmetric_container_delete.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
+pqc_lib.PQC_asymmetric_container_delete.argtypes = [ctypes.c_char_p]
 pqc_lib.PQC_asymmetric_container_delete.restype = ctypes.c_int
 
 
-def PQC_asymmetric_container_delete(server, client, device):
+def PQC_asymmetric_container_delete(filename):
     _check_return_code(
-        pqc_lib.PQC_asymmetric_container_delete(server.encode('utf-8'), client.encode('utf-8'), device.encode('utf-8'))
+        pqc_lib.PQC_asymmetric_container_delete(filename.encode('utf-8'))
     )

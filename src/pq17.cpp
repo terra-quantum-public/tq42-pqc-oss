@@ -33,8 +33,8 @@ void PQ17prng_engine::random_bytes(uint8_t * buf, size_t size)
 std::unique_ptr<IRandomGenerator> PQ17prng_engine::default_generator()
 {
     uint8_t default_key[PQC_AES_KEYLEN] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1',
-                                          '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2',
-                                          '3', '4', '5', '6', '7', '8', '9', '0', '1', '2'};
+                                           '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2',
+                                           '3', '4', '5', '6', '7', '8', '9', '0', '1', '2'};
 
     uint8_t default_iv[PQC_AES_IVLEN] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 
