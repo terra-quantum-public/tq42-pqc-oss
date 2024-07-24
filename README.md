@@ -19,7 +19,7 @@ The library will expand to include support for additional languages (e.g., Pytho
 ## Included Features
 Details on the library contents can be found in the [documentation](https://terra-quantum-public.github.io/tq42-pqc-oss). Library contents are subject to change.
 
-![TQ42_Cryptography_Infographic.png](https://terra-quantum-public.github.io/tq42-pqc-oss/img/introduction_infographic.png)
+![TQ42_Cryptography_Infographic.png](https://terra-quantum-public.github.io/tq42-pqc-oss/img/readme_info.png)
 
 ### Classic Quantum-Resistant Algorithms
 
