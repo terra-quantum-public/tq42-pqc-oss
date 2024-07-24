@@ -44,7 +44,7 @@ TQ42 Cryptography encompasses a wide range of applications and algorithms tailor
 
 ### Smart Home Automation
 
-![image](img\use_cases_IoT_security.png)
+![image](img/use_cases_IoT_security.png)
 
 **Problem**: Quantum computers have the potential to **pose security risks** to smart home automation systems. One of the most significant concerns is the ability of quantum computers to efficiently break traditional cryptographic algorithms, such as RSA and ECC, which are widely used for securing data transmission, storage, and authentication.
 

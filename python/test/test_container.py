@@ -1,6 +1,5 @@
 from test import pqc
 
-
 # In this test, we will create a container, get a key from it, and delete the container.
 # In addition, we will get the size of the container.
 
@@ -19,14 +18,14 @@ def test_symmetric_container(pqc):
     assert isinstance(version, int), "Version should be an integer."
     assert version == expected_version, f"Container version mismatch: expected {expected_version}, got {version}"
 
-
     # Checking that the expiration time is exactly one year (in seconds) after the creation time.
 
-    creation_ts = pqc.PQC_symmetric_container_get_creation_time(new_container);
-    expiration_ts = pqc.PQC_symmetric_container_get_expiration_time(new_container);
+    creation_ts = pqc.PQC_symmetric_container_get_creation_time(new_container)
+    expiration_ts = pqc.PQC_symmetric_container_get_expiration_time(new_container)
     expected_lifetime = 365 * 24 * 3600
-    assert expiration_ts == creation_ts + expected_lifetime, "Expiration timestamp does not match the expected lifetime."
-
+    assert (
+        expiration_ts == creation_ts + expected_lifetime
+    ), "Expiration timestamp does not match the expected lifetime."
 
     # Checking the key search to confirm the functionality.
     try:
@@ -36,7 +35,6 @@ def test_symmetric_container(pqc):
         assert len(key) == expected_key_length, f"Expected key length to be {expected_key_length}, but got {len(key)}"
     except Exception as e:
         assert False, f"An unexpected error occurred while retrieving the key under normal conditions: {e}"
-
 
     pqc.PQC_symmetric_container_close(new_container)
 
@@ -111,9 +109,7 @@ def test_symmetric_container_file_io(pqc):
     # Salt is recommended to be set to some constant string specific to application.
     # After executing the following code file should appear on disk.
 
-    pqc.PQC_symmetric_container_save_as(
-        new_container, "test_symmetric_container_file_io-1.pqc", "password", "salt"
-    )
+    pqc.PQC_symmetric_container_save_as(new_container, "test_symmetric_container_file_io-1.pqc", "password", "salt")
 
     testKey1 = pqc.PQC_symmetric_container_get_key(new_container, 0, 100, pqc.PQC_CIPHER_AES, pqc.PQC_AES_M_OFB)
     version1 = pqc.PQC_symmetric_container_get_version(new_container)
@@ -122,9 +118,7 @@ def test_symmetric_container_file_io(pqc):
 
     pqc.PQC_symmetric_container_close(new_container)
 
-    container_io = pqc.PQC_symmetric_container_open(
-        "test_symmetric_container_file_io-1.pqc", "password", "salt"
-    )
+    container_io = pqc.PQC_symmetric_container_open("test_symmetric_container_file_io-1.pqc", "password", "salt")
     testKey2 = pqc.PQC_symmetric_container_get_key(container_io, 0, 100, pqc.PQC_CIPHER_AES, pqc.PQC_AES_M_OFB)
     version2 = pqc.PQC_symmetric_container_get_version(container_io)
     creation_ts2 = pqc.PQC_symmetric_container_get_creation_time(container_io)
@@ -140,9 +134,7 @@ def test_symmetric_container_file_io(pqc):
 def test_symmetric_container_file_delete(pqc):
     new_container = pqc.PQC_symmetric_container_create()
 
-    pqc.PQC_symmetric_container_save_as(
-        new_container, "test_symmetric_container_file_delete.pqc", "password", "salt"
-    )
+    pqc.PQC_symmetric_container_save_as(new_container, "test_symmetric_container_file_delete.pqc", "password", "salt")
 
     pqc.PQC_symmetric_container_close(new_container)
 

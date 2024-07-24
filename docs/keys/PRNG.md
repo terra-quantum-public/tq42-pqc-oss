@@ -88,8 +88,8 @@ This function initializes the PQ17 pseudo-random number generator with a specifi
 
 *   `PQC_OK`: Indicates the operation was successful and the PQ17 pseudo-random generator was initialized correctly.
     
-*   `PQC_BAD_LEN`: Indicates that an invalid length for either the key or the IV was passed to the function. The valid lengths are 32 bytes for the key and 16 bytes for the IV [1](\"https://www.geeksforgeeks.org/pseudo-random-number-generator-prng/\") .
-    
+*   `PQC_BAD_LEN`: Indicates that an invalid length for either the key or the IV was passed to the function. The valid lengths are 32 bytes for the key and 16 bytes for the IV [1](https://www.geeksforgeeks.org/pseudo-random-number-generator-prng/).
+
 
 The initialization of the PRNG with `PQC_random_from_pq_17` influences the randomness source for subsequent operations within the library that require random data.
 

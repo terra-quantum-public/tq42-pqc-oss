@@ -23,7 +23,9 @@ void PQ17prng_engine::random_bytes(uint8_t * buf, size_t size)
 
     uint64_t * pos = reinterpret_cast<uint64_t *>(buf);
     for (size_t i = 0; i < num_to_gen; ++i)
+    {
         pos[i] = generate();
+    }
 
     uint64_t last_val = generate();
     const size_t index = num_to_gen * type_size;
@@ -32,9 +34,10 @@ void PQ17prng_engine::random_bytes(uint8_t * buf, size_t size)
 
 std::unique_ptr<IRandomGenerator> PQ17prng_engine::default_generator()
 {
-    uint8_t default_key[PQC_AES_KEYLEN] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1',
-                                           '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2',
-                                           '3', '4', '5', '6', '7', '8', '9', '0', '1', '2'};
+    uint8_t default_key[PQC_AES_KEYLEN] = {
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2', '3', '4', '5', '6',
+        '7', '8', '9', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2',
+    };
 
     uint8_t default_iv[PQC_AES_IVLEN] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 

@@ -10,3 +10,13 @@ target_link_libraries(
   kem_mceliece
   pqc
 )
+
+add_executable(
+  example_mlkem
+  example_mlkem.cpp
+)
+
+target_link_libraries(
+  example_mlkem
+  pqc
+)

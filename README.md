@@ -35,10 +35,11 @@ Symmetric Encryption:
 
 Key Encapsulation Mechanism:
 
+-   [ML-KEM](https://terra-quantum-public.github.io/tq42-pqc-oss/post_quantum_algs/kem/ml-kem.html)
 -   [Classic McEliece 8192128f](https://terra-quantum-public.github.io/tq42-pqc-oss/post_quantum_algs/kem/mceliece.html)
 
 Digital Signature:
-
+-   [ML-DSA](https://terra-quantum-public.github.io/tq42-pqc-oss/post_quantum_algs/digital_signature/ml-dsa.html)
 -   [Falcon padded 1024](https://terra-quantum-public.github.io/tq42-pqc-oss/post_quantum_algs/digital_signature/falcon.html)
 
 ### Key Management
@@ -46,6 +47,7 @@ Digital Signature:
 -   [Secure file removal (HDD, SSD)](https://terra-quantum-public.github.io/tq42-pqc-oss/keys/secureHDD&SSDRemoval.html)
 -   [Randomness source](https://terra-quantum-public.github.io/tq42-pqc-oss/keys/PRNG.html)
 -   [Key Containers](https://terra-quantum-public.github.io/tq42-pqc-oss/keys/keys_container.html)
+-   [PBKDF2](https://terra-quantum-public.github.io/tq42-pqc-oss/keys/pbkdf2.html)
 
 ## Security Notice
 While there are no known vulnerabilities in the quantum-safe algorithms within this library, caution is crucial. These algorithms have not undergone the same level of scrutiny as currently deployed ones. The NIST Post-Quantum Cryptography Standardization project's guidance should be followed diligently. As research progresses, algorithm security may rapidly change, including potential vulnerabilities to classical and quantum computers.

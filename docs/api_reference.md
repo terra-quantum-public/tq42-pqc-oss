@@ -28,6 +28,7 @@ Below you may find the reference to the all API methods or examples that exist i
 - [`PQC_kem_decode_secret`](post_quantum_algs/kem/api.html#pqc_kem_decode_secret)
 - [`PQC_close_context`](post_quantum_algs/kem/api.html#pqc_close_context)
 - [McEliece Example](post_quantum_algs/kem/mceliece.html#example)
+- [ML-KEM Example](post_quantum_algs/kem/ml-kem.html#example)
 
 ### Digital Signature
 - [`PQC_generate_key_pair`](post_quantum_algs/digital_signature/api.html#pqc_generate_key_pair)
@@ -36,6 +37,7 @@ Below you may find the reference to the all API methods or examples that exist i
 - [`PQC_verify`](post_quantum_algs/digital_signature/api.html#pqc_verify)
 - [`PQC_close_context`](post_quantum_algs/digital_signature/api.html#pqc_close_context)
 - [Falcon Example](post_quantum_algs/digital_signature/falcon.html#example)
+- [ML-DSA Example](post_quantum_algs/digital_signature/ml-dsa.html#example)
 
 ## Classic Quantum-Resistant Algorithms
 
@@ -98,6 +100,10 @@ Below you may find the reference to the all API methods or examples that exist i
 ### Secure file removal (HDD & SSD)
 - [`PQC_file_delete`](keys/secureHDD&SSDRemoval.html#pqc_file_delete)
 - [Example](keys/secureHDD&SSDRemoval.html#example)
+
+### PBKDF2
+- [`PQC_pbkdf_2`](keys/pbkdf2.html#pqc_pbkdf_2)
+- [Example](keys/pbkdf2.html#example)
 
 ## Common functions
 - [`PQC_get_length`](common_functions.html#pqc_get_length)

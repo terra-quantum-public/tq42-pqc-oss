@@ -3,7 +3,7 @@ layout: default
 title: McEliece
 parent: Key Encapsulation Mechanisms
 grand_parent: Post-Quantum Algorithms
-nav_order: 1
+nav_order: 3
 ---
 
 # **Classic McEliece Overview**

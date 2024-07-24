@@ -5,7 +5,6 @@ import pytest
 
 from test import pqc
 
-
 # SHA3 is a hash-function. Input data - message of any size.
 # Hash of fixed size is saved into hash array.
 # Look test_shake_sha3.cpp for use of arbitary sized hash.

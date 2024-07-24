@@ -5,7 +5,6 @@ import pytest
 
 from test import pqc
 
-
 # The hash taking mode SHAKE is the mode of the sha 3 hash function, but with a variable output size.
 # Simply put, you can take hash with any hash size.
 # The SHAKE function exists in two instances: SHAKE 128 and SHAKE 256. They differ somewhat in their internal

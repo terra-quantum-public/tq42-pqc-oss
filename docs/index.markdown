@@ -61,10 +61,12 @@ Symmetric Encryption:
 
 Key Encapsulation Mechanism:
 
+-   [ML-KEM](post_quantum_algs/kem/ml-kem.html)
 -   [Classic McEliece 8192128f](post_quantum_algs/kem/mceliece.html)
 
 Digital Signature:
 
+-   [ML-DSA](post_quantum_algs/digital_signature/ml-dsa.html)
 -   [Falcon padded 1024](post_quantum_algs/digital_signature/falcon.html)
 
 ### Key Management
@@ -72,6 +74,7 @@ Digital Signature:
 -   [Secure file removal (HDD, SSD)](keys/secureHDD&SSDRemoval.html)
 -   [Randomness source](keys/PRNG.html)
 -   [Key Containers](keys/keys_container.html)
+-   [PBKDF2](keys/pbkdf2.html)
 
 ## Enhancing Security with Post-Quantum Algorithms: Strategic Recommendations
 

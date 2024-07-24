@@ -1,0 +1,57 @@
+on:
+  workflow_call:
+
+jobs:
+  style:
+    name: Style
+    runs-on: ubuntu-latest
+    container: silkeh/clang:16
+
+    steps:
+    - name: Checkout repository
+      uses: 'actions/checkout@v4'
+
+    - name: Install dependencies
+      run: |
+        apt-get update
+        apt-get install -y python3-pip
+        pip3 install gitignorefile --break-system-packages
+
+    - name: Style check
+      run: |
+        python3 -c 'if True:
+          import difflib
+          import os
+          import subprocess
+          import sys
+
+          import gitignorefile
+
+          gi = gitignorefile.Cache()
+          errors = 0
+          for root, directories, names in os.walk(os.getcwd()):
+            directories[:] = [d for d in directories if d != ".git" and not gi(os.path.join(root, d))]
+            for name in names:
+              path = os.path.join(root, name)
+              if os.path.splitext(name)[1] in (".h", ".c", ".cpp") and not gi(path):
+                r = subprocess.run(["clang-format", path], universal_newlines=True, stdout=subprocess.PIPE)
+                r.check_returncode()
+                with open(path) as f:
+                  t = f.read().splitlines()
+                e = r.stdout.splitlines()
+                m = difflib.SequenceMatcher(a=t, b=e)
+                for tag, i1, i2, j1, j2 in m.get_opcodes():
+                  if tag == "insert":
+                    expecting = "%0A".join(["```"] + e[j1:j2] + ["```"])
+                    print(f"::error file={os.path.relpath(path)},line={i1 or 1}::Please insert at line {i1+1}:%0A{expecting}")
+                    errors += 1
+                  elif tag == "replace":
+                    expecting = "%0A".join(["```"] + e[j1:j2] + ["```"])
+                    print(f"::error file={os.path.relpath(path)},line={i1+1},endLine={i2}::Please replace line(s) {i1+1}-{i2} with:%0A{expecting}")
+                    errors += 1
+                  elif tag == "delete":
+                    print(f"::error file={os.path.relpath(path)},line={i1+1},endLine={i2}::Please remove line(s) {i1+1}-{i2}")
+                    errors += 1
+
+          sys.exit(int(bool(errors)))
+        '

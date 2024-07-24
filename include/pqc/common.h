@@ -79,11 +79,6 @@ extern "C"
         size_t info_length, uint8_t * shared_key, size_t shared_key_length
     );
 
-    size_t PQC_API PQC_kdf(
-        const uint8_t * party_a_info, size_t info_length, const uint8_t * shared_secret, size_t shared_length,
-        uint8_t * key, size_t key_length
-    );
-
 
     size_t PQC_API
     PQC_sign(CIPHER_HANDLE ctx, const uint8_t * buffer, size_t length, uint8_t * signature, size_t signature_len);

@@ -1,3 +1,8 @@
 [tool.black]
 line-length = 120
 skip-string-normalization = true
+
+[tool.isort]
+include_trailing_comma = true
+split_on_trailing_comma = true
+known_first_party = ["test"]

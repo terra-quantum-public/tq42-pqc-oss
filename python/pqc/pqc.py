@@ -5,7 +5,6 @@ import os
 
 import pqc.utils
 
-
 # Load the C library
 try:
     pqc_lib = ctypes.CDLL(os.path.join(os.path.dirname(__file__), pqc.utils.library))
@@ -118,9 +117,13 @@ def _check_return_code(retcode):
 
 PQC_CIPHER_AES = 1
 PQC_CIPHER_SHA3 = 4
-PQC_CIPHER_MCELIECE = 10
-PQC_CIPHER_RAINBOW = 11
 PQC_CIPHER_FALCON = 5
+PQC_CIPHER_DILITHIUM = 6
+PQC_CIPHER_MCELIECE = 10
+PQC_CIPHER_KYBER = 7
+PQC_CIPHER_ML_KEM = 17
+PQC_CIPHER_RAINBOW = 11
+PQC_CIPHER_ML_DSA = 16
 
 # Constants for the length types
 PQC_LENGTH_SYMMETRIC = 0
@@ -155,7 +158,8 @@ PQC_SHAKE_128 = 16
 PQC_SYMMETRIC_CONTAINER_KEY_LENGTH = 32
 PQC_SYMMETRIC_CONTAINER_NUM_KEYS = 6
 
-
+PQC_PBKDF2_HMAC_SHA3 = 1
+PQC_PBKDF2_ITERATIONS_NUMBER = 10000
 # Define C data types
 PQC_AES_BLOCKLEN = 16
 CIPHER_HANDLE = ctypes.c_size_t
@@ -250,7 +254,6 @@ def PQC_encrypt(ctx, mode, buffer):
     result = pqc_lib.PQC_encrypt(ctx, mode, buffer_ptr, length)
     _check_return_code(result)
     return bytes(buffer_ptr)
-
 
 
 def PQC_decrypt(ctx, mode, buffer):
@@ -444,7 +447,9 @@ def PQC_verify(cipher, public_key, buffer, signature):
     public_key_ptr = (ctypes.c_uint8 * public_keylen)(*public_key)
     signature_ptr = (ctypes.c_uint8 * len(signature))(*signature)
 
-    result = pqc_lib.PQC_verify(cipher, public_key_ptr, public_keylen, buffer_ptr, length, signature_ptr, len(signature))
+    result = pqc_lib.PQC_verify(
+        cipher, public_key_ptr, public_keylen, buffer_ptr, length, signature_ptr, len(signature)
+    )
     _check_return_code(result)
 
     return True  # Verification successful
@@ -932,9 +937,7 @@ pqc_lib.PQC_symmetric_container_delete.restype = ctypes.c_int
 
 
 def PQC_symmetric_container_delete(filename):
-    _check_return_code(
-        pqc_lib.PQC_symmetric_container_delete(filename.encode('utf-8'))
-    )
+    _check_return_code(pqc_lib.PQC_symmetric_container_delete(filename.encode('utf-8')))
 
 
 pqc_lib.PQC_asymmetric_container_delete.argtypes = [ctypes.c_char_p]
@@ -942,6 +945,46 @@ pqc_lib.PQC_asymmetric_container_delete.restype = ctypes.c_int
 
 
 def PQC_asymmetric_container_delete(filename):
-    _check_return_code(
-        pqc_lib.PQC_asymmetric_container_delete(filename.encode('utf-8'))
+    _check_return_code(pqc_lib.PQC_asymmetric_container_delete(filename.encode('utf-8')))
+
+
+pqc_lib.PQC_pbkdf_2.argtypes = [
+    ctypes.c_int,
+    ctypes.c_size_t,
+    ctypes.c_size_t,
+    ctypes.POINTER(ctypes.c_uint8),
+    ctypes.c_size_t,
+    ctypes.POINTER(ctypes.c_uint8),
+    ctypes.c_size_t,
+    ctypes.POINTER(ctypes.c_uint8),
+    ctypes.c_size_t,
+    ctypes.c_size_t,
+]
+pqc_lib.PQC_pbkdf_2.restype = ctypes.c_size_t
+
+
+def PQC_pbkdf_2(password, hash_length, key_length, salt, iterations):
+    password_length = len(password)
+    password_array = (ctypes.c_uint8 * password_length)(*password)
+    salt_length = len(salt)
+    salt_array = (ctypes.c_uint8 * salt_length)(*salt)
+    derived_key_length = key_length // 8
+    derived_key = (ctypes.c_uint8 * derived_key_length)()
+
+    result = pqc_lib.PQC_pbkdf_2(
+        PQC_PBKDF2_HMAC_SHA3,
+        hash_length,
+        password_length,
+        password_array,
+        key_length,
+        derived_key,
+        derived_key_length,
+        salt_array,
+        salt_length,
+        iterations,
     )
+
+    if result != 0:
+        raise ValueError(f"Key derivation failed with error code: {result}")
+
+    return bytes(derived_key)

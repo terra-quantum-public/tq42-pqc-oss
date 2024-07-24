@@ -1,10 +1,10 @@
 '''Setup script.'''
 
 import os
+
 import setuptools
 
 import pqc.utils
-
 
 with open(f'{os.path.dirname(os.path.abspath(__file__))}/requirements.txt') as requirements:
     with open(f'{os.path.dirname(os.path.abspath(__file__))}/README.md') as readme:

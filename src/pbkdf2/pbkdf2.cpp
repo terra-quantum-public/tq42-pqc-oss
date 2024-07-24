@@ -12,7 +12,6 @@
 #include "pbkdf2.h"
 #include "sha3.h"
 
-
 std::unique_ptr<int[]> bin_converter(uint8_t a)
 {
     std::unique_ptr<int[]> binary = std::make_unique<int[]>(8);
@@ -20,7 +19,6 @@ std::unique_ptr<int[]> bin_converter(uint8_t a)
         binary[7 - i] = (a >> i) & 1;
     return binary;
 }
-
 
 void u_filler(size_t symbols_setLength, uint8_t * symbols_set, size_t num, uint8_t * U)
 {
@@ -35,15 +33,16 @@ void u_filler(size_t symbols_setLength, uint8_t * symbols_set, size_t num, uint8
     }
 }
 
-std::unique_ptr<uint8_t[]>
-hmac(const uint8_t * charset, size_t password_len, uint8_t * U, size_t b, size_t l, size_t U_size)
+std::unique_ptr<uint8_t[]> hmac(
+    const uint8_t * charset, size_t hash_length, size_t password_length, uint8_t * U, size_t b, size_t l, size_t U_size
+)
 {
     auto acceptable_input = std::make_unique<uint8_t[]>(b);
 
-    if (password_len > b)
+    if (password_length > b)
     {
-        SHA3 sha3_variables_1(PQC_SHA3_256);
-        sha3_variables_1.add_data(ConstBufferView(charset, password_len));
+        SHA3 sha3_variables_1(static_cast<int>(hash_length));
+        sha3_variables_1.add_data(ConstBufferView(charset, password_length));
 
         for (size_t i = 0; i < l; i++)
             acceptable_input[i] = sha3_variables_1.get_hash()[i];
@@ -52,11 +51,11 @@ hmac(const uint8_t * charset, size_t password_len, uint8_t * U, size_t b, size_t
             acceptable_input[i] = 0;
     }
 
-    else if (password_len < b)
+    else if (password_length < b)
     {
-        for (size_t i = 0; i < password_len; i++)
+        for (size_t i = 0; i < password_length; i++)
             acceptable_input[i] = charset[i];
-        for (size_t i = password_len; i < b; i++)
+        for (size_t i = password_length; i < b; i++)
             acceptable_input[i] = 0;
     }
 
@@ -72,7 +71,7 @@ hmac(const uint8_t * charset, size_t password_len, uint8_t * U, size_t b, size_t
         ipad_xor[i] = acceptable_input[i] ^ 0x36;
 
 
-    SHA3 sha3_variables_2(PQC_SHA3_256);
+    SHA3 sha3_variables_2(static_cast<int>(hash_length));
     sha3_variables_2.add_data(ConstBufferView(ipad_xor.get(), b));
     sha3_variables_2.add_data(ConstBufferView(U, U_size));
     auto hash_result = std::make_unique<uint8_t[]>(l);
@@ -83,7 +82,7 @@ hmac(const uint8_t * charset, size_t password_len, uint8_t * U, size_t b, size_t
     for (size_t i = 0; i < b; i++)
         opad_xor.get()[i] = acceptable_input[i] ^ 0x5c;
 
-    SHA3 sha3_variables_3(PQC_SHA3_256);
+    SHA3 sha3_variables_3(static_cast<int>(hash_length));
     sha3_variables_3.add_data(ConstBufferView(opad_xor.get(), b));
     sha3_variables_3.add_data(ConstBufferView(hash_result.get(), l));
     auto final_output = std::make_unique<uint8_t[]>(l);
@@ -93,73 +92,48 @@ hmac(const uint8_t * charset, size_t password_len, uint8_t * U, size_t b, size_t
     return final_output;
 }
 
-int * pbkdf_2(
-    size_t password_len, const uint8_t * charset, size_t kLen, int * master_key, uint8_t * symbols_set,
-    size_t symbols_setLength
+size_t pbkdf_2(
+    int mode, size_t hash_length, size_t password_length, const uint8_t * password, size_t key_length,
+    uint8_t * derived_key, size_t derived_key_length, uint8_t * salt, size_t salt_length, size_t iterations
 )
 {
-    if (kLen > (pow(2, 32) - 1) * PQC_PBKDF2_hLen)
-        std::cout << "password is too long";
-
-    size_t len = kLen / PQC_PBKDF2_hLen;
-    if (kLen % PQC_PBKDF2_hLen)
-        len++;
-
-    size_t r = kLen - (len - 1) * PQC_PBKDF2_hLen;
-
-    size_t counter = 0;
-    std::unique_ptr<uint8_t[]> T = std::make_unique<uint8_t[]>(PQC_PBKDF2_L_SHA3);
-
-    for (size_t i = 1; i < len + 1; i++)
+    if (key_length > (pow(2, 32) - 1) * hash_length)
     {
-        for (size_t k = 0; k < PQC_PBKDF2_L_SHA3; k++)
-            T[k] = 0;
-
-        size_t U_size = symbols_setLength + 4;
-        std::unique_ptr<uint8_t[]> U = std::make_unique<uint8_t[]>(U_size);
-        u_filler(symbols_setLength, symbols_set, i, U.get());
-
-        for (size_t j = 0; j < PQC_PBKDF2_ITERATIONS_NUMBER; j++)
-        {
-            U = hmac(charset, password_len, U.get(), PQC_PBKDF2_B_SHA3, PQC_PBKDF2_L_SHA3, U_size);
-            U_size = PQC_PBKDF2_L_SHA3;
-
-            for (int n = 0; n < PQC_PBKDF2_L_SHA3; n++)
-                T[n] ^= U[n];
-        }
-
-        std::unique_ptr<int[]> binary_T = std::make_unique<int[]>(PQC_PBKDF2_L_SHA3 * 8);
-        for (size_t k = 0; k < PQC_PBKDF2_L_SHA3; k++)
-        {
-            auto converted = bin_converter(T[k]);
-            for (int j = 0; j < 8; j++)
-                binary_T[k * 8 + j] = converted[j];
-        }
-
-        if (i < len)
-        {
-            for (size_t n = counter; n < counter + PQC_PBKDF2_hLen; n++)
-            {
-                if (counter != 0)
-                    master_key[n] = binary_T[n % counter];
-                else
-                    master_key[n] = binary_T[n];
-            }
-        }
-
-        else
-        {
-            for (size_t n = counter; n < counter + r; n++)
-            {
-                if (counter != 0)
-                    master_key[n] = binary_T[n % counter];
-                else
-                    master_key[n] = binary_T[n];
-            }
-        }
-
-        counter += PQC_PBKDF2_hLen;
+        std::cout << "Password or key length is too long." << std::endl;
+        return PQC_BAD_LEN;
     }
 
-    return master_key;
+    if (derived_key_length < key_length / 8)
+    {
+        std::cout << "Derived key buffer is too short." << std::endl;
+        return PQC_BAD_LEN;
+    }
+
+    size_t num_blocks = (key_length + hash_length - 1) / hash_length;
+    std::unique_ptr<uint8_t[]> T = std::make_unique<uint8_t[]>(hash_length / 8);
+
+    for (size_t i = 0; i < num_blocks; ++i)
+    {
+        memset(T.get(), 0, hash_length / 8);
+        size_t U_size = salt_length + 4;
+        std::unique_ptr<uint8_t[]> U = std::make_unique<uint8_t[]>(U_size);
+        u_filler(salt_length, salt, i + 1, U.get());
+
+        for (size_t j = 0; j < iterations; ++j)
+        {
+            U = hmac(
+                password, hash_length, password_length, U.get(), (1600 - 2 * hash_length) >> 3, hash_length / 8, U_size
+            );
+            U_size = hash_length / 8;
+            for (size_t n = 0; n < hash_length / 8; ++n)
+            {
+                T[n] ^= U[n];
+            }
+        }
+
+        size_t copy_length = std::min(hash_length / 8, derived_key_length - i * hash_length / 8);
+        memcpy(derived_key + i * hash_length / 8, T.get(), copy_length);
+    }
+
+    return PQC_OK;
 }

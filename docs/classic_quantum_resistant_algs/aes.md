@@ -45,7 +45,7 @@ Each of these modes has a specific use case where it excels and others where it 
 Quantum resistance
 ------------------
 
-AES-256 is considered to be [quantum](https://en.wikipedia.org/wiki/Quantum_computing) resistant, as it has similar quantum resistance to AES-128's resistance against traditional, non-quantum, attacks at 128 [bits of security](\"https://en.wikipedia.org/wiki/Bits_of_security\"). AES-192 and AES-128 are not considered quantum resistant due to their smaller key sizes. AES-192 has a strength of 96 bits against quantum attacks and AES-128 has 64 bits of strength against quantum attacks, making them both insecure.
+AES-256 is considered to be [quantum](https://en.wikipedia.org/wiki/Quantum_computing) resistant, as it has similar quantum resistance to AES-128's resistance against traditional, non-quantum, attacks at 128 [bits of security](https://en.wikipedia.org/wiki/Bits_of_security). AES-192 and AES-128 are not considered quantum resistant due to their smaller key sizes. AES-192 has a strength of 96 bits against quantum attacks and AES-128 has 64 bits of strength against quantum attacks, making them both insecure.
 
 NIST
 ----

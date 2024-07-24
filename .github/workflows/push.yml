@@ -5,7 +5,13 @@ on:
     branches: [main]
 
 jobs:
+  style:
+    name: Style
+    uses: ./.github/workflows/style.yml
+
   build:
+    needs: style
+
     strategy:
       matrix:
         include:

@@ -138,7 +138,7 @@ size_t PQC_API PQC_kem_encode_secret(  uint32_t cipher,
 
 This function generates a shared secret key using a given encryption algorithm, a message, and a pre-generated public key. The message is then intended to be sent to the second user, who owns the public key, for decryption.
 
-*   `cipher`: An identifier for selecting the encryption algorithm. [`Cipher constants`](common_functions.html#cipher)
+*   `cipher`: An identifier for selecting the encryption algorithm. [`Cipher constants`](/common_functions.html#cipher)
     
 *   `uint8_t * message`, `size_t message_length`: A pointer to the memory area for the message and its length. The message, which contains ciphertext encrypted with the public key, will be written here to be sent to the other party.
     

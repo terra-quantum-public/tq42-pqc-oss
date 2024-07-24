@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
-#include <pqc/common.h>
-
+#include <pqc/kdf.h>
 
 TEST(KDF, TestVectors_1)
 {

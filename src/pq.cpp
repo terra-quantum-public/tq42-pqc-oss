@@ -6,9 +6,11 @@
 #include <pqc/aes.h>
 #include <pqc/container.h>
 #include <pqc/delete.h>
+#include <pqc/kdf.h>
 #include <pqc/mceliece.h>
 #include <pqc/random.h>
 #include <pqc/sha3.h>
+
 
 #include <aes.h>
 #include <asymmetric_container.h>
@@ -624,6 +626,18 @@ size_t PQC_API PQC_symmetric_container_get_key(
     return symmetric_containers[container]->get(index, bytes_encoded, cipher, method, BufferView(key, key_length));
 }
 
+size_t PQC_API PQC_pbkdf_2(
+    int mode, size_t hash_length, size_t password_length, const uint8_t * password, size_t key_length,
+    uint8_t * derived_key, size_t derived_key_length, uint8_t * salt, size_t salt_length, size_t iterations
+)
+{
+    return pbkdf_2(
+        mode, hash_length, password_length, password, key_length, derived_key, derived_key_length, salt, salt_length,
+        iterations
+    );
+}
+
+
 PQC_CONTAINER_HANDLE PQC_API
 PQC_symmetric_container_open(const char * filename, const char * password, const char * salt)
 {
@@ -635,11 +649,17 @@ PQC_symmetric_container_open(const char * filename, const char * password, const
         SHA3 sha3(PQC_SHA3_512);
         sha3.add_data(ConstBufferView(salt, strlen(salt)));
         memcpy(buffer, sha3.get_hash(), std::min<size_t>(sha3.hash_size(), 64));
-
-        pbkdf_2(
-            strlen(password), reinterpret_cast<const uint8_t *>(password), PQC_AES_KEYLEN / sizeof(int),
-            reinterpret_cast<int *>(master_key.get()), buffer + PQC_AES_IVLEN, 64 - PQC_AES_IVLEN
+        size_t hash_length = 256;
+        size_t iterations = 10000;
+        size_t result = pbkdf_2(
+            PQC_PBKDF2_HMAC_SHA3, hash_length, strlen(password), reinterpret_cast<const uint8_t *>(password),
+            PQC_AES_KEYLEN / sizeof(int), reinterpret_cast<uint8_t *>(master_key.get()), PQC_AES_KEYLEN / 8,
+            buffer + PQC_AES_IVLEN, 64 - PQC_AES_IVLEN, iterations
         );
+        if (result != 0)
+        {
+            return PQC_FAILED_TO_CREATE_CONTAINER;
+        }
 
         std::shared_ptr<pqc_aes_iv> iv = std::make_shared<pqc_aes_iv>();
         memcpy(iv.get(), buffer, PQC_AES_IVLEN);
@@ -671,11 +691,17 @@ size_t PQC_API PQC_symmetric_container_save_as(
         SHA3 sha3(PQC_SHA3_512);
         sha3.add_data(ConstBufferView(salt, strlen(salt)));
         memcpy(buffer, sha3.get_hash(), std::min<size_t>(sha3.hash_size(), 64));
-
-        pbkdf_2(
-            strlen(password), reinterpret_cast<const uint8_t *>(password), PQC_AES_KEYLEN / sizeof(int),
-            reinterpret_cast<int *>(master_key.get()), buffer + PQC_AES_IVLEN, 64 - PQC_AES_IVLEN
+        size_t hash_length = 256;
+        size_t iterations = 10000;
+        size_t result = pbkdf_2(
+            PQC_PBKDF2_HMAC_SHA3, hash_length, strlen(password), reinterpret_cast<const uint8_t *>(password),
+            PQC_AES_KEYLEN / sizeof(int), reinterpret_cast<uint8_t *>(master_key.get()), PQC_AES_KEYLEN / 8,
+            buffer + PQC_AES_IVLEN, 64 - PQC_AES_IVLEN, iterations
         );
+        if (result != 0)
+        {
+            return PQC_IO_ERROR;
+        }
 
         std::shared_ptr<pqc_aes_iv> iv = std::make_shared<pqc_aes_iv>();
         memcpy(iv.get(), buffer, PQC_AES_IVLEN);
@@ -860,16 +886,21 @@ size_t PQC_API PQC_asymmetric_container_save_as(
             std::make_shared<AsymmetricContainerFile>(cipher, true, filename);
 
         std::shared_ptr<pqc_aes_key> master_key = std::make_shared<pqc_aes_key>();
-
         uint8_t buffer[64] = {0};
         SHA3 sha3(PQC_SHA3_512);
         sha3.add_data(ConstBufferView(salt, strlen(salt)));
         memcpy(buffer, sha3.get_hash(), std::min<size_t>(sha3.hash_size(), 64));
-
-        pbkdf_2(
-            strlen(password), reinterpret_cast<const uint8_t *>(password), PQC_AES_KEYLEN / sizeof(int),
-            reinterpret_cast<int *>(master_key.get()), buffer + PQC_AES_IVLEN, 64 - PQC_AES_IVLEN
+        size_t hash_length = 256;
+        size_t iterations = 10000;
+        size_t pbkdfResult = pbkdf_2(
+            PQC_PBKDF2_HMAC_SHA3, hash_length, strlen(password), reinterpret_cast<const uint8_t *>(password),
+            PQC_AES_KEYLEN / sizeof(int), reinterpret_cast<uint8_t *>(master_key.get()), PQC_AES_KEYLEN / 8,
+            buffer + PQC_AES_IVLEN, 64 - PQC_AES_IVLEN, iterations
         );
+        if (pbkdfResult != 0)
+        {
+            return PQC_IO_ERROR;
+        }
 
         std::shared_ptr<pqc_aes_iv> iv = std::make_shared<pqc_aes_iv>();
         memcpy(iv.get(), buffer, PQC_AES_IVLEN);
@@ -879,7 +910,6 @@ size_t PQC_API PQC_asymmetric_container_save_as(
         else
             return PQC_IO_ERROR;
     }
-
     catch (const std::ios_base::failure &)
     {
         return PQC_IO_ERROR;
@@ -897,16 +927,21 @@ PQC_asymmetric_container_open(uint32_t cipher, const char * filename, const char
             std::make_shared<AsymmetricContainerFile>(cipher, true, filename);
 
         std::shared_ptr<pqc_aes_key> master_key = std::make_shared<pqc_aes_key>();
-
         uint8_t buffer[64] = {0};
         SHA3 sha3(PQC_SHA3_512);
         sha3.add_data(ConstBufferView(salt, strlen(salt)));
         memcpy(buffer, sha3.get_hash(), std::min<size_t>(sha3.hash_size(), 64));
-
-        pbkdf_2(
-            strlen(password), reinterpret_cast<const uint8_t *>(password), PQC_AES_KEYLEN / sizeof(int),
-            reinterpret_cast<int *>(master_key.get()), buffer + PQC_AES_IVLEN, 64 - PQC_AES_IVLEN
+        size_t hash_length = 256;
+        size_t iterations = 10000;
+        size_t pbkdfResult = pbkdf_2(
+            PQC_PBKDF2_HMAC_SHA3, hash_length, strlen(password), reinterpret_cast<const uint8_t *>(password),
+            PQC_AES_KEYLEN / sizeof(int), reinterpret_cast<uint8_t *>(master_key.get()), PQC_AES_KEYLEN / 8,
+            buffer + PQC_AES_IVLEN, 64 - PQC_AES_IVLEN, iterations
         );
+        if (pbkdfResult != 0)
+        {
+            return PQC_FAILED_TO_CREATE_CONTAINER;
+        }
 
         std::shared_ptr<pqc_aes_iv> iv = std::make_shared<pqc_aes_iv>();
         memcpy(iv.get(), buffer, PQC_AES_IVLEN);

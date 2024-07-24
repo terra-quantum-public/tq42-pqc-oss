@@ -10,3 +10,13 @@ target_link_libraries(
   falcon_example
   pqc
 )
+
+add_executable(
+  example_mldsa
+  example_mldsa.cpp
+)
+
+target_link_libraries(
+  example_mldsa
+  pqc
+)

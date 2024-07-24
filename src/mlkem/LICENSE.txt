@@ -1,0 +1,4 @@
+Public Domain (https://creativecommons.org/share-your-work/public-domain/cc0/); 
+or Apache 2.0 License (https://www.apache.org/licenses/LICENSE-2.0.html).
+
+Public-domain code for Keccak and AES has been utilized from various sources. The specific sources and authors are acknowledged in the comments at the beginning of the respective files.

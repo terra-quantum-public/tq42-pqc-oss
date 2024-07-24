@@ -2,7 +2,6 @@ import pytest
 
 from test import pqc
 
-
 # Define the key and data
 key = b'12345678901234567890123456789012'  # Replace with your AES key
 data = b'1234567890123456'  # Replace with your plaintext data

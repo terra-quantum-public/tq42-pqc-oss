@@ -1,6 +1,5 @@
 from test import pqc
 
-
 # In this example, we will create a container, put, get a keys from it, and delete the container.
 # In addition, we will get the size of the container.
 
@@ -27,10 +26,10 @@ def test_asymmetric_container(pqc):
 
     assert version == 1
 
-    creation_ts = pqc.PQC_asymmetric_container_get_creation_time(new_container);
-    expiration_ts = pqc.PQC_asymmetric_container_get_expiration_time(new_container);
+    creation_ts = pqc.PQC_asymmetric_container_get_creation_time(new_container)
+    expiration_ts = pqc.PQC_asymmetric_container_get_expiration_time(new_container)
 
-    assert creation_ts + 365*24*3600 == expiration_ts
+    assert creation_ts + 365 * 24 * 3600 == expiration_ts
 
     # This function has second veriant of using. When we have only the cipher type
     # without container. We can get size of the container of this type.

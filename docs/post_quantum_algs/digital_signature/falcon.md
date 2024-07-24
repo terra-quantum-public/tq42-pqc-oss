@@ -3,7 +3,7 @@ layout: default
 title: Falcon
 parent: Digital Signature
 grand_parent: Post-Quantum Algorithms
-nav_order: 1
+nav_order: 3
 ---
 
 # **Falcon Overview**
