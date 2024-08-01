@@ -40,5 +40,5 @@ struct pqc_ml_dsa_signature
 
 struct pqc_ml_dsa_context
 {
-    pqc_ml_dsa_private_key private_key;
+    struct pqc_ml_dsa_private_key private_key;
 };
