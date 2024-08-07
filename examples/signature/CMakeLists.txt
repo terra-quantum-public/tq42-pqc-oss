@@ -20,3 +20,13 @@ target_link_libraries(
   example_mldsa
   pqc
 )
+
+add_executable(
+  example_slhdsa
+  example_slhdsa.cpp
+)
+
+target_link_libraries(
+  example_slhdsa
+  pqc
+)

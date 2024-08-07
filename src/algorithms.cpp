@@ -6,6 +6,7 @@
 #include <mldsa/ml-dsa.h>
 #include <mlkem/kyber.h>
 #include <mlkem/ml-kem.h>
+#include <slhdsa/slh-dsa.h>
 
 #include <sha3.h>
 
@@ -19,4 +20,5 @@ AlgorithmRegistry::AlgorithmRegistry()
     register_factory(std::make_unique<const MLKEMFactory>());
     register_factory(std::make_unique<const MLDSAFactory>());
     register_factory(std::make_unique<const SHA3Factory>());
+    register_factory(std::make_unique<const SLHDSAFactory>());
 }
