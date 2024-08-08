@@ -22,7 +22,7 @@ nav_order: 2
 - **Cryptographic Assumption:** ML-KEM is a based on CRYSTALS-KYBER, a lattice-based key-encapsulation mechanism.
 - **Copyright**:  [Public Domain](https://creativecommons.org/public-domain/cc0/)
 or [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0.html)
-- [**GitHub Source](https://github.com/terra-quantum-public/tq42-pqc-oss/tree/main/src/ml-kem)
+- [**GitHub Source](https://github.com/terra-quantum-public/tq42-pqc-oss/tree/main/src/mlkem)
 
 ## FIPS-203 ML-KEM
 

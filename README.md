@@ -39,6 +39,7 @@ Key Encapsulation Mechanism:
 -   [Classic McEliece 8192128f](https://terra-quantum-public.github.io/tq42-pqc-oss/post_quantum_algs/kem/mceliece.html)
 
 Digital Signature:
+-   [SLH-DSA](https://terra-quantum-public.github.io/tq42-pqc-oss/post_quantum_algs/digital_signature/slh-dsa.html)
 -   [ML-DSA](https://terra-quantum-public.github.io/tq42-pqc-oss/post_quantum_algs/digital_signature/ml-dsa.html)
 -   [Falcon padded 1024](https://terra-quantum-public.github.io/tq42-pqc-oss/post_quantum_algs/digital_signature/falcon.html)
 

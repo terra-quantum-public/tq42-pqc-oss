@@ -22,7 +22,7 @@ nav_order: 2
 - **Main cryptographic assumption**:  Scheme based on the Module Learning With Errors problem.
 - **Copyright**:  [Public Domain](https://creativecommons.org/public-domain/cc0/)
 or [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0.html)
-- [**GitHub Source](https://github.com/terra-quantum-public/tq42-pqc-oss/tree/main/src/ml-dsa)
+- [**GitHub Source](https://github.com/terra-quantum-public/tq42-pqc-oss/tree/main/src/mldsa)
 
 
 ## FIPS 204 ML-DSA
@@ -68,7 +68,7 @@ Module-Lattice-based Digital Signature Algorithms (ML-DSA), such as those based 
 - Signature size - **4627** bytes
 
 ## NIST's Known Answer Tests (KAT)
-The TQ42 Cryptography ML-DSA algorithm implementation has successfully passed the Known Answer Tests (KAT) provided by NIST. This confirms that the algorithm performs reliably as anticipated. For those interested in a deeper dive into the specifics of these tests, they are available [for review](https://github.com/terra-quantum-public/tq42-pqc-oss/tree/main/test/mlkem).
+The TQ42 Cryptography ML-DSA algorithm implementation has successfully passed the Known Answer Tests (KAT) provided by NIST. This confirms that the algorithm performs reliably as anticipated. For those interested in a deeper dive into the specifics of these tests, they are available [for review](https://github.com/terra-quantum-public/tq42-pqc-oss/tree/main/test/mldsa).
 
 ## Leveraging ML-DSA and True Entropy
 The customization of the ML-DSA algorithm within TQ42 Cryptography is designed to work in synergy with true entropy, sourced from the Single Photon Quantum Random Number Generator (QRNG). This technology ensures that the randomness required for cryptographic keys is of the highest quality, providing unparalleled security for company data. Since the effectiveness of any cryptographic algorithm heavily relies on the randomness of its keys, incorporating QRNG derived true entropy with TQ42's customized ML-DSA algorithm ensures that your company's sensitive information is safeguarded in the most robust manner possible.

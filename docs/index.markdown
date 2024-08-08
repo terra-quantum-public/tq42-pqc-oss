@@ -67,6 +67,7 @@ Key Encapsulation Mechanism:
 Digital Signature:
 
 -   [ML-DSA](post_quantum_algs/digital_signature/ml-dsa.html)
+-   [SLH-DSA](post_quantum_algs/digital_signature/slh-dsa.html)
 -   [Falcon padded 1024](post_quantum_algs/digital_signature/falcon.html)
 
 ### Key Management

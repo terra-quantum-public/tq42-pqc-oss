@@ -343,7 +343,7 @@ PQC_CONTAINER_HANDLE PQC_asymmetric_container_create(uint32_t cipher);
 
 **Container Initialization**
 
--   **Key Fetching**: As part of the container's creation, cryptographic keys are sourced from a [specified randomness source](/keys/PRNG.html). This ensures that the cryptographic keys are robust and secure, fitting the requirements for secure cryptographic operations.
+-   **Key Fetching**: As part of the container's creation, cryptographic keys are sourced from a [specified randomness source](keys/PRNG.html). This ensures that the cryptographic keys are robust and secure, fitting the requirements for secure cryptographic operations.
 -   **Memory Residency**: It is crucial to note that the container exists only in the memory when created. There's no automatic storage or file association happening during the container's creation.
 
 **Important Note**
