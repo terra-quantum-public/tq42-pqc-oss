@@ -58,7 +58,7 @@ void McElieceFactory::generate_keypair(const BufferView & public_key, const Buff
         auto a_f = a_const_buffer.mid((SYS_N >> 3) + (1 << (GFBITS + 2)), SYS_T << 1);
         for (size_t i = 0; i < SYS_T; ++i)
         {
-            c[i] = a_f.load_16(i) & GFMASK; // FIXME can apply mask inplace
+            c[i] = a_f.load_16_le(i) & GFMASK; // FIXME can apply mask inplace
         }
 
         uint16_t d[SYS_T];

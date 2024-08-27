@@ -23,22 +23,22 @@
 #define PQC_DILITHIUM_SIGNATURE_LEN 4595
 #endif
 
-struct pqc_dilithium_private_key
+typedef struct pqc_dilithium_private_key
 {
     uint8_t private_key[PQC_DILITHIUM_PRIVATE_KEY_LEN];
-};
+} pqc_dilithium_private_key;
 
-struct pqc_dilithium_public_key
+typedef struct pqc_dilithium_public_key
 {
     uint8_t public_key[PQC_DILITHIUM_PUBLIC_KEY_LEN];
-};
+} pqc_dilithium_public_key;
 
-struct pqc_dilithium_signature
+typedef struct pqc_dilithium_signature
 {
     uint8_t signature[PQC_DILITHIUM_SIGNATURE_LEN];
-};
+} pqc_dilithium_signature;
 
-struct pqc_dilithium_context
+typedef struct pqc_dilithium_context
 {
     pqc_dilithium_private_key private_key;
-};
+} pqc_dilithium_context;

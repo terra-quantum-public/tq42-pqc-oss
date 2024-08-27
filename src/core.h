@@ -58,6 +58,10 @@ class InternalError : public PQException
 {
 };
 
+class AEADVerificationError : public PQException
+{
+};
+
 #define PQC_CIPHER_EMPTY std::numeric_limits<uint32_t>::max()
 
 class PQC_Context
@@ -79,6 +83,21 @@ class SymmetricContext : public PQC_Context
 public:
     virtual void encrypt(uint32_t mode, const BufferView & data) { throw UnsupportedOperation(); }
     virtual void decrypt(uint32_t mode, const BufferView & data) { throw UnsupportedOperation(); }
+    virtual void
+    aead_encrypt(uint32_t mode, const BufferView & data, const ConstBufferView & aad, const BufferView & auth_tag)
+    {
+        throw UnsupportedOperation();
+    }
+    virtual void
+    aead_decrypt(uint32_t mode, const BufferView & data, const ConstBufferView & aad, const ConstBufferView & auth_tag)
+    {
+        throw UnsupportedOperation();
+    }
+    virtual bool
+    aead_check(uint32_t mode, const BufferView & data, const ConstBufferView & aad, const ConstBufferView & auth_tag)
+    {
+        throw UnsupportedOperation();
+    }
 };
 
 class KEMContext : public PQC_Context

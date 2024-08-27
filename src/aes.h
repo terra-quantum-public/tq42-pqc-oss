@@ -11,11 +11,23 @@
 class AES : public SymmetricContext
 {
 public:
-    AES(const pqc_aes_key * key);
-    AES(const pqc_aes_key * key, const pqc_aes_iv * iv);
+    AES(const ConstBufferView & key);
+    AES(const ConstBufferView & key, const ConstBufferView & iv);
 
     virtual void encrypt(uint32_t mode, const BufferView & data) override;
     virtual void decrypt(uint32_t mode, const BufferView & data) override;
+
+    virtual void aead_encrypt(
+        uint32_t mode, const BufferView & data, const ConstBufferView & aad, const BufferView & auth_tag
+    ) override;
+    virtual void aead_decrypt(
+        uint32_t mode, const BufferView & data, const ConstBufferView & aad, const ConstBufferView & auth_tag
+    ) override;
+
+    virtual bool aead_check(
+        uint32_t mode, const BufferView & data, const ConstBufferView & aad, const ConstBufferView & auth_tag
+    ) override;
+
 
     virtual void set_iv(const ConstBufferView & iv) override;
 
@@ -41,9 +53,17 @@ public:
 
     virtual size_t get_length(uint32_t type) const override;
 
+    void gcm_xcrypt(const BufferView & data);
+    void gcm_get_auth_tag(
+        const ConstBufferView & iv_view, const ConstBufferView & data, const ConstBufferView & aad,
+        const BufferView & auth_tag
+    );
+    bool
+    gcm_check_auth_tag(const ConstBufferView & data, const ConstBufferView & aad, const ConstBufferView & auth_tag);
+
 private:
-    uint8_t RoundKey[PQC_AES_keyExpSize] = {0};
-    uint8_t Iv[PQC_AES_IVLEN] = {0};
+    StackBuffer<PQC_AES_keyExpSize> RoundKey;
+    StackBuffer<PQC_AES_IVLEN> Iv;
     uint8_t IvSet = false;
     uint32_t IvOffset = 0;
 };

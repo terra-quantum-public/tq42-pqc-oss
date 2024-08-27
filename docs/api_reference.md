@@ -47,6 +47,9 @@ Below you may find the reference to the all API methods or examples that exist i
 - [`PQC_set_iv`](classic_quantum_resistant_algs/aes.html#pqc_set_iv)
 - [`PQC_encrypt`](classic_quantum_resistant_algs/aes.html#pqc_encrypt)
 - [`PQC_decrypt`](classic_quantum_resistant_algs/aes.html#pqc_decrypt)
+- [`PQC_aead_encrypt`](classic_quantum_resistant_algs/aes.html#pqc_aead_encrypt)
+- [`PQC_aead_check`](classic_quantum_resistant_algs/aes.html#pqc_aead_check)
+- [`PQC_aead_decrypt`](classic_quantum_resistant_algs/aes.html#pqc_aead_decrypt)
 - [`PQC_close_context`](classic_quantum_resistant_algs/aes.html#pqc_close_context)
 - [AES Examples](classic_quantum_resistant_algs/aes.html#examples)
 

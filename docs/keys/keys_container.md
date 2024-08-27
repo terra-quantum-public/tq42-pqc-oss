@@ -253,6 +253,7 @@ int PQC_symmetric_container_get_key(PQC_CONTAINER_HANDLE container,
 PQC_AES_M_CBC = 2
 PQC_AES_M_ECB = 3
 PQC_AES_M_OFB = 4
+PQC_AES_M_GCM = 5
 PQC_AES_M_CTR = 6
 ```
 

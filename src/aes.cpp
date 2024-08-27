@@ -1,6 +1,7 @@
 #include "aes.h"
+#include "vector128.h"
+#include <array>
 #include <string.h>
-
 
 #define Nb 4
 #define Nk 8
@@ -95,16 +96,16 @@ static void key_expansion(uint8_t * RoundKey, const pqc_aes_key * Key)
     }
 }
 
-AES::AES(const pqc_aes_key * key)
+AES::AES(const ConstBufferView & key)
 {
-    key_expansion(RoundKey, key);
+    key_expansion(RoundKey.data(), (const pqc_aes_key *)key.const_data());
     IvSet = 0;
 }
 
-AES::AES(const pqc_aes_key * key, const pqc_aes_iv * iv)
+AES::AES(const ConstBufferView & key, const ConstBufferView & iv)
 {
-    key_expansion(RoundKey, key);
-    memcpy(Iv, iv, PQC_AES_BLOCKLEN);
+    key_expansion(RoundKey.data(), (const pqc_aes_key *)key.const_data());
+    Iv.store(iv);
     IvSet = 1;
 }
 
@@ -114,7 +115,7 @@ void AES::set_iv(const ConstBufferView & iv)
     {
         throw BadLength();
     }
-    memcpy(Iv, iv.const_data(), PQC_AES_BLOCKLEN);
+    Iv.store(iv);
     IvSet = 1;
 }
 
@@ -260,135 +261,121 @@ static void inv_mix_columns(state_t * state)
     }
 }
 
-static void cipher(state_t * state, const uint8_t * RoundKey)
+static void cipher(const BufferView & state, const ConstBufferView & round_key)
 {
+#ifndef NDEBUG
+    if (state.size() != sizeof(state_t) || round_key.size() != PQC_AES_keyExpSize)
+    {
+        throw std::invalid_argument("Bad buffer size");
+    }
+#endif
+    const uint8_t * const key_ptr = round_key.const_data();
+    state_t * const state_ptr = (state_t *)state.data();
+
     uint8_t round = 0;
-    add_round_key(0, state, RoundKey);
+    add_round_key(0, state_ptr, key_ptr);
 
     for (round = 1;; ++round)
     {
-        sub_bytes(state);
-        shift_rows(state);
+        sub_bytes(state_ptr);
+        shift_rows(state_ptr);
         if (round == Nr)
         {
             break;
         }
-        mix_columns(state);
-        add_round_key(round, state, RoundKey);
+        mix_columns(state_ptr);
+        add_round_key(round, state_ptr, key_ptr);
     }
-    add_round_key(Nr, state, RoundKey);
+    add_round_key(Nr, state_ptr, key_ptr);
 }
 
-static void inv_cipher(state_t * state, const uint8_t * RoundKey)
+static void inv_cipher(const BufferView & state, const ConstBufferView & round_key)
 {
+#ifndef NDEBUG
+    if (state.size() != sizeof(state_t) || round_key.size() != PQC_AES_keyExpSize)
+    {
+        throw std::invalid_argument("Bad buffer size");
+    }
+#endif
+    const uint8_t * const key_ptr = round_key.const_data();
+    state_t * const state_ptr = (state_t *)state.data();
+
     uint8_t round = 0;
-    add_round_key(Nr, state, RoundKey);
+    add_round_key(Nr, state_ptr, key_ptr);
 
     for (round = (Nr - 1);; --round)
     {
-        inv_shift_rows(state);
-        inv_sub_bytes(state);
-        add_round_key(round, state, RoundKey);
+        inv_shift_rows(state_ptr);
+        inv_sub_bytes(state_ptr);
+        add_round_key(round, state_ptr, key_ptr);
         if (round == 0)
         {
             break;
         }
-        inv_mix_columns(state);
+        inv_mix_columns(state_ptr);
     }
 }
 
 void AES::ecb_encrypt(const BufferView & data)
 {
-    uint8_t * buf = data.data();
-    size_t length = data.size();
-    size_t i;
-    for (i = 0; i < length; i += PQC_AES_BLOCKLEN)
+    for (BufferView buf : iterate_blocks(data, PQC_AES_BLOCKLEN))
     {
-        cipher((state_t *)buf, RoundKey);
-        buf += PQC_AES_BLOCKLEN;
+        cipher(buf, RoundKey);
     }
 }
 
 void AES::ecb_decrypt(const BufferView & data)
 {
-    uint8_t * buf = data.data();
-    size_t length = data.size();
-    size_t i;
-    for (i = 0; i < length; i += PQC_AES_BLOCKLEN)
+    for (BufferView buf : iterate_blocks(data, PQC_AES_BLOCKLEN))
     {
-        inv_cipher((state_t *)buf, RoundKey);
-        buf += PQC_AES_BLOCKLEN;
+        inv_cipher(buf, RoundKey);
     }
-}
-
-static void xor_with_iv(uint8_t * buf, const uint8_t * Iv)
-{
-    uint8_t i;
-    for (i = 0; i < PQC_AES_BLOCKLEN; ++i)
-        buf[i] ^= Iv[i];
 }
 
 void AES::cbc_encrypt_buffer(const BufferView & data)
 {
-    uint8_t * buf = data.data();
-    size_t length = data.size();
+    ConstBufferView local_Iv = Iv;
 
-    size_t i;
-
-    uint8_t * local_Iv = Iv;
-
-    for (i = 0; i < length; i += PQC_AES_BLOCKLEN)
+    for (BufferView buf : iterate_blocks(data, PQC_AES_BLOCKLEN))
     {
-        xor_with_iv(buf, local_Iv);
-        cipher((state_t *)buf, RoundKey);
+        buf ^= local_Iv;
+        cipher(buf, RoundKey);
         local_Iv = buf;
-        buf += PQC_AES_BLOCKLEN;
     }
-    memcpy(Iv, local_Iv, PQC_AES_BLOCKLEN);
+    Iv.store(local_Iv);
 }
 
 
 void AES::cbc_decrypt_buffer(const BufferView & data)
 {
-    uint8_t * buf = data.data();
-    size_t length = data.size();
-    size_t i;
-    uint8_t storeNextIv[PQC_AES_BLOCKLEN] = {0};
-    for (i = 0; i < length; i += PQC_AES_BLOCKLEN)
-    {
-        memcpy(storeNextIv, buf, PQC_AES_BLOCKLEN);
-        inv_cipher((state_t *)buf, RoundKey);
-        xor_with_iv(buf, Iv);
-        memcpy(Iv, storeNextIv, PQC_AES_BLOCKLEN);
+    StackBuffer<PQC_AES_BLOCKLEN> storeNextIv;
 
-        buf += PQC_AES_BLOCKLEN;
+    for (BufferView buf : iterate_blocks(data, PQC_AES_BLOCKLEN))
+    {
+        storeNextIv.store(buf);
+        inv_cipher(buf, RoundKey);
+        buf ^= Iv;
+        Iv.store(storeNextIv);
     }
 }
 
 void AES::ofb_xcrypt(const BufferView & data)
 {
-    uint8_t * buf = data.data();
-    size_t length = data.size();
-    size_t i;
-    uint8_t local_Iv[PQC_AES_BLOCKLEN] = {0};
-    memcpy(local_Iv, Iv, PQC_AES_BLOCKLEN);
-    for (i = 0; i < (length / PQC_AES_BLOCKLEN) * PQC_AES_BLOCKLEN; i += PQC_AES_BLOCKLEN)
+    StackBuffer<PQC_AES_BLOCKLEN> local_Iv;
+    local_Iv.store(Iv);
+
+    auto blocks = iterate_blocks(data, PQC_AES_BLOCKLEN);
+
+    for (BufferView buf : blocks)
     {
-        cipher((state_t *)local_Iv, RoundKey);
-        xor_with_iv(buf, local_Iv);
-        buf += PQC_AES_BLOCKLEN;
+        cipher(local_Iv, RoundKey);
+        buf ^= local_Iv;
     }
-    if (length % PQC_AES_BLOCKLEN != 0)
+    if (blocks.has_extra())
     {
-        uint8_t specialBuffer1[PQC_AES_BLOCKLEN] = {0};
-        uint8_t specialBuffer2[PQC_AES_BLOCKLEN] = {0};
-
-        memcpy(specialBuffer1, buf, length % PQC_AES_BLOCKLEN);
-        cipher((state_t *)local_Iv, RoundKey);
-        memcpy(specialBuffer2, local_Iv, length % PQC_AES_BLOCKLEN);
-        xor_with_iv(specialBuffer1, specialBuffer2);
-
-        memcpy(buf, specialBuffer1, length % PQC_AES_BLOCKLEN);
+        BufferView buf = blocks.extra();
+        cipher(local_Iv, RoundKey);
+        buf ^= local_Iv.mid(0, buf.size());
     }
 }
 
@@ -396,12 +383,12 @@ void AES::ofb_xcrypt(const BufferView & data)
 void AES::ctr_xcrypt(const BufferView & data)
 {
     size_t length = data.size();
-    uint8_t local_Iv[PQC_AES_BLOCKLEN] = {0};
+    StackBuffer<PQC_AES_BLOCKLEN> local_Iv;
 
     for (size_t data_offset = 0; data_offset < length;)
     {
-        memcpy(local_Iv, Iv, PQC_AES_BLOCKLEN);
-        cipher((state_t *)local_Iv, RoundKey);
+        local_Iv.store(Iv);
+        cipher(local_Iv, RoundKey);
 
         for (; IvOffset < PQC_AES_BLOCKLEN && data_offset < length; ++IvOffset, ++data_offset)
         {
@@ -431,7 +418,7 @@ std::unique_ptr<PQC_Context> AESFactory::create_context(const ConstBufferView & 
     if (private_key.size() != PQC_AES_KEYLEN)
         throw BadLength();
 
-    return std::make_unique<AES>((const pqc_aes_key *)private_key.const_data());
+    return std::make_unique<AES>(private_key);
 }
 
 std::unique_ptr<PQC_Context>
@@ -442,7 +429,7 @@ AESFactory::create_context(const ConstBufferView & private_key, const ConstBuffe
     if (iv.size() != PQC_AES_IVLEN)
         throw BadLength();
 
-    return std::make_unique<AES>((const pqc_aes_key *)private_key.const_data(), (const pqc_aes_iv *)iv.const_data());
+    return std::make_unique<AES>(private_key, iv);
 }
 
 size_t AESFactory::get_length(uint32_t type) const
@@ -553,4 +540,271 @@ void AES::decrypt(uint32_t mode, const BufferView & data)
     default:
         throw BadMode();
     }
+}
+
+void AES::aead_encrypt(uint32_t mode, const BufferView & data, const ConstBufferView & aad, const BufferView & auth_tag)
+{
+    if (mode != PQC_AES_M_GCM)
+    {
+        throw BadMode();
+    }
+
+    if (!is_iv_set())
+    {
+        throw IVNotSet();
+    }
+
+    if (auth_tag.size() != PQC_AES_IVLEN)
+    {
+        throw BadLength();
+    }
+
+    HeapBuffer<PQC_AES_BLOCKLEN> iv_copy;
+    iv_copy.store(Iv);
+    gcm_xcrypt(data);
+    gcm_get_auth_tag(iv_copy, data, aad, auth_tag);
+}
+
+void AES::aead_decrypt(
+    uint32_t mode, const BufferView & data, const ConstBufferView & aad, const ConstBufferView & auth_tag
+)
+{
+    if (mode != PQC_AES_M_GCM)
+    {
+        throw BadMode();
+    }
+
+    if (!is_iv_set())
+    {
+        throw IVNotSet();
+    }
+
+    if (auth_tag.size() != PQC_AES_IVLEN)
+    {
+        throw BadLength();
+    }
+
+    if (!gcm_check_auth_tag(data, aad, auth_tag))
+    {
+        throw AEADVerificationError();
+    }
+
+    gcm_xcrypt(data);
+}
+
+bool AES::aead_check(
+    uint32_t mode, const BufferView & data, const ConstBufferView & aad, const ConstBufferView & auth_tag
+)
+{
+    if (mode != PQC_AES_M_GCM)
+    {
+        throw BadMode();
+    }
+
+    if (!is_iv_set())
+    {
+        throw IVNotSet();
+    }
+
+    if (auth_tag.size() != PQC_AES_IVLEN)
+    {
+        throw BadLength();
+    }
+
+    return gcm_check_auth_tag(data, aad, auth_tag);
+}
+
+void AES::gcm_xcrypt(const BufferView & data)
+{
+    StackBuffer<PQC_AES_BLOCKLEN> local_Iv;
+    BufferView iv_view = BufferView::from_single(Iv);
+
+    BufferView fixed_local_iv_part = local_Iv.mid(0, local_Iv.size() - 4);
+    fixed_local_iv_part.store(Iv.mid(0, fixed_local_iv_part.size()));
+
+    uint32_t counter = iv_view.load_32_be(3);
+    ++counter;
+    local_Iv.store_32_be(3, counter);
+
+    auto data_blocks = iterate_blocks(data, PQC_AES_BLOCKLEN);
+
+    for (BufferView block : data_blocks)
+    {
+        cipher(local_Iv, RoundKey); // can be generated before started encryption
+        block ^= local_Iv;
+        fixed_local_iv_part.store(Iv.mid(0, fixed_local_iv_part.size()));
+        ++counter;
+        local_Iv.store_32_be(3, counter);
+    }
+    if (data_blocks.has_extra())
+    {
+        BufferView extra_data = data_blocks.extra();
+        cipher(local_Iv, RoundKey); // can be generated before started encryption
+        extra_data ^= local_Iv.mid(0, extra_data.size());
+    }
+    iv_view.store_32_be(3, counter);
+}
+
+
+using MTable = std::array<Vector128, 16>;
+
+static MTable build_M(const ConstBufferView & h)
+{
+    MTable M;
+    Vector128 v;
+
+    v.load_be(h);
+
+    M[8] = v;
+
+    for (int i = 4; i > 0; i >>= 1)
+    {
+        uint32_t T = (uint32_t)(v.lo64() & 1) * 0xE1000000;
+        v.shr<1>();
+        v.hi64() ^= ((uint64_t)T << 32);
+        M[i] = v;
+    }
+    for (int i = 2; i < 16; i <<= 1)
+    {
+        Vector128 * M_i = M.data() + i;
+        v = *M_i;
+        for (int j = 1; j < i; j++)
+        {
+            M_i[j] = v;
+            M_i[j] ^= M[j];
+        }
+    }
+
+    return M;
+}
+
+static void mod_polynomial_mult_M(BufferView x, const MTable & M)
+{
+    static const uint16_t R[16] = {0x0000, 0x1c20, 0x3840, 0x2460, 0x7080, 0x6ca0, 0x48c0, 0x54e0,
+                                   0xe100, 0xfd20, 0xd940, 0xc560, 0x9180, 0x8da0, 0xa9c0, 0xb5e0};
+
+    uint8_t lo, hi, reminder;
+    Vector128 z;
+
+    lo = (uint8_t)(x[15] & 0x0f);
+    hi = (uint8_t)(x[15] >> 4);
+    z = M[lo];
+
+    reminder = (uint8_t)(z.lo64() & 0x0F);
+    z.shr<4>();
+    z.hi64() ^= (uint64_t)R[reminder] << 48;
+    z ^= M[hi];
+
+    for (int i = 14; i >= 0; i--)
+    {
+        lo = (uint8_t)(x[i] & 0x0f);
+        hi = (uint8_t)(x[i] >> 4);
+
+        reminder = (uint8_t)(z.lo64() & 0x0F);
+        z.shr<4>();
+        z.hi64() ^= (uint64_t)R[reminder] << 48;
+        z ^= M[lo];
+
+        reminder = (uint8_t)(z.lo64() & 0x0F);
+        z.shr<4>();
+        z.hi64() ^= (uint64_t)R[reminder] << 48;
+        z ^= M[hi];
+    }
+
+    z.store_be(x);
+}
+
+void addBlockIntoAutTeg(ConstBufferView cipherTextBlock, BufferView AutTag, const MTable & M)
+{
+#ifndef NDEBUG
+    if (AutTag.size() != PQC_AES_BLOCKLEN || cipherTextBlock.size() != PQC_AES_BLOCKLEN)
+    {
+        throw std::invalid_argument("Bad buffer size");
+    }
+#endif
+
+    AutTag ^= cipherTextBlock;
+    mod_polynomial_mult_M(AutTag, M);
+}
+
+void getATagBlock(ConstBufferView AutData, const MTable & M, BufferView resultA)
+{
+    // AutDataLength should be: AutDataLength == PQC_AES_BLOCKLEN*n
+
+#ifndef NDEBUG
+    if (resultA.size() != PQC_AES_BLOCKLEN)
+    {
+        throw std::invalid_argument("Bad buffer size");
+    }
+#endif
+
+    auto data_blocks = iterate_blocks(AutData, PQC_AES_BLOCKLEN);
+
+    for (ConstBufferView block : data_blocks)
+    {
+        resultA ^= block;
+        mod_polynomial_mult_M(resultA, M);
+    }
+
+    if (data_blocks.has_extra())
+    {
+        StackBuffer<PQC_AES_BLOCKLEN> specialBuffer1;
+        ConstBufferView extra_data = data_blocks.extra();
+
+        specialBuffer1.mid(0, extra_data.size()).store(extra_data);
+
+        resultA ^= specialBuffer1;
+        mod_polynomial_mult_M(resultA, M);
+    }
+}
+
+void AES::gcm_get_auth_tag(
+    const ConstBufferView & iv_view, const ConstBufferView & data, const ConstBufferView & aad,
+    const BufferView & auth_tag
+)
+{
+    StackBuffer<PQC_AES_BLOCKLEN> H;
+    cipher(H, RoundKey);
+    MTable M = build_M(H);
+
+    auth_tag.fill(0);
+
+    getATagBlock(aad, M, auth_tag);
+
+    getATagBlock(data, M, auth_tag);
+
+    // Last part with length of Associated Data concatenated with 64 bit representation of length of ciphertext
+    StackBuffer<PQC_AES_BLOCKLEN> buffer;
+
+    uint64_t lenBuf = 0ULL;
+
+    lenBuf = aad.size() * 8;
+    buffer.store_64_be(0, lenBuf);
+
+    lenBuf = data.size() * 8;
+    buffer.store_64_be(1, lenBuf);
+
+    addBlockIntoAutTeg(buffer, auth_tag, M);
+
+    buffer.store(iv_view);
+    cipher(buffer, RoundKey);
+
+    auth_tag ^= buffer;
+}
+
+
+bool AES::gcm_check_auth_tag(
+    const ConstBufferView & data, const ConstBufferView & aad, const ConstBufferView & auth_tag
+)
+{
+    StackBuffer<PQC_AES_BLOCKLEN> AutTag;
+    gcm_get_auth_tag(Iv, data, aad, AutTag);
+
+    // check AutTag
+    bool result = true;
+    for (int i = 0; i < PQC_AES_BLOCKLEN; i++)
+        if (auth_tag.const_data()[i] != AutTag[i])
+            result = false;
+
+    return result;
 }

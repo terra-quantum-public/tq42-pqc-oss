@@ -40,3 +40,13 @@ target_link_libraries(
   aes_ofb_example
   pqc
 )
+
+add_executable(
+  aes_gcm_example
+  aes_gcm_example.cpp
+)
+
+target_link_libraries(
+  aes_gcm_example
+  pqc
+)

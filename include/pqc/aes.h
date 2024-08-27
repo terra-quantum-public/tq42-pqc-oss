@@ -11,6 +11,7 @@
 #define PQC_AES_M_CBC 2
 #define PQC_AES_M_ECB 3
 #define PQC_AES_M_OFB 4
+#define PQC_AES_M_GCM 5
 #define PQC_AES_M_CTR 6
 
 // Fixed for all modes

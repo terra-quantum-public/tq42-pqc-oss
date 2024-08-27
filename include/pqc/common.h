@@ -15,7 +15,7 @@ typedef size_t CIPHER_HANDLE;
 #define PQC_BAD_SIGNATURE 6
 #define PQC_IO_ERROR 8
 #define PQC_BAD_CIPHER ((CIPHER_HANDLE)~0)
-#define PQC_NO_AUT_TAG 9
+#define PQC_AUTHENTICATION_FAILURE 9
 
 #if defined(_WIN32) || defined(WIN32)
 #define PQC_CALLBACK __stdcall
@@ -58,6 +58,21 @@ extern "C"
     size_t PQC_API PQC_encrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t * buffer, size_t length);
 
     size_t PQC_API PQC_decrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t * buffer, size_t length);
+
+    size_t PQC_API PQC_aead_encrypt(
+        CIPHER_HANDLE ctx, uint32_t mode, uint8_t * buffer, size_t length, const uint8_t * aad, size_t aad_length,
+        uint8_t * auth_tag, size_t auth_tag_len
+    );
+
+    size_t PQC_API PQC_aead_decrypt(
+        CIPHER_HANDLE ctx, uint32_t mode, uint8_t * buffer, size_t length, const uint8_t * aad, size_t aad_length,
+        const uint8_t * auth_tag, size_t auth_tag_len
+    );
+
+    size_t PQC_API PQC_aead_check(
+        CIPHER_HANDLE ctx, uint32_t mode, uint8_t * buffer, size_t length, const uint8_t * aad, size_t aad_length,
+        const uint8_t * auth_tag, size_t auth_tag_len
+    );
 
     size_t PQC_API PQC_kem_encode_secret(
         uint32_t cipher, uint8_t * message, size_t message_length, const uint8_t * public_key, size_t key_length,

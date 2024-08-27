@@ -27,7 +27,7 @@ void MLKEMFactory::generate_keypair(const BufferView & public_key, const BufferV
     {
         throw BadLength();
     }
-    indcpa_keypair(public_key, private_key.mid(0, KYBER_INDCPA_SECRETKEYBYTES));
+    indcpa_keypair_mlkem(public_key, private_key.mid(0, KYBER_INDCPA_SECRETKEYBYTES));
     private_key.mid(KYBER_INDCPA_SECRETKEYBYTES, PQC_ML_KEM_PUBLIC_KEYLEN).store(public_key);
     hash_h(private_key.data() + KYBER_SECRETKEYBYTES - 2 * KYBER_SYMBYTES, public_key.data(), KYBER_PUBLICKEYBYTES);
     randombytes(private_key.mid(KYBER_SECRETKEYBYTES - KYBER_SYMBYTES, KYBER_SYMBYTES));

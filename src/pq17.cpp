@@ -3,7 +3,10 @@
 #include <chrono>
 #include <cstring>
 
-PQ17prng_engine::PQ17prng_engine(const pqc_aes_key * key, const pqc_aes_iv * iv) : aes(key, iv) {}
+PQ17prng_engine::PQ17prng_engine(const pqc_aes_key * key, const pqc_aes_iv * iv)
+    : aes(ConstBufferView::from_single(*key), ConstBufferView::from_single(*iv))
+{
+}
 
 uint64_t PQ17prng_engine::generate()
 {

@@ -35,7 +35,7 @@ mceliece_8192128_f_decrypt(unsigned char * errVec, const ConstBufferView & secKe
 
     for (size_t i = 0; i < SYS_T; ++i)
     {
-        b[i] = secKey.load_16(i) & GFMASK;
+        b[i] = secKey.load_16_le(i) & GFMASK;
     }
     b[SYS_T] = 1;
 

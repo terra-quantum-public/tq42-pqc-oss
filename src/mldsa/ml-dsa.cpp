@@ -53,10 +53,12 @@ void MLDSAFactory::generate_keypair(const BufferView & public_key, const BufferV
         polyvecl s1, s1hat;
         polyveck s2, t1, t0;
 
-        randombytes(BufferView(&seedbuf, SEEDBYTES)
-        ); // Alg 1 fips 204 step 1. Here is seed from fips 204 and seed from KAT
+        randombytes(BufferView(&seedbuf, SEEDBYTES)); // get seed
+        // expand seed H(sedd|k|l)
+        seedbuf[SEEDBYTES] = K;
+        seedbuf[SEEDBYTES + 1] = L;
+        shake256(seedbuf, 4 * SEEDBYTES, seedbuf, SEEDBYTES + 2);
 
-        shake256(seedbuf, 4 * SEEDBYTES, seedbuf, SEEDBYTES);
         rho = seedbuf;
         rhoprime = seedbuf + SEEDBYTES;
         key = seedbuf + 3 * SEEDBYTES;

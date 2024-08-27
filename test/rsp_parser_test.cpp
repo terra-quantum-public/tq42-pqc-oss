@@ -127,7 +127,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         ParserParseWordTestData("123", '\0', "123"), ParserParseWordTestData("   123", ' ', ""),
         ParserParseWordTestData("abc def", ' ', "abc"), ParserParseWordTestData("fgh]", ']', "fgh"),
-        ParserParseWordTestData("=", '=', "")
+        ParserParseWordTestData("=", '=', ""), ParserParseWordTestData("\r\n", '\r', "")
     )
 );
 
@@ -185,6 +185,29 @@ TEST(RSP_PARSER, TEST_PARSE_INCOMPLETE_LINE_HEADER)
     EXPECT_THROW(reader.parse_header(), std::invalid_argument);
 }
 
+TEST(RSP_PARSER, TEST_PARSE_HEADER_VALUE)
+{
+    std::istringstream stream("[a = b]\r\n");
+    RSPParser reader(stream);
+    EXPECT_EQ(reader.parse_header_value(), RSPValue("a", "b"));
+    EXPECT_EQ(reader.current(), '\r');
+}
+
+TEST(RSP_PARSER, TEST_PARSE_INCOMPLETE_LINE_HEADER_VALUE)
+{
+    std::istringstream stream("[a = b\r\n");
+    RSPParser reader(stream);
+    EXPECT_THROW(reader.parse_header_value(), std::invalid_argument);
+}
+
+TEST(RSP_PARSER, TEST_PARSE_EMPTY_HEADER_VALUE)
+{
+    std::istringstream stream("[a = ]\r\n");
+    RSPParser reader(stream);
+    EXPECT_EQ(reader.parse_header_value(), RSPValue("a", ""));
+    EXPECT_EQ(reader.current(), '\r');
+}
+
 TEST(RSP_PARSER, TEST_PARSE_VALUE)
 {
     std::istringstream stream("name = 123\r\n");
@@ -193,16 +216,17 @@ TEST(RSP_PARSER, TEST_PARSE_VALUE)
     EXPECT_EQ(reader.current(), '\r');
 }
 
+TEST(RSP_PARSER, TEST_PARSE_EMPTY_VALUE)
+{
+    std::istringstream stream("name = \r\n");
+    RSPParser reader(stream);
+    EXPECT_EQ(reader.parse_value(), RSPValue("name", ""));
+    EXPECT_EQ(reader.current(), '\r');
+}
+
 TEST(RSP_PARSER, TEST_PARSE_VALUE_NO_EQUAL_SIGN)
 {
     std::istringstream stream("name\r\n");
-    RSPParser reader(stream);
-    EXPECT_THROW(reader.parse_value(), std::invalid_argument);
-}
-
-TEST(RSP_PARSER, TEST_PARSE_VALUE_NO_VALUE)
-{
-    std::istringstream stream("name =\r\n");
     RSPParser reader(stream);
     EXPECT_THROW(reader.parse_value(), std::invalid_argument);
 }
@@ -365,5 +389,154 @@ TEST(RSP_PARSER, TEST_AES_PARSE_DATASET)
 
     AESRSPParser parser(stream);
 
+    EXPECT_EQ(parser.parse(), expected);
+}
+
+TEST(RSP_PARSER, TEST_AES_GCM_PARSE_BLOCK_ENCRYPT_ORDER)
+{
+    std::istringstream stream("Count = 8\r\n"
+                              "Key = 63834d215ba2ae291523850c9c46264d3122e55dc6a77f2b0e05311db3ca6122\r\n"
+                              "IV = 89\r\n"
+                              "PT = 763ebe4ae0317821a623467d0e\r\n"
+                              "AAD = 3e6074c1a26d43981147bf94c5c6bea3\r\n"
+                              "CT = 5eb5e3d8e7da45dfe964554782\r\n"
+                              "Tag = 7ff4b4ad9a8b4e9150dc83f05a237a");
+
+    AESGCMRSPRecord expected;
+    expected.key_ = RSPParser::string2binary("63834d215ba2ae291523850c9c46264d3122e55dc6a77f2b0e05311db3ca6122");
+    expected.iv_ = std::vector<uint8_t>({0x89});
+    expected.plaintext_ = RSPParser::string2binary("763ebe4ae0317821a623467d0e");
+    expected.ciphertext_ = RSPParser::string2binary("5eb5e3d8e7da45dfe964554782");
+    expected.aad_ = RSPParser::string2binary("3e6074c1a26d43981147bf94c5c6bea3");
+    expected.tag_ = RSPParser::string2binary("7ff4b4ad9a8b4e9150dc83f05a237a");
+    expected.fail_ = false;
+
+    AESGCMRSPParser parser(stream);
+
+    EXPECT_EQ(parser.parse_block(), expected);
+}
+
+TEST(RSP_PARSER, TEST_AES_GCM_PARSE_BLOCK_DECRYPT_ORDER)
+{
+    std::istringstream stream("Count = 0\r\n"
+                              "Key = 50d4e3ec11df1cd13c84d541266250d54d4a12b8ad4c613e7fcf1f5c0232497d\r\n"
+                              "IV = 52\r\n"
+                              "CT = 0ef95dd0ae4bedfa83cc5fda6c\r\n"
+                              "AAD = 1765dab21b5fa97cc0cd73eaa1\r\n"
+                              "Tag = 09703d753f1b2dbf3be1c952890934\r\n"
+                              "PT = bf8080720f0cd4e9e60d2b9ed8");
+
+    AESGCMRSPRecord expected;
+    expected.key_ = RSPParser::string2binary("50d4e3ec11df1cd13c84d541266250d54d4a12b8ad4c613e7fcf1f5c0232497d");
+    expected.iv_ = std::vector<uint8_t>({0x52});
+    expected.plaintext_ = RSPParser::string2binary("bf8080720f0cd4e9e60d2b9ed8");
+    expected.ciphertext_ = RSPParser::string2binary("0ef95dd0ae4bedfa83cc5fda6c");
+    expected.aad_ = RSPParser::string2binary("1765dab21b5fa97cc0cd73eaa1");
+    expected.tag_ = RSPParser::string2binary("09703d753f1b2dbf3be1c952890934");
+    expected.fail_ = false;
+
+    AESGCMRSPParser parser(stream);
+
+    EXPECT_EQ(parser.parse_block(), expected);
+}
+
+TEST(RSP_PARSER, TEST_AES_GCM_PARSE_BLOCK_DECRYPT_ORDER_FAIL)
+{
+    std::istringstream stream("Count = 14\r\n"
+                              "Key = 858a9898a2f262fc40787ad10c258f604d0772668c762feba3f600e04d3b20ca\r\n"
+                              "IV = 38\r\n"
+                              "CT = b277e2259cb31af47303b3f670\r\n"
+                              "AAD = 95893e1a7e256888e5eacac7ff\r\n"
+                              "Tag = d2806cd425e6c73832780b15b85c42e5\r\n"
+                              "FAIL");
+
+    AESGCMRSPRecord expected;
+    expected.key_ = RSPParser::string2binary("858a9898a2f262fc40787ad10c258f604d0772668c762feba3f600e04d3b20ca");
+    expected.iv_ = std::vector<uint8_t>({0x38});
+    expected.plaintext_ = std::vector<uint8_t>();
+    expected.ciphertext_ = RSPParser::string2binary("b277e2259cb31af47303b3f670");
+    expected.aad_ = RSPParser::string2binary("95893e1a7e256888e5eacac7ff");
+    expected.tag_ = RSPParser::string2binary("d2806cd425e6c73832780b15b85c42e5");
+    expected.fail_ = true;
+
+    AESGCMRSPParser parser(stream);
+
+    EXPECT_EQ(parser.parse_block(), expected);
+}
+
+TEST(RSP_PARSER, TEST_AES_GCM_PARSE_DATASET)
+{
+    std::istringstream stream("# CAVS 14.0\r\n"
+                              "\r\n"
+                              "[Keylen = 256]\r\n"
+                              "[IVlen = 96]\r\n"
+                              "[PTlen = 0]\r\n"
+                              "[AADlen = 0]\r\n"
+                              "[Taglen = 128]\r\n"
+                              "\r\n"
+                              "Count = 0\r\n"
+                              "Key = f5a2b27c74355872eb3ef6c5feafaa740e6ae990d9d48c3bd9bb8235e589f010\r\n"
+                              "IV = 58d2240f580a31c1d24948e9\r\n"
+                              "CT = \r\n"
+                              "AAD = \r\n"
+                              "Tag = 15e051a5e4a5f5da6cea92e2ebee5bac\r\n"
+                              "PT = \r\n"
+                              "\r\n"
+                              "[Keylen = 256]\r\n"
+                              "[IVlen = 96]\r\n"
+                              "[PTlen = 0]\r\n"
+                              "[AADlen = 0]\r\n"
+                              "[Taglen = 120]\r\n"
+                              "\r\n"
+                              "Count = 0 \r\n "
+                              "Key = 31201b86ccb6cbcf289798225c55de5a1c936a18aec996b5b8dcceb33bf96b41 \r\n "
+                              "IV = c2c6402f1f5ae89a6fa0fb65\r\n "
+                              "CT = \r\n"
+                              "AAD = \r\n"
+                              "Tag = 0b0bebb86a5d60f1f1881cea155e33\r\n "
+                              "PT = "
+                              "\r\n"
+                              "Count = 1\r\n"
+                              "Key = 2878cdd980bd1289e2efef7f3116b0a2772d272412e1cfeaf20f90cc278820e9\r\n"
+                              "IV = 9ada69a2f393958cc3866bf9\r\n"
+                              "CT = \r\n"
+                              "AAD = \r\n"
+                              "Tag = cff55846db838aaf5e08e88f8d7fe2\r\n"
+                              "PT = ");
+
+
+    AESGCMRSPDataset expected = std::vector<AESGCMRSPRecord>(
+        {AESGCMRSPRecord(
+             RSPParser::string2binary("f5a2b27c74355872eb3ef6c5feafaa740e6ae990d9d48c3bd9bb8235e589f010"), // key
+             RSPParser::string2binary("58d2240f580a31c1d24948e9"),                                         // IV
+             RSPParser::string2binary(""),                                                                 // plaintext
+             RSPParser::string2binary(""),                                                                 // ciphertext
+             RSPParser::string2binary(""),                                                                 // AAD
+             RSPParser::string2binary("15e051a5e4a5f5da6cea92e2ebee5bac"),                                 // tag
+             false                                                                                         // fail
+         ),
+         AESGCMRSPRecord(
+             RSPParser::string2binary("31201b86ccb6cbcf289798225c55de5a1c936a18aec996b5b8dcceb33bf96b41"), // key
+             RSPParser::string2binary("c2c6402f1f5ae89a6fa0fb65"),                                         // IV
+             RSPParser::string2binary(""),                                                                 // plaintext
+             RSPParser::string2binary(""),                                                                 // ciphertext
+             RSPParser::string2binary(""),                                                                 // AAD
+             RSPParser::string2binary("0b0bebb86a5d60f1f1881cea155e33"),                                   // tag
+             false                                                                                         // fail
+         ),
+         AESGCMRSPRecord(
+             RSPParser::string2binary("2878cdd980bd1289e2efef7f3116b0a2772d272412e1cfeaf20f90cc278820e9"), // key
+             RSPParser::string2binary("9ada69a2f393958cc3866bf9"),                                         // IV
+             RSPParser::string2binary(""),                                                                 // plaintext
+             RSPParser::string2binary(""),                                                                 // ciphertext
+             RSPParser::string2binary(""),                                                                 // AAD
+             RSPParser::string2binary("cff55846db838aaf5e08e88f8d7fe2"),                                   // tag
+             false                                                                                         // fail
+         )
+
+        }
+    );
+
+    AESGCMRSPParser parser(stream);
     EXPECT_EQ(parser.parse(), expected);
 }

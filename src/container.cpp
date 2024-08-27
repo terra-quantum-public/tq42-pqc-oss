@@ -133,7 +133,7 @@ void SymmetricKeyContainer::encrypt(
         pqc_aes_key local_key = {0};
         memcpy(&local_key, hash.get_hash(), std::min((int)hash.hash_size(), PQC_AES_KEYLEN));
 
-        AES cipher(&local_key, &iv);
+        AES cipher(ConstBufferView::from_single(local_key), ConstBufferView::from_single(iv));
         BufferView dataBuf = BufferView(reinterpret_cast<uint8_t *>(&data->key_data[key]), sizeof(KeyData));
         cipher.ofb_xcrypt(dataBuf);
     }
@@ -152,7 +152,7 @@ void SymmetricKeyContainer::decrypt(
         pqc_aes_key local_key = {0};
         memcpy(&local_key, hash.get_hash(), std::min((int)hash.hash_size(), PQC_AES_KEYLEN));
 
-        AES cipher(&local_key, &iv);
+        AES cipher(ConstBufferView::from_single(local_key), ConstBufferView::from_single(iv));
         BufferView dataBuf = BufferView(reinterpret_cast<uint8_t *>(&data->key_data[key]), sizeof(KeyData));
         cipher.ofb_xcrypt(dataBuf);
     }

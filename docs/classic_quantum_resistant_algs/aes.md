@@ -38,7 +38,8 @@ The encryption modes are methods that describe how to repeatedly apply the ciphe
 *  **Output Feedback (OFB)**: OFB converts a block cipher into a synchronous stream cipher. It generates keystream blocks, which are then XORed with the plaintext blocks to produce ciphertext. The same keystream blocks are used to decrypt ciphertext back to plaintext. OFB ensures that the same plaintext inputs will result in different ciphertext outputs.
     
 * **Counter (CTR)**: Like OFB, CTR turns a block cipher into a stream cipher. It encrypts a set of counter values and then XORs the resulting output with the plaintext to generate the ciphertext. The counter is increased by one for every subsequent block and must be unique for each encryption operation. CTR mode is known for its ability to allow random access to the encrypted data blocks.
-    
+
+* **Galois/Counter (GCM)**: The GCM algorithm provides both data authenticity (integrity) and confidentiality and belongs to the class of authenticated encryption with associated data (AEAD) methods. This means that as input it takes a key K, some plaintext P, and some associated data AD; it then encrypts the plaintext using the key to produce ciphertext C, and computes an authentication tag T from the ciphertext and the associated data (which remains unencrypted). A recipient with knowledge of K, upon reception of AD, C and T, can decrypt the ciphertext to recover the plaintext P and can check the tag T to ensure that neither ciphertext nor associated data were tampered with.    
 
 Each of these modes has a specific use case where it excels and others where it may be susceptible. Modern practices typically favor modes like CTR over ECB and CBC due to their stronger security properties and performance benefits, particularly in settings susceptible to parallel processing.
 
@@ -112,7 +113,7 @@ For both functions, the return values are specified as follows:
 **Function signature**
 
 ```cpp
-int PQC_set_iv(CIPHER_HANDLE ctx, const uint8_t* iv, size_t iv_length);
+size_t PQC_set_iv(CIPHER_HANDLE ctx, const uint8_t* iv, size_t iv_length);
 ```
 
 **Purpose**: This function is used to set the initialization vector for an initialized encryption context if it was not provided during the initialization with `PQC_init_context_iv()`.
@@ -144,7 +145,7 @@ The provided code snippet describes a function for encrypting data using an init
 **Function signature:**
 
 ```cpp
-int PQC_encrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t* buffer, size_t length);
+size_t PQC_encrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t* buffer, size_t length);
 ```
 
 **Purpose**: This function is used to encrypt data using the specified encryption context and encryption mode.
@@ -180,7 +181,7 @@ The function returns the following values:
 **Function signature:**
 
 ```cpp
-int PQC_decrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t* buffer, size_t length);
+size_t PQC_decrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t* buffer, size_t length);
 ```
 
 **Purpose**: This function is used to decrypt data using the specified encryption context and encryption mode.
@@ -211,12 +212,146 @@ The function returns the following values:
 *   `PQC_BAD_CIPHER`: Indicates that the selected cipher does not support symmetric encryption.
     
 
+### `PQC_aead_encrypt`
+
+**Function signature:**
+
+```cpp
+size_t PQC_aead_encrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t* buffer, size_t length, const uint8_t * aad, size_t aad_length, uint8_t * auth_tag, size_t auth_tag_len);
+```
+
+**Purpose**: This function is used to encrypt data and create authentication tag using the specified encryption context and encryption mode.
+
+**Parameters**:
+
+*   `ctx`: Handle of the initialized encryption context.
+    
+*   `mode`: Constant to select the encryption mode. The possible values depend on the selected cipher. For PQC\_CIPHER\_AES, the available mode is PQC\_AES\_M\_GCM.
+    
+*   `buffer` (in/out): Pointer to the data array. The data is encrypted in place within the same buffer.
+    
+*   `length`: Length of the data buffer.
+    
+*   `aad` (in): Pointer to the additional authenticated data array. This data is authenticated, but not encrypted.
+    
+*   `aad_length`: Length of the aad data buffer.    
+
+*   `tag` (out): Pointer to the authentication tag array. Size of tag should equal PQC\_AES\_IVLEN.
+    
+*   `tag length`: Length of the tag buffer. 
+
+The function returns the following values:
+
+*   `PQC_OK`: Indicates that the operation was successful, and the data was encrypted.
+    
+*   `PQC_BAD_CONTEXT`: Indicates that the context was not properly initialized, suggesting an issue with the encryption context handle.
+    
+*   `PQC_BAD_LEN`: Indicates that the length of the data does not match the requirements for the selected cipher/mode.
+    
+*   `PQC_NO_IV`: Indicates that an initialization vector is required for the selected cipher/mode, but it was not set.
+    
+*   `PQC_BAD_MODE`: Indicates that the mode parameter provided is invalid.
+    
+*   `PQC_BAD_CIPHER`: Indicates that the selected cipher does not support symmetric encryption.
+    
+
+### `PQC_aead_check`
+
+**Function signature:**
+
+```cpp
+size_t PQC_aead_check(CIPHER_HANDLE ctx, uint32_t mode, uint8_t* buffer, size_t length);
+```
+
+**Purpose**: This function is used to check authentity of data without decrypting it using the specified encryption context and encryption mode.
+
+**Parameters**:
+
+*   `ctx`: Handle of the initialized encryption context.
+    
+*   `mode`: Constant to select the encryption mode. The possible values depend on the selected cipher. For PQC\_CIPHER\_AES, the available mode is PQC\_AES\_M\_GCM.
+    
+*   `buffer` (in/out): Pointer to the data array. The data is decrypted in place within the same buffer.
+    
+*   `length`: Length of the data buffer.
+    
+*   `aad` (in): Pointer to the additional authenticated data array. This data is authenticated, but not decrypted.
+    
+*   `aad_length`: Length of the aad data buffer.    
+
+*   `tag` (in): Pointer to the authentication tag array. Size of tag should equal PQC\_AES\_IVLEN.
+    
+*   `tag length`: Length of the tag buffer.     
+
+The function returns the following values:
+
+*   `PQC_OK`: Indicates that the input data is authentic.
+
+*   `PQC_AUTHENTICATION_FAILURE`: Input is not authentic.
+    
+*   `P_BAD_CONTEXT`: Indicates that the context was not properly initialized, suggesting an issue with the encryption context handle.
+    
+*   `PQC_BAD_LEN`: Indicates that the length of the data does not match the requirements for the selected cipher/mode.
+    
+*   `PQC_NO_IV`: Indicates that an initialization vector is required for the selected cipher/mode, but it was not set.
+    
+*   `PQC_BAD_MODE`: Indicates that the mode parameter provided is invalid.
+    
+*   `PQC_BAD_CIPHER`: Indicates that the selected cipher does not support symmetric encryption.
+
+*** Note *** `PQC_aead_check` do not change initialization vector, so it can be used several times before `PQC_aead_decrypt` without affecting decryption context state. Otherwise, initialization vector is changed by `PQC_aead_decrypt`, so `PQC_aead_check` can not be used after the data is decrypted.  
+
+### `PQC_aead_decrypt`
+
+**Function signature:**
+
+```cpp
+size_t PQC_aead_decrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t* buffer, size_t length);
+```
+
+**Purpose**: This function is used to decrypt and check authentity of data using the specified encryption context and encryption mode.
+
+**Parameters**:
+
+*   `ctx`: Handle of the initialized encryption context.
+    
+*   `mode`: Constant to select the encryption mode. The possible values depend on the selected cipher. For PQC\_CIPHER\_AES, the available mode is PQC\_AES\_M\_GCM.
+    
+*   `buffer` (in/out): Pointer to the data array. The data is decrypted in place within the same buffer.
+    
+*   `length`: Length of the data buffer.
+    
+*   `aad` (in): Pointer to the additional authenticated data array. This data is authenticated, but not decrypted.
+    
+*   `aad_length`: Length of the aad data buffer.    
+
+*   `tag` (in): Pointer to the authentication tag array. Size of tag should equal PQC\_AES\_IVLEN.
+    
+*   `tag length`: Length of the tag buffer.     
+
+The function returns the following values:
+
+*   `PQC_OK`: Indicates that the operation was successful, and the data was decrypted.
+
+*   `PQC_AUTHENTICATION_FAILURE`: Input is not authentic.
+    
+*   `P_BAD_CONTEXT`: Indicates that the context was not properly initialized, suggesting an issue with the encryption context handle.
+    
+*   `PQC_BAD_LEN`: Indicates that the length of the data does not match the requirements for the selected cipher/mode.
+    
+*   `PQC_NO_IV`: Indicates that an initialization vector is required for the selected cipher/mode, but it was not set.
+    
+*   `PQC_BAD_MODE`: Indicates that the mode parameter provided is invalid.
+    
+*   `PQC_BAD_CIPHER`: Indicates that the selected cipher does not support symmetric encryption.
+
+
 ### `PQC_close_context`
 
 **Function signature:**
 
 ```cpp
-int PQC_close_context(CIPHER_HANDLE ctx);
+size_t PQC_close_context(CIPHER_HANDLE ctx);
 ```
 
 **Purpose**: This function is used to release resources associated with an initialized encryption context when it is no longer needed.
@@ -256,4 +391,10 @@ Examples
 
 ```cpp
 {% include examples/aes/aes_ofb_example.cpp %}
+```
+
+### AES GCM
+
+```cpp
+{% include examples/aes/aes_gcm_example.cpp %}
 ```

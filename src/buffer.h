@@ -12,14 +12,22 @@
 template <typename StorageType> class MemoryRange
 {
 public:
+    MemoryRange(const MemoryRange & other) : data_(other.data_), size_(other.size_) {}
     MemoryRange(StorageType * data, size_t size) : data_(data), size_(size) {}
+
+    MemoryRange & operator=(const MemoryRange & other)
+    {
+        data_ = other.data_;
+        size_ = other.size_;
+        return *this;
+    }
 
     StorageType * data() const { return data_; }
     size_t size() const { return size_; }
 
 private:
-    StorageType * const data_;
-    const size_t size_;
+    StorageType * data_;
+    size_t size_;
 };
 
 template <size_t N> class Array
@@ -67,7 +75,7 @@ public:
     size_t size() const { return memory_.size(); }
     const uint8_t * const_data() const { return memory_.data(); }
 
-    uint16_t load_16(size_t index) const
+    uint16_t load_16_le(size_t index) const
     {
         index *= 2;
 #ifndef NDEBUG
@@ -80,7 +88,20 @@ public:
         return (uint16_t)data[index] + ((uint16_t)data[index + 1] << 8);
     }
 
-    uint32_t load_32(size_t index) const
+    uint16_t load_16_be(size_t index) const
+    {
+        index *= 2;
+#ifndef NDEBUG
+        if (index + 1 >= size())
+        {
+            throw std::out_of_range("ConstBufferViewCore::load_16() index out of range");
+        }
+#endif
+        const uint8_t * data = memory_.data();
+        return (uint16_t)data[index + 1] + ((uint16_t)data[index] << 8);
+    }
+
+    uint32_t load_32_le(size_t index) const
     {
         index *= 4;
 #ifndef NDEBUG
@@ -94,10 +115,26 @@ public:
                ((uint32_t)data[index + 3] << 24);
     }
 
-    uint64_t load_64(size_t index) const { return load_64_offset(index << 3); }
+    uint32_t load_32_be(size_t index) const
+    {
+        index *= 4;
+#ifndef NDEBUG
+        if (index + 3 >= size())
+        {
+            throw std::out_of_range("ConstBufferViewCore::load_32() index out of range");
+        }
+#endif
+        const uint8_t * data = memory_.data();
+        return (uint32_t)data[index + 3] + ((uint32_t)data[index + 2] << 8) + ((uint32_t)data[index + 1] << 16) +
+               ((uint32_t)data[index] << 24);
+    }
+
+    uint64_t load_64_le(size_t index) const { return load_64_le_offset(index << 3); }
+
+    uint64_t load_64_be(size_t index) const { return load_64_be_offset(index << 3); }
 
     /// `offset` — byte offset
-    uint64_t load_64_offset(size_t offset) const
+    uint64_t load_64_le_offset(size_t offset) const
     {
 #ifndef NDEBUG
         if (offset + 7 >= size())
@@ -113,10 +150,27 @@ public:
                ((uint64_t)data[offset + 7] << 56);
     }
 
+    /// `offset` — byte offset
+    uint64_t load_64_be_offset(size_t offset) const
+    {
+#ifndef NDEBUG
+        if (offset + 7 >= size())
+        {
+            throw std::out_of_range("ConstBufferViewCore::load_64() offset out of range");
+        }
+#endif
+        const uint8_t * data = memory_.data();
+
+        return (uint64_t)data[offset + 7] + ((uint64_t)data[offset + 6] << 8) + ((uint64_t)data[offset + 5] << 16) +
+               ((uint64_t)data[offset + 4] << 24) + ((uint64_t)data[offset + 3] << 32) +
+               ((uint64_t)data[offset + 2] << 40) + ((uint64_t)data[offset + 1] << 48) +
+               ((uint64_t)data[offset + 0] << 56);
+    }
+
     template <typename... Args> auto split(Args... sizes) const
     {
 #ifndef NDEBUG
-        if ((sizes + ...) != size())
+        if ((size_t)(sizes + ...) != size())
         {
             throw std::out_of_range("BufferViewCore::split() sum of blocks to split does not equal to buffer size");
         }
@@ -137,7 +191,7 @@ private:
     }
 
 protected:
-    const StorageType memory_;
+    StorageType memory_;
 };
 
 class ConstBufferView : public ConstBufferViewCore<MemoryRange<const uint8_t>, ConstBufferView>
@@ -156,6 +210,17 @@ public:
     template <typename T> static ConstBufferView from_single(const T & data)
     {
         return ConstBufferView(&data, sizeof(T));
+    }
+
+    uint8_t operator[](size_t index) const
+    {
+#ifndef NDEBUG
+        if (index >= this->size())
+        {
+            throw std::out_of_range("Buffer::operator [] index out of range");
+        }
+#endif
+        return this->memory_.data()[index];
     }
 };
 
@@ -191,7 +256,7 @@ public:
         memcpy(data(), other.const_data(), this->size());
     }
 
-    void store_16(size_t index, uint16_t value) const
+    void store_16_le(size_t index, uint16_t value) const
     {
         index *= 2;
 #ifndef NDEBUG
@@ -206,7 +271,22 @@ public:
         data[index + 1] = (value >> 0x08) & 0xFF;
     }
 
-    void store_32(size_t index, uint32_t value) const
+    void store_16_be(size_t index, uint16_t value) const
+    {
+        index *= 2;
+#ifndef NDEBUG
+        if (index + 1 >= this->size())
+        {
+            throw std::out_of_range("Buffer::store_16() index out of range");
+        }
+#endif
+        uint8_t * data = const_cast<uint8_t *>(this->memory_.data());
+
+        data[index + 0] = (value >> 0x08) & 0xFF;
+        data[index + 1] = (value >> 0x00) & 0xFF;
+    }
+
+    void store_32_le(size_t index, uint32_t value) const
     {
         index *= 4;
 #ifndef NDEBUG
@@ -222,10 +302,26 @@ public:
         data[index + 3] = (value >> 0x18) & 0xFF;
     }
 
-    void store_64(size_t index, uint64_t value) const { store_64_offset(index << 3, value); }
+    void store_32_be(size_t index, uint32_t value) const
+    {
+        index *= 4;
+#ifndef NDEBUG
+        if (index + 3 >= this->size())
+        {
+            throw std::out_of_range("Buffer::store_32() index out of range");
+        }
+#endif
+        uint8_t * data = const_cast<uint8_t *>(this->memory_.data());
+        data[index + 0] = (value >> 0x18) & 0xFF;
+        data[index + 1] = (value >> 0x10) & 0xFF;
+        data[index + 2] = (value >> 0x08) & 0xFF;
+        data[index + 3] = (value >> 0x00) & 0xFF;
+    }
+
+    void store_64_le(size_t index, uint64_t value) const { store_64_le_offset(index << 3, value); }
 
     /// `offset` — byte offset
-    void store_64_offset(size_t offset, uint64_t value) const
+    void store_64_le_offset(size_t offset, uint64_t value) const
     {
 #ifndef NDEBUG
         if (offset + 7 >= this->size())
@@ -242,6 +338,44 @@ public:
         data[offset + 5] = (value >> 0x28) & 0xFF;
         data[offset + 6] = (value >> 0x30) & 0xFF;
         data[offset + 7] = (value >> 0x38) & 0xFF;
+    }
+
+    void store_64_be(size_t index, uint64_t value) const { store_64_be_offset(index << 3, value); }
+
+    /// `offset` — byte offset
+    void store_64_be_offset(size_t offset, uint64_t value) const
+    {
+#ifndef NDEBUG
+        if (offset + 7 >= this->size())
+        {
+            throw std::out_of_range("Buffer::store_64_offset() offset out of range");
+        }
+#endif
+        uint8_t * data = const_cast<uint8_t *>(this->memory_.data());
+        data[offset + 0] = (value >> 0x38) & 0xFF;
+        data[offset + 1] = (value >> 0x30) & 0xFF;
+        data[offset + 2] = (value >> 0x28) & 0xFF;
+        data[offset + 3] = (value >> 0x20) & 0xFF;
+        data[offset + 4] = (value >> 0x18) & 0xFF;
+        data[offset + 5] = (value >> 0x10) & 0xFF;
+        data[offset + 6] = (value >> 0x08) & 0xFF;
+        data[offset + 7] = (value >> 0x00) & 0xFF;
+    }
+
+    void fill(const uint8_t value) const { memset(data(), value, this->size()); }
+
+    void operator^=(const ConstBufferView & other) const
+    {
+        if (this->size() != other.size())
+        {
+            throw std::out_of_range("BufferViewCore::operator ^=() called for incompatible sizes");
+        }
+
+        uint8_t * data = const_cast<uint8_t *>(this->memory_.data());
+        for (size_t i = 0; i < this->size(); ++i)
+        {
+            data[i] ^= other.const_data()[i];
+        }
     }
 };
 
@@ -292,3 +426,72 @@ private:
         return vec;
     }
 };
+
+
+template <class Buffer> class BlockIterator
+{
+public:
+    BlockIterator(const Buffer & buffer, size_t block_size, size_t pos)
+        : buffer_(buffer), block_size_(block_size), pos_(pos)
+    {
+    }
+
+    bool operator!=(const BlockIterator & other) const { return pos_ != other.pos_; }
+
+    void operator++() { ++pos_; }
+
+    auto operator*() { return buffer_.mid(pos_ * block_size_, block_size_); }
+
+private:
+    const Buffer & buffer_;
+    size_t block_size_;
+    size_t pos_;
+};
+
+template <class Buffer> class BlockArray
+{
+public:
+    BlockArray(const Buffer & buffer, size_t block_size) : buffer_(buffer), block_size_(block_size) {}
+
+    BlockIterator<Buffer> begin() const { return BlockIterator<Buffer>(buffer_, block_size_, 0); }
+    BlockIterator<Buffer> end() const
+    {
+        return BlockIterator<Buffer>(buffer_, block_size_, buffer_.size() / block_size_);
+    }
+
+    bool has_extra() const { return buffer_.size() % block_size_ != 0; }
+
+    auto extra() const
+    {
+        size_t pos = (buffer_.size() / block_size_) * block_size_;
+        return buffer_.mid(pos, buffer_.size() - pos);
+    }
+
+private:
+    Buffer buffer_;
+    size_t block_size_;
+};
+
+template <class Buffer> BlockArray<Buffer> iterate_blocks(const Buffer & buffer, size_t block_size)
+{
+    return BlockArray<Buffer>(buffer, block_size);
+}
+
+template <typename StorageType, class ViewType>
+bool operator==(
+    const ConstBufferViewCore<StorageType, ViewType> & left, const ConstBufferViewCore<StorageType, ViewType> & other
+)
+{
+    if (left.size() != other.size())
+    {
+        return false;
+    }
+    for (size_t i = 0; i < left.size(); ++i)
+    {
+        if (left.const_data()[i] != other.const_data()[i])
+        {
+            return false;
+        }
+    }
+    return true;
+}

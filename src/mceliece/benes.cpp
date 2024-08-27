@@ -63,8 +63,8 @@ void mceliece_8192128_f_apply_benes(const BufferView & permBitSeq, const ConstBu
 
     for (int i = 0; i < 64; i++)
     {
-        permBitSeq_int_v[0][i] = permBitSeq.load_64(i * 2);
-        permBitSeq_int_v[1][i] = permBitSeq.load_64(i * 2 + 1);
+        permBitSeq_int_v[0][i] = permBitSeq.load_64_le(i * 2);
+        permBitSeq_int_v[1][i] = permBitSeq.load_64_le(i * 2 + 1);
     }
 
     crypto_mceliece_transpose_64_x_64(permBitSeq_int_h[0], permBitSeq_int_v[0]);
@@ -74,7 +74,7 @@ void mceliece_8192128_f_apply_benes(const BufferView & permBitSeq, const ConstBu
     {
         for (int i = 0; i < 64; ++i, ++bts_offset)
         {
-            bts_int_v[i] = bts.load_64(bts_offset);
+            bts_int_v[i] = bts.load_64_le(bts_offset);
         }
 
         crypto_mceliece_transpose_64_x_64(bts_int_h, bts_int_v);
@@ -89,7 +89,7 @@ void mceliece_8192128_f_apply_benes(const BufferView & permBitSeq, const ConstBu
     {
         for (int i = 0; i < 64; ++i, ++bts_offset)
         {
-            bts_int_v[i] = bts.load_64(bts_offset);
+            bts_int_v[i] = bts.load_64_le(bts_offset);
         }
 
         in_layer(permBitSeq_int_v, bts_int_v, counter);
@@ -99,7 +99,7 @@ void mceliece_8192128_f_apply_benes(const BufferView & permBitSeq, const ConstBu
     {
         for (int i = 0; i < 64; ++i, ++bts_offset)
         {
-            bts_int_v[i] = bts.load_64(bts_offset);
+            bts_int_v[i] = bts.load_64_le(bts_offset);
         }
 
         in_layer(permBitSeq_int_v, bts_int_v, counter);
@@ -112,7 +112,7 @@ void mceliece_8192128_f_apply_benes(const BufferView & permBitSeq, const ConstBu
     {
         for (int i = 0; i < 64; ++i, ++bts_offset)
         {
-            bts_int_v[i] = bts.load_64(bts_offset);
+            bts_int_v[i] = bts.load_64_le(bts_offset);
         }
 
         crypto_mceliece_transpose_64_x_64(bts_int_h, bts_int_v);
@@ -125,8 +125,8 @@ void mceliece_8192128_f_apply_benes(const BufferView & permBitSeq, const ConstBu
 
     for (int i = 0; i < 64; i++)
     {
-        permBitSeq.store_64(i * 2, permBitSeq_int_v[0][i]);
-        permBitSeq.store_64(i * 2 + 1, permBitSeq_int_v[1][i]);
+        permBitSeq.store_64_le(i * 2, permBitSeq_int_v[0][i]);
+        permBitSeq.store_64_le(i * 2 + 1, permBitSeq_int_v[1][i]);
     }
 }
 

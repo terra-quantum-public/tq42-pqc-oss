@@ -10,6 +10,14 @@ void RSPParser::skip_spaces()
     }
 }
 
+void RSPParser::skip_inline_spaces()
+{
+    while (current() && std::isspace(current()) && current() != '\r' && current() != '\n')
+    {
+        next();
+    }
+}
+
 std::string RSPParser::parse_word()
 {
     std::string word;
@@ -50,13 +58,29 @@ std::string RSPParser::parse_header()
     return header;
 }
 
+RSPValue RSPParser::parse_header_value()
+{
+    if (current() != '[')
+    {
+        throw std::invalid_argument("expected '[' not found");
+    }
+    next();
+    RSPValue value = parse_value();
+    if (current() != ']')
+    {
+        throw std::invalid_argument("expected ']' not found");
+    }
+    next();
+    return value;
+}
+
 RSPValue RSPParser::parse_value()
 {
     std::string key, value;
 
     key = parse_word();
 
-    skip_spaces();
+    skip_inline_spaces();
 
     if (current_ != '=')
     {
@@ -64,11 +88,11 @@ RSPValue RSPParser::parse_value()
     }
     next();
 
-    skip_spaces();
+    skip_inline_spaces();
 
     value = parse_word();
 
-    if (key.length() == 0 || value.length() == 0)
+    if (key.length() == 0)
     {
         throw std::invalid_argument("malformed data string");
     }
@@ -211,6 +235,81 @@ AESRSPDataset AESRSPParser::parse()
             {
                 throw std::invalid_argument("Data outside of ENCRYPT/DECRYPT sections.");
             }
+        }
+
+        skip_spaces();
+    }
+    return dataset;
+}
+
+AESGCMRSPRecord AESGCMRSPParser::parse_block()
+{
+    AESGCMRSPRecord result;
+
+    expect_value("Count");
+    skip_spaces();
+    result.key_ = string2binary(expect_value("Key"));
+    skip_spaces();
+    if (current() == 'I')
+    {
+        result.iv_ = string2binary(expect_value("IV"));
+        skip_spaces();
+    }
+    if (current() == 'P')
+    {
+        result.plaintext_ = string2binary(expect_value("PT"));
+        skip_spaces();
+        result.aad_ = string2binary(expect_value("AAD"));
+        skip_spaces();
+        result.ciphertext_ = string2binary(expect_value("CT"));
+        skip_spaces();
+        result.tag_ = string2binary(expect_value("Tag"));
+    }
+    else
+    {
+        result.ciphertext_ = string2binary(expect_value("CT"));
+        skip_spaces();
+        result.aad_ = string2binary(expect_value("AAD"));
+        skip_spaces();
+        result.tag_ = string2binary(expect_value("Tag"));
+        skip_spaces();
+        if (current() == 'P')
+        {
+            result.plaintext_ = string2binary(expect_value("PT"));
+        }
+        else
+        {
+            if (parse_word() != "FAIL")
+            {
+                throw std::invalid_argument("expected 'PT' or 'FAIL'");
+            }
+            result.fail_ = true;
+        }
+    }
+
+    return result;
+}
+
+AESGCMRSPDataset AESGCMRSPParser::parse()
+{
+    AESGCMRSPDataset dataset;
+
+    skip_spaces();
+
+    while (current() != '\0')
+    {
+        if (current() == '#')
+        {
+            parse_comment();
+        }
+        else if (current() == '[')
+        {
+            parse_header_value();
+        }
+        else
+        {
+            AESGCMRSPRecord record = parse_block();
+            dataset.push_back(record);
         }
 
         skip_spaces();

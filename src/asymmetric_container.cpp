@@ -45,7 +45,7 @@ AsymmetricContainer::AsymmetricContainer(
     data.creation_ts = std::time(nullptr);
 
     // decryption
-    AES cipher(key, iv);
+    AES cipher(ConstBufferView::from_single(*key), ConstBufferView::from_single(*iv));
     BufferView dataBuf = BufferView(container_data, data_size());
     cipher.ofb_xcrypt(dataBuf);
     memcpy(data.KeyBytes.data(), container_data, data.KeyBytes.size());
@@ -89,7 +89,7 @@ void AsymmetricContainer::get_data(uint8_t * destinationData, const pqc_aes_key 
     );
 
     // encryption
-    AES cipher(key, iv);
+    AES cipher(ConstBufferView::from_single(*key), ConstBufferView::from_single(*iv));
     BufferView dataBuf = BufferView(destinationData, data_size());
     cipher.ofb_xcrypt(dataBuf);
 }

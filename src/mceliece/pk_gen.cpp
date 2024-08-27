@@ -104,7 +104,7 @@ static bool columns_mov(ByteMatrix & matrix, int16_t * pi, uint64_t & pivots)
 
     for (size_t i = 0; i < 32; ++i)
     {
-        buf[i] = matrix[row + i].load_64_offset(blockIndx);
+        buf[i] = matrix[row + i].load_64_le_offset(blockIndx);
     }
 
     pivots = 0;
@@ -172,7 +172,7 @@ static bool columns_mov(ByteMatrix & matrix, int16_t * pi, uint64_t & pivots)
 
     for (size_t i = 0; i < PK_NROWS; ++i)
     {
-        uint64_t t = matrix[i].load_64_offset(blockIndx);
+        uint64_t t = matrix[i].load_64_le_offset(blockIndx);
 
         for (size_t j = 0; j < 32; ++j)
         {
@@ -183,7 +183,7 @@ static bool columns_mov(ByteMatrix & matrix, int16_t * pi, uint64_t & pivots)
             t ^= l << j;
         }
 
-        matrix[i].store_64_offset(blockIndx, t);
+        matrix[i].store_64_le_offset(blockIndx, t);
     }
 
     return true;
@@ -206,7 +206,7 @@ bool mceliece_8192128_f_pk_gen(
 
     for (size_t i = 0; i < SYS_T; ++i)
     {
-        gppa[i] = secKey.load_16(i) & GFMASK;
+        gppa[i] = secKey.load_16_le(i) & GFMASK;
     }
 
     for (size_t i = 0; i < 1 << GFBITS; ++i)

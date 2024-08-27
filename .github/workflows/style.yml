@@ -40,17 +40,18 @@ jobs:
                   t = f.read().splitlines()
                 e = r.stdout.splitlines()
                 m = difflib.SequenceMatcher(a=t, b=e)
+                rp = os.path.relpath(path)
                 for tag, i1, i2, j1, j2 in m.get_opcodes():
                   if tag == "insert":
                     expecting = "%0A".join(["```"] + e[j1:j2] + ["```"])
-                    print(f"::error file={os.path.relpath(path)},line={i1 or 1}::Please insert at line {i1+1}:%0A{expecting}")
+                    print(f"::error file={rp},line={i1 or 1}::{rp}:{i1 or 1} Please insert at line {i1+1}:%0A{expecting}")
                     errors += 1
                   elif tag == "replace":
                     expecting = "%0A".join(["```"] + e[j1:j2] + ["```"])
-                    print(f"::error file={os.path.relpath(path)},line={i1+1},endLine={i2}::Please replace line(s) {i1+1}-{i2} with:%0A{expecting}")
+                    print(f"::error file={rp},line={i1+1},endLine={i2}::{rp}:{i1+1} Please replace line(s) {i1+1}-{i2} with:%0A{expecting}")
                     errors += 1
                   elif tag == "delete":
-                    print(f"::error file={os.path.relpath(path)},line={i1+1},endLine={i2}::Please remove line(s) {i1+1}-{i2}")
+                    print(f"::error file={rp},line={i1+1},endLine={i2}::{rp}:{i1+1} Please remove line(s) {i1+1}-{i2}")
                     errors += 1
 
           sys.exit(int(bool(errors)))

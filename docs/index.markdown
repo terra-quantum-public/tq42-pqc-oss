@@ -55,7 +55,7 @@ Hash Function:
 
 Symmetric Encryption:
 
--   [AES-256](classic_quantum_resistant_algs/aes.html) (modes: ECB, CBC, OFB, CTR) 
+-   [AES-256](classic_quantum_resistant_algs/aes.html) (modes: ECB, CBC, OFB, CTR, GCM) 
 
 ### Post-Quantum Algorithms
 

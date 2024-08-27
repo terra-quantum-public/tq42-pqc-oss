@@ -114,7 +114,7 @@ TEST(ML_KEM, DERIVE)
 }
 
 
-TEST(ML_KEM, ACVP_KAT_FROM_JSON)
+TEST(ML_KEM, KAT)
 {
     static const std::filesystem::path current(__FILE__);
     static const auto base_path = current.parent_path() / "mlkem";
@@ -180,7 +180,7 @@ TEST(ML_KEM, ACVP_KAT_FROM_JSON)
     std::ifstream keygen_responses(keygen_responses_path);
 
     std::getline(keygen_responses, expected);
-    EXPECT_TRUE(expected == "# ML-KEM-1024-FROM-JSON");
+    EXPECT_TRUE(expected == "# ML-KEM-KAT");
 
     for (size_t i = 0; i < 25; ++i)
     {
@@ -193,10 +193,10 @@ TEST(ML_KEM, ACVP_KAT_FROM_JSON)
         EXPECT_TRUE(expected == ("count = " + std::to_string(i)));
 
         std::getline(keygen_responses, expected);
-        Hex::to_uint_8_t(expected, "d = ", entropy.data(), 32);
+        Hex::to_uint_8_t(expected, "z = ", entropy.data() + 32, 32);
 
         std::getline(keygen_responses, expected);
-        Hex::to_uint_8_t(expected, "z = ", entropy.data() + 32, 32);
+        Hex::to_uint_8_t(expected, "d = ", entropy.data(), 32);
 
         std::getline(keygen_responses, expected);
         Hex::to_uint_8_t(expected, "ek = ", kat_pk.data(), kat_pk.size());
@@ -212,7 +212,7 @@ TEST(ML_KEM, ACVP_KAT_FROM_JSON)
     std::ifstream encap_responses(encap_responses_path);
 
     std::getline(encap_responses, expected);
-    EXPECT_TRUE(expected == "# ML-KEM-1024-FROM-JSON");
+    EXPECT_TRUE(expected == "# ML-KEM-KAT");
 
     for (size_t i = 0; i < 25; ++i)
     {
@@ -226,9 +226,6 @@ TEST(ML_KEM, ACVP_KAT_FROM_JSON)
 
         std::getline(encap_responses, expected);
         Hex::to_uint_8_t(expected, "ek = ", kat_pk.data(), kat_pk.size());
-
-        std::getline(encap_responses, expected);
-        Hex::to_uint_8_t(expected, "dk = ", kat_sk.data(), kat_sk.size());
 
         std::getline(encap_responses, expected);
         Hex::to_uint_8_t(expected, "c = ", kat_ct.data(), kat_ct.size());
@@ -253,13 +250,10 @@ TEST(ML_KEM, ACVP_KAT_FROM_JSON)
     std::ifstream decap_responses(decap_responses_path);
 
     std::getline(decap_responses, expected);
-    EXPECT_TRUE(expected == "# ML-KEM-1024-FROM-JSON");
+    EXPECT_TRUE(expected == "# ML-KEM-KAT");
 
     std::getline(decap_responses, expected);
     EXPECT_TRUE(expected == "");
-
-    std::getline(decap_responses, expected);
-    Hex::to_uint_8_t(expected, "ek = ", kat_pk.data(), kat_pk.size());
 
     std::getline(decap_responses, expected);
     Hex::to_uint_8_t(expected, "dk = ", kat_sk.data(), kat_sk.size());

@@ -23,22 +23,22 @@
 #define PQC_ML_DSA_SIGNATURE_LEN 4627
 #endif
 
-struct pqc_ml_dsa_private_key
+typedef struct pqc_ml_dsa_private_key
 {
     uint8_t private_key[PQC_ML_DSA_PRIVATE_KEY_LEN];
-};
+} pqc_ml_dsa_private_key;
 
-struct pqc_ml_dsa_public_key
+typedef struct pqc_ml_dsa_public_key
 {
     uint8_t public_key[PQC_ML_DSA_PUBLIC_KEY_LEN];
-};
+} pqc_ml_dsa_public_key;
 
-struct pqc_ml_dsa_signature
+typedef struct pqc_ml_dsa_signature
 {
     uint8_t signature[PQC_ML_DSA_SIGNATURE_LEN];
-};
+} pqc_ml_dsa_signature;
 
-struct pqc_ml_dsa_context
+typedef struct pqc_ml_dsa_context
 {
     pqc_ml_dsa_private_key private_key;
-};
+} pqc_ml_dsa_context;

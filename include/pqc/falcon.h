@@ -43,22 +43,22 @@
 #define PQC_FALCON_PUBLIC_KEYLEN PQC_FALCON_PUBKEY_SIZE(10)
 #define PQC_FALCON_SIGNATURE_LEN PQC_FALCON_SIG_PADDED_SIZE(10)
 
-struct pqc_falcon_private_key
+typedef struct pqc_falcon_private_key
 {
     uint8_t private_key[PQC_FALCON_PRIVATE_KEYLEN];
-};
+} pqc_falcon_private_key;
 
-struct pqc_falcon_public_key
+typedef struct pqc_falcon_public_key
 {
     uint8_t public_key[PQC_FALCON_PUBLIC_KEYLEN];
-};
+} pqc_falcon_public_key;
 
-struct pqc_falcon_signature
+typedef struct pqc_falcon_signature
 {
     uint8_t signature[PQC_FALCON_SIGNATURE_LEN];
-};
+} pqc_falcon_signature;
 
-struct pqc_falcon_context
+typedef struct pqc_falcon_context
 {
     pqc_falcon_private_key private_key;
-};
+} pqc_falcon_context;

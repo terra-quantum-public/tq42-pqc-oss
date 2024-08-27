@@ -187,7 +187,6 @@ size_t PQC_API PQC_set_iv(CIPHER_HANDLE ctx, const uint8_t * iv, size_t iv_len)
 
 size_t PQC_API PQC_encrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t * buffer, size_t length)
 {
-
     CHECK_CONTEXT(ctx)
 
     try
@@ -238,6 +237,116 @@ size_t PQC_API PQC_decrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t * buffer, s
     catch (BadMode)
     {
         return PQC_BAD_MODE;
+    }
+}
+
+size_t PQC_API PQC_aead_encrypt(
+    CIPHER_HANDLE ctx, uint32_t mode, uint8_t * buffer, size_t length, const uint8_t * aad, size_t aad_length,
+    uint8_t * auth_tag, size_t auth_tag_len
+)
+{
+    CHECK_CONTEXT(ctx)
+
+    try
+    {
+        to_symmetric(contexts[ctx])
+            ->aead_encrypt(
+                mode, BufferView(buffer, length), ConstBufferView(aad, aad_length), BufferView(auth_tag, auth_tag_len)
+            );
+        return PQC_OK;
+    }
+    catch (UnsupportedOperation)
+    {
+        return PQC_BAD_CIPHER;
+    }
+    catch (BadLength)
+    {
+        return PQC_BAD_LEN;
+    }
+    catch (IVNotSet)
+    {
+        return PQC_NO_IV;
+    }
+    catch (BadMode)
+    {
+        return PQC_BAD_MODE;
+    }
+}
+
+size_t PQC_API PQC_aead_decrypt(
+    CIPHER_HANDLE ctx, uint32_t mode, uint8_t * buffer, size_t length, const uint8_t * aad, size_t aad_length,
+    const uint8_t * auth_tag, size_t auth_tag_len
+)
+{
+    CHECK_CONTEXT(ctx)
+
+    try
+    {
+        to_symmetric(contexts[ctx])
+            ->aead_decrypt(
+                mode, BufferView(buffer, length), ConstBufferView(aad, aad_length),
+                ConstBufferView(auth_tag, auth_tag_len)
+            );
+        return PQC_OK;
+    }
+    catch (UnsupportedOperation)
+    {
+        return PQC_BAD_CIPHER;
+    }
+    catch (BadLength)
+    {
+        return PQC_BAD_LEN;
+    }
+    catch (IVNotSet)
+    {
+        return PQC_NO_IV;
+    }
+    catch (BadMode)
+    {
+        return PQC_BAD_MODE;
+    }
+    catch (AEADVerificationError)
+    {
+        return PQC_AUTHENTICATION_FAILURE;
+    }
+}
+
+size_t PQC_API PQC_aead_check(
+    CIPHER_HANDLE ctx, uint32_t mode, uint8_t * buffer, size_t length, const uint8_t * aad, size_t aad_length,
+    const uint8_t * auth_tag, size_t auth_tag_len
+)
+{
+    try
+    {
+        if (to_symmetric(contexts[ctx])
+                ->aead_check(
+                    mode, BufferView(buffer, length), ConstBufferView(aad, aad_length),
+                    ConstBufferView(auth_tag, auth_tag_len)
+                ))
+        {
+            return PQC_OK;
+        }
+        return PQC_AUTHENTICATION_FAILURE;
+    }
+    catch (UnsupportedOperation)
+    {
+        return PQC_BAD_CIPHER;
+    }
+    catch (BadLength)
+    {
+        return PQC_BAD_LEN;
+    }
+    catch (IVNotSet)
+    {
+        return PQC_NO_IV;
+    }
+    catch (BadMode)
+    {
+        return PQC_BAD_MODE;
+    }
+    catch (AEADVerificationError)
+    {
+        return PQC_AUTHENTICATION_FAILURE;
     }
 }
 

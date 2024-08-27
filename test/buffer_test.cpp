@@ -4,7 +4,6 @@
 
 #include <buffer.h>
 
-
 TEST(BUFFER, CONST_BUFFER_VIEW_ACCESS_DATA)
 {
     std::array<uint8_t, 16> data = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF};
@@ -15,9 +14,9 @@ TEST(BUFFER, CONST_BUFFER_VIEW_ACCESS_DATA)
     EXPECT_EQ(buffer.size(), data.size());
     EXPECT_EQ(buffer.const_data(), data.data());
 
-    EXPECT_EQ(buffer.load_16(1), 0x0302);
-    EXPECT_EQ(buffer.load_32(1), 0x07060504u);
-    EXPECT_EQ(buffer.load_64(1), 0x0F0E0D0C0B0A0908ull);
+    EXPECT_EQ(buffer.load_16_le(1), 0x0302);
+    EXPECT_EQ(buffer.load_32_le(1), 0x07060504u);
+    EXPECT_EQ(buffer.load_64_le(1), 0x0F0E0D0C0B0A0908ull);
 }
 
 TEST(BUFFER, CONST_BUFFER_VIEW_MID)
@@ -29,12 +28,12 @@ TEST(BUFFER, CONST_BUFFER_VIEW_MID)
     ConstBufferView first = buffer.mid(0, 4);
     EXPECT_EQ(first.size(), 4);
     EXPECT_EQ(first.const_data(), data.data());
-    EXPECT_EQ(first.load_16(0), 0x0100);
+    EXPECT_EQ(first.load_16_le(0), 0x0100);
 
     ConstBufferView second = buffer.mid(4, 4);
     EXPECT_EQ(second.size(), 4);
     EXPECT_EQ(second.const_data(), data.data() + 4);
-    EXPECT_EQ(second.load_16(0), 0x0504);
+    EXPECT_EQ(second.load_16_le(0), 0x0504);
 
     ConstBufferView till_end = buffer.mid(4, std::nullopt);
     EXPECT_EQ(till_end.size(), 4);
@@ -50,13 +49,13 @@ TEST(BUFFER, CONST_BUFFER_VIEW_SPLIT)
     auto [part1, part2, part3] = buffer.split(2u, 2u, 4u);
 
     EXPECT_EQ(part1.size(), 2);
-    EXPECT_EQ(part1.load_16(0), 0x0100);
+    EXPECT_EQ(part1.load_16_le(0), 0x0100);
 
     EXPECT_EQ(part2.size(), 2);
-    EXPECT_EQ(part2.load_16(0), 0x0302);
+    EXPECT_EQ(part2.load_16_le(0), 0x0302);
 
     EXPECT_EQ(part3.size(), 4);
-    EXPECT_EQ(part3.load_32(0), 0x07060504u);
+    EXPECT_EQ(part3.load_32_le(0), 0x07060504u);
 }
 
 
@@ -76,9 +75,9 @@ TEST(BUFFER, BUFFER_VIEW_ACCESS_DATA)
         EXPECT_EQ(buffer[i], data[i]);
     }
 
-    EXPECT_EQ(buffer.load_16(1), 0x0302);
-    EXPECT_EQ(buffer.load_32(1), 0x07060504u);
-    EXPECT_EQ(buffer.load_64(1), 0x0F0E0D0C0B0A0908ull);
+    EXPECT_EQ(buffer.load_16_le(1), 0x0302);
+    EXPECT_EQ(buffer.load_32_le(1), 0x07060504u);
+    EXPECT_EQ(buffer.load_64_le(1), 0x0F0E0D0C0B0A0908ull);
 }
 
 TEST(BUFFER, BUFFER_VIEW_MID)
@@ -90,12 +89,12 @@ TEST(BUFFER, BUFFER_VIEW_MID)
     BufferView first = buffer.mid(0, 4);
     EXPECT_EQ(first.size(), 4);
     EXPECT_EQ(first.const_data(), data.data());
-    EXPECT_EQ(first.load_16(0), 0x0100);
+    EXPECT_EQ(first.load_16_le(0), 0x0100);
 
     BufferView second = buffer.mid(4, 4);
     EXPECT_EQ(second.size(), 4);
     EXPECT_EQ(second.const_data(), data.data() + 4);
-    EXPECT_EQ(second.load_16(0), 0x0504);
+    EXPECT_EQ(second.load_16_le(0), 0x0504);
 
     BufferView till_end = buffer.mid(4, std::nullopt);
     EXPECT_EQ(till_end.size(), 4);
@@ -109,14 +108,14 @@ TEST(BUFFER, BUFFER_VIEW_STORE_DATA)
     BufferView buffer = data;
 
 
-    buffer.store_16(1, 0x0302);
+    buffer.store_16_le(1, 0x0302);
 
     {
         std::array<uint8_t, 16> expected({0, 0, 2, 3});
         EXPECT_EQ(data, expected);
     }
 
-    buffer.store_32(1, 0x07060504u);
+    buffer.store_32_le(1, 0x07060504u);
 
     {
         std::array<uint8_t, 16> expected({0, 0, 2, 3, 4, 5, 6, 7});
@@ -124,7 +123,7 @@ TEST(BUFFER, BUFFER_VIEW_STORE_DATA)
     }
 
 
-    buffer.store_64(1, 0x0F0E0D0C0B0A0908ull);
+    buffer.store_64_le(1, 0x0F0E0D0C0B0A0908ull);
 
     {
         std::array<uint8_t, 16> expected({0, 0, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF});
@@ -151,13 +150,13 @@ TEST(BUFFER, BUFFER_VIEW_SPLIT)
     auto [part1, part2, part3] = buffer.split(2u, 2u, 4u);
 
     EXPECT_EQ(part1.size(), 2);
-    EXPECT_EQ(part1.load_16(0), 0x0100);
+    EXPECT_EQ(part1.load_16_le(0), 0x0100);
 
     EXPECT_EQ(part2.size(), 2);
-    EXPECT_EQ(part2.load_16(0), 0x0302);
+    EXPECT_EQ(part2.load_16_le(0), 0x0302);
 
     EXPECT_EQ(part3.size(), 4);
-    EXPECT_EQ(part3.load_32(0), 0x07060504u);
+    EXPECT_EQ(part3.load_32_le(0), 0x07060504u);
 }
 
 
@@ -178,9 +177,9 @@ TEST(BUFFER, STACK_BUFFER_BUFFER_ACCESS_DATA)
         EXPECT_EQ(buffer[i], i);
     }
 
-    EXPECT_EQ(buffer.load_16(1), 0x0302);
-    EXPECT_EQ(buffer.load_32(1), 0x07060504u);
-    EXPECT_EQ(buffer.load_64(1), 0x0F0E0D0C0B0A0908ull);
+    EXPECT_EQ(buffer.load_16_le(1), 0x0302);
+    EXPECT_EQ(buffer.load_32_le(1), 0x07060504u);
+    EXPECT_EQ(buffer.load_64_le(1), 0x0F0E0D0C0B0A0908ull);
 }
 
 
@@ -188,17 +187,17 @@ TEST(BUFFER, STACK_BUFFER_BUFFER_STORE_DATA)
 {
     StackBuffer<16> buffer;
 
-    buffer.store_16(1, 0x0302);
+    buffer.store_16_le(1, 0x0302);
 
-    EXPECT_EQ(buffer.load_16(1), 0x0302);
+    EXPECT_EQ(buffer.load_16_le(1), 0x0302);
 
-    buffer.store_32(1, 0x07060504u);
+    buffer.store_32_le(1, 0x07060504u);
 
-    EXPECT_EQ(buffer.load_32(1), 0x07060504u);
+    EXPECT_EQ(buffer.load_32_le(1), 0x07060504u);
 
-    buffer.store_64(1, 0x0F0E0D0C0B0A0908ull);
+    buffer.store_64_le(1, 0x0F0E0D0C0B0A0908ull);
 
-    EXPECT_EQ(buffer.load_64(1), 0x0F0E0D0C0B0A0908ull);
+    EXPECT_EQ(buffer.load_64_le(1), 0x0F0E0D0C0B0A0908ull);
 
     for (size_t i = 0; i < buffer.size(); ++i)
     {
@@ -217,15 +216,15 @@ TEST(BUFFER, STACK_BUFFER_BUFFER_MID)
 
     BufferView first = buffer.mid(0, 4);
     EXPECT_EQ(first.size(), 4);
-    EXPECT_EQ(first.load_16(0), 0x0100);
+    EXPECT_EQ(first.load_16_le(0), 0x0100);
 
     BufferView second = buffer.mid(4, 4);
     EXPECT_EQ(second.size(), 4);
-    EXPECT_EQ(second.load_16(0), 0x0504);
+    EXPECT_EQ(second.load_16_le(0), 0x0504);
 
     BufferView till_end = buffer.mid(4, std::nullopt);
     EXPECT_EQ(till_end.size(), 4);
-    EXPECT_EQ(second.load_16(0), 0x0504);
+    EXPECT_EQ(second.load_16_le(0), 0x0504);
 }
 
 TEST(BUFFER, STACK_BUFFER_INITIALIZER_LIST_TOO_LONG)
@@ -248,9 +247,9 @@ TEST(BUFFER, STACK_BUFFER_INITIALIZER_LIST_SHORT)
 {
     StackBuffer<6> buffer{0, 1, 2, 3};
 
-    EXPECT_EQ(buffer.load_16(0), 0x0100);
-    EXPECT_EQ(buffer.load_16(1), 0x0302);
-    EXPECT_EQ(buffer.load_16(2), 0x0000);
+    EXPECT_EQ(buffer.load_16_le(0), 0x0100);
+    EXPECT_EQ(buffer.load_16_le(1), 0x0302);
+    EXPECT_EQ(buffer.load_16_le(2), 0x0000);
 }
 
 TEST(BUFFER, STACK_BUFFER_SPLIT)
@@ -260,13 +259,13 @@ TEST(BUFFER, STACK_BUFFER_SPLIT)
     auto [part1, part2, part3] = buffer.split(2u, 2u, 4u);
 
     EXPECT_EQ(part1.size(), 2);
-    EXPECT_EQ(part1.load_16(0), 0x0100);
+    EXPECT_EQ(part1.load_16_le(0), 0x0100);
 
     EXPECT_EQ(part2.size(), 2);
-    EXPECT_EQ(part2.load_16(0), 0x0302);
+    EXPECT_EQ(part2.load_16_le(0), 0x0302);
 
     EXPECT_EQ(part3.size(), 4);
-    EXPECT_EQ(part3.load_32(0), 0x07060504u);
+    EXPECT_EQ(part3.load_32_le(0), 0x07060504u);
 }
 
 TEST(BUFFER, HEAP_BUFFER_BUFFER_ACCESS_DATA)
@@ -286,9 +285,9 @@ TEST(BUFFER, HEAP_BUFFER_BUFFER_ACCESS_DATA)
         EXPECT_EQ(buffer[i], i);
     }
 
-    EXPECT_EQ(buffer.load_16(1), 0x0302);
-    EXPECT_EQ(buffer.load_32(1), 0x07060504u);
-    EXPECT_EQ(buffer.load_64(1), 0x0F0E0D0C0B0A0908ull);
+    EXPECT_EQ(buffer.load_16_le(1), 0x0302);
+    EXPECT_EQ(buffer.load_32_le(1), 0x07060504u);
+    EXPECT_EQ(buffer.load_64_le(1), 0x0F0E0D0C0B0A0908ull);
 }
 
 
@@ -296,17 +295,17 @@ TEST(BUFFER, HEAP_BUFFER_BUFFER_STORE_DATA)
 {
     HeapBuffer<16> buffer;
 
-    buffer.store_16(1, 0x0302);
+    buffer.store_16_le(1, 0x0302);
 
-    EXPECT_EQ(buffer.load_16(1), 0x0302);
+    EXPECT_EQ(buffer.load_16_le(1), 0x0302);
 
-    buffer.store_32(1, 0x07060504u);
+    buffer.store_32_le(1, 0x07060504u);
 
-    EXPECT_EQ(buffer.load_32(1), 0x07060504u);
+    EXPECT_EQ(buffer.load_32_le(1), 0x07060504u);
 
-    buffer.store_64(1, 0x0F0E0D0C0B0A0908ull);
+    buffer.store_64_le(1, 0x0F0E0D0C0B0A0908ull);
 
-    EXPECT_EQ(buffer.load_64(1), 0x0F0E0D0C0B0A0908ull);
+    EXPECT_EQ(buffer.load_64_le(1), 0x0F0E0D0C0B0A0908ull);
 
     for (size_t i = 0; i < buffer.size(); ++i)
     {
@@ -325,15 +324,15 @@ TEST(BUFFER, HEAP_BUFFER_BUFFER_MID)
 
     BufferView first = buffer.mid(0, 4);
     EXPECT_EQ(first.size(), 4);
-    EXPECT_EQ(first.load_16(0), 0x0100);
+    EXPECT_EQ(first.load_16_le(0), 0x0100);
 
     BufferView second = buffer.mid(4, 4);
     EXPECT_EQ(second.size(), 4);
-    EXPECT_EQ(second.load_16(0), 0x0504);
+    EXPECT_EQ(second.load_16_le(0), 0x0504);
 
     BufferView till_end = buffer.mid(4, std::nullopt);
     EXPECT_EQ(till_end.size(), 4);
-    EXPECT_EQ(second.load_16(0), 0x0504);
+    EXPECT_EQ(second.load_16_le(0), 0x0504);
 }
 
 TEST(BUFFER, HEAP_BUFFER_INITIALIZER_LIST_TOO_LONG)
@@ -356,9 +355,9 @@ TEST(BUFFER, HEAP_BUFFER_INITIALIZER_LIST_SHORT)
 {
     HeapBuffer<6> buffer{0, 1, 2, 3};
 
-    EXPECT_EQ(buffer.load_16(0), 0x0100);
-    EXPECT_EQ(buffer.load_16(1), 0x0302);
-    EXPECT_EQ(buffer.load_16(2), 0x0000);
+    EXPECT_EQ(buffer.load_16_le(0), 0x0100);
+    EXPECT_EQ(buffer.load_16_le(1), 0x0302);
+    EXPECT_EQ(buffer.load_16_le(2), 0x0000);
 }
 
 TEST(BUFFER, HEAP_BUFFER_SPLIT)
@@ -368,11 +367,80 @@ TEST(BUFFER, HEAP_BUFFER_SPLIT)
     auto [part1, part2, part3] = buffer.split(2u, 2u, 4u);
 
     EXPECT_EQ(part1.size(), 2);
-    EXPECT_EQ(part1.load_16(0), 0x0100);
+    EXPECT_EQ(part1.load_16_le(0), 0x0100);
 
     EXPECT_EQ(part2.size(), 2);
-    EXPECT_EQ(part2.load_16(0), 0x0302);
+    EXPECT_EQ(part2.load_16_le(0), 0x0302);
 
     EXPECT_EQ(part3.size(), 4);
-    EXPECT_EQ(part3.load_32(0), 0x07060504u);
+    EXPECT_EQ(part3.load_32_le(0), 0x07060504u);
+}
+
+TEST(BUFFER, HEAP_BUFFER_XOR_WITH)
+{
+    HeapBuffer<4> buffer{0x00, 0xFF, 0xFF, 0x03};
+    HeapBuffer<4> other{0xFF, 0xFF, 0x00, 0xF1};
+
+    buffer ^= other;
+
+    HeapBuffer<4> expected{0xFF, 0x00, 0xFF, 0xF2};
+
+    EXPECT_EQ(buffer, expected);
+}
+
+TEST(BUFFER, ITERATE_BLOCKS_BUFFER)
+{
+    HeapBuffer<4> buffer{1, 2, 3, 4};
+
+    int sum = 0;
+
+    for (BufferView part : iterate_blocks(buffer, 2))
+    {
+        EXPECT_EQ(part.size(), 2);
+        sum += part[0] + part[1];
+    }
+
+    EXPECT_EQ(sum, 1 + 2 + 3 + 4);
+}
+
+TEST(BUFFER, ITERATE_BLOCKS_CONSTBUFFER)
+{
+    HeapBuffer<4> buffer{1, 2, 3, 4};
+
+    int sum = 0;
+
+    for (ConstBufferView part : iterate_blocks(ConstBufferView(buffer), 2))
+    {
+        EXPECT_EQ(part.size(), 2);
+        sum += part.const_data()[0] + part.const_data()[1];
+    }
+
+    EXPECT_EQ(sum, 1 + 2 + 3 + 4);
+}
+
+
+TEST(BUFFER, ITERATE_BLOCKS_CONSTBUFFER_EXTRA)
+{
+    HeapBuffer<5> buffer{1, 2, 3, 4, 5};
+
+    int sum = 0;
+    int count = 0;
+
+    auto blocks = iterate_blocks(ConstBufferView(buffer), 2);
+
+    for (ConstBufferView part : blocks)
+    {
+        EXPECT_EQ(part.size(), 2);
+        sum += part.const_data()[0] + part.const_data()[1];
+        ++count;
+    }
+
+    EXPECT_EQ(sum, 1 + 2 + 3 + 4);
+    EXPECT_EQ(count, 2);
+
+    EXPECT_TRUE(blocks.has_extra());
+
+    std::vector<uint8_t> expected_extra{5};
+
+    EXPECT_EQ(ConstBufferView(blocks.extra()), ConstBufferView(expected_extra));
 }

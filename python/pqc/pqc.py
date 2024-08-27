@@ -23,7 +23,7 @@ PQC_BAD_SIGNATURE = 6
 PQC_CONTAINER_DEPLETED = 7
 PQC_IO_ERROR = 8
 PQC_BAD_CIPHER = 0xFFFFFFFFFFFFFFFF
-PQC_NO_AUT_TAG = 9
+PQC_AUTHENTICATION_FAILURE = 9
 PQC_CONTAINER_EXPIRED = 11
 
 
@@ -79,7 +79,7 @@ class PQBadCipher(PQException):
     pass
 
 
-class PQNoAutTag(PQException):
+class PQAuthenticationFailure(PQException):
     pass
 
 
@@ -110,8 +110,8 @@ def _check_return_code(retcode):
         raise PQIOError()
     if retcode == PQC_BAD_CIPHER:
         raise PQBadCipher()
-    if retcode == PQC_NO_AUT_TAG:
-        raise PQNoAutTag()
+    if retcode == PQC_AUTHENTICATION_FAILURE:
+        raise PQAuthenticationFailure()
     raise PQUnknownError()
 
 
@@ -138,6 +138,7 @@ PQC_LENGTH_SHARED = 6
 PQC_AES_M_CBC = 2
 PQC_AES_M_ECB = 3
 PQC_AES_M_OFB = 4
+PQC_AES_M_GCM = 5
 PQC_AES_M_CTR = 6
 
 PQC_AES_BLOCKLEN = 16
@@ -265,6 +266,90 @@ def PQC_decrypt(ctx, mode, buffer):
     return bytes(buffer_ptr)
 
 
+pqc_lib.PQC_aead_encrypt.argtypes = [
+    CIPHER_HANDLE, 
+    ctypes.c_uint32, 
+    ctypes.POINTER(ctypes.c_uint8), 
+    ctypes.c_size_t, 
+    ctypes.POINTER(ctypes.c_uint8), 
+    ctypes.c_size_t, 
+    ctypes.POINTER(ctypes.c_uint8), 
+    ctypes.c_size_t
+]
+pqc_lib.PQC_aead_encrypt.restype = ctypes.c_int
+
+
+def PQC_aead_encrypt(ctx, mode, buffer, aad):
+    length = len(buffer)
+    buffer_ptr = (ctypes.c_uint8 * length)(*buffer)
+    
+    aad_length = len(aad)
+    aad_ptr = (ctypes.c_uint8 * aad_length)(*aad)
+    
+    tag_length = PQC_AES_IVLEN
+    tag_ptr = (ctypes.c_uint8 * tag_length)()
+    
+    result = pqc_lib.PQC_aead_encrypt(ctx, mode, buffer_ptr, length, aad_ptr, aad_length, tag_ptr, tag_length)
+    _check_return_code(result)
+    return bytes(buffer_ptr), bytes(tag_ptr)
+    
+
+pqc_lib.PQC_aead_decrypt.argtypes = [
+    CIPHER_HANDLE, 
+    ctypes.c_uint32, 
+    ctypes.POINTER(ctypes.c_uint8), 
+    ctypes.c_size_t, 
+    ctypes.POINTER(ctypes.c_uint8), 
+    ctypes.c_size_t, 
+    ctypes.POINTER(ctypes.c_uint8), 
+    ctypes.c_size_t
+]
+pqc_lib.PQC_aead_decrypt.restype = ctypes.c_int
+
+
+def PQC_aead_decrypt(ctx, mode, buffer, aad, tag):
+    length = len(buffer)
+    buffer_ptr = (ctypes.c_uint8 * length)(*buffer)
+    
+    aad_length = len(aad)
+    aad_ptr = (ctypes.c_uint8 * aad_length)(*aad)
+    
+    tag_length = PQC_AES_IVLEN
+    tag_ptr = (ctypes.c_uint8 * tag_length)(*tag)
+    
+    result = pqc_lib.PQC_aead_encrypt(ctx, mode, buffer_ptr, length, aad_ptr, aad_length, tag_ptr, tag_length)
+    _check_return_code(result)
+    return bytes(buffer_ptr)
+        
+pqc_lib.PQC_aead_check.argtypes = [
+    CIPHER_HANDLE, 
+    ctypes.c_uint32, 
+    ctypes.POINTER(ctypes.c_uint8), 
+    ctypes.c_size_t, 
+    ctypes.POINTER(ctypes.c_uint8), 
+    ctypes.c_size_t, 
+    ctypes.POINTER(ctypes.c_uint8), 
+    ctypes.c_size_t
+]
+pqc_lib.PQC_aead_check.restype = ctypes.c_int
+
+def PQC_aead_check(ctx, mode, buffer, aad, tag):
+    length = len(buffer)
+    buffer_ptr = (ctypes.c_uint8 * length)(*buffer)
+    
+    aad_length = len(aad)
+    aad_ptr = (ctypes.c_uint8 * aad_length)(*aad)
+    
+    tag_length = PQC_AES_IVLEN
+    tag_ptr = (ctypes.c_uint8 * tag_length)(*tag)
+    
+    result = pqc_lib.PQC_aead_check(ctx, mode, buffer_ptr, length, aad_ptr, aad_length, tag_ptr, tag_length)
+    if result == PQC_AUTHENTICATION_FAILURE:
+        return False
+    _check_return_code(result)
+    return True    
+ 
+    
 pqc_lib.PQC_kem_encode_secret.argtypes = [
     ctypes.c_uint32,
     ctypes.POINTER(ctypes.c_uint8),
