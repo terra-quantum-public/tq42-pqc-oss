@@ -14,6 +14,23 @@ This open-source C++ library offers a unified API for both post-quantum (PQ) and
 
 The library will expand to include support for additional languages (e.g., Python, iOS, Android), additional post-quantum algorithms, and upgrade options, like the ability to purchase quantum keys generated from Terra Quantum's proprietary Single Photon Quantum Random Number Generator (QRNG), which is designed and implemented according to the latest NIST standard (SP 800-90B) and certified by METAS.
 
+# CAVP Certificates
+
+The TQ42 Cryptography implementations of the Post-Quantum algorithms ML-KEM, ML-DSA, and SLH-DSA, comply with the latest NIST standards (FIPS 203, 204, and 205). These algorithms have also been validated through the NIST Cryptographic Algorithm Validation Program (CAVP). For further details, please visit the NIST CAVP [webpage](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/details?product=18351).
+
+The validation process spans multiple operating systems and hardware configurations, including:
+
+- Red Hat 9.4 
+- Ubuntu 24.04 
+- Windows 11 
+- Windows 2022 
+- IOS 17.5.1
+- Android 14
+
+# Advanced Quantum Security
+
+Terra Quantum offers advanced quantum security products, including the Terra Quantum Secure Network (TQSN), a novel solution for organizations looking for full security via Quantum Key Distribution (QKD), a revolutionary technology that leverages the quantum mechanical properties of light and allows for the distribution of cryptographic keys with absolute security, making decryption impossible. Terra Quantum's patented Secure Network solution (TQSN) works well over long distances with high bit rates. It is the world's first scalable, zero-trust Secure Network for global communications. Visit [terraquantum.swiss](https://terraquantum.swiss) to learn more, or contact us at info@terraquantum.swiss.
+
 # TQ42 Cryptography Features
 
 ## Included Features
@@ -29,7 +46,7 @@ Hash Function:
 
 Symmetric Encryption:
 
--   [AES-256](https://terra-quantum-public.github.io/tq42-pqc-oss/classic_quantum_resistant_algs/aes.html) (modes: ECB, CBC, OFB, CTR) 
+-   [AES-256](https://terra-quantum-public.github.io/tq42-pqc-oss/classic_quantum_resistant_algs/aes.html) (modes: GCM, ECB, CBC, OFB, CTR) 
 
 ### Post-Quantum Algorithms
 
@@ -50,14 +67,6 @@ Digital Signature:
 -   [Key Containers](https://terra-quantum-public.github.io/tq42-pqc-oss/keys/keys_container.html)
 -   [PBKDF2](https://terra-quantum-public.github.io/tq42-pqc-oss/keys/pbkdf2.html)
 
-## Security Notice
-While there are no known vulnerabilities in the quantum-safe algorithms within this library, caution is crucial. These algorithms have not undergone the same level of scrutiny as currently deployed ones. The NIST Post-Quantum Cryptography Standardization project's guidance should be followed diligently. As research progresses, algorithm security may rapidly change, including potential vulnerabilities to classical and quantum computers.
-
-TQ42 Cryptography aligns its algorithm support with the NIST PQC standardization project. Applications and protocols should rely on outcomes from this effort for post-quantum cryptography deployment.
-
-For those considering quantum-safe cryptography before the NIST PQC standardization project concludes, we strongly recommend using hybrid cryptography. This approach combines quantum-safe public-key algorithms with existing traditional cryptography.
-
-Terra Quantum offers advanced quantum security products, including the Terra Quantum Secure Network (TQSN), a novel solution for organizations looking for full security via Quantum Key Distribution (QKD), a revolutionary technology that leverages the quantum mechanical properties of light and allows for the distribution of cryptographic keys with absolute security, making decryption impossible. Terra Quantum's patented Secure Network solution (TQSN) works well over long distances with high bit rates. It is the world's first scalable, zero-trust Secure Network for global communications. Visit [terraquantum.swiss](https://terraquantum.swiss) to learn more, or contact us at info@terraquantum.swiss.
 
 # Licenses
 The TQ42 Cryptography library is available under two primary licensing options to accommodate the diverse needs of organizations at different stages of their post-quantum migration journeys: 

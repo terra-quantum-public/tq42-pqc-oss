@@ -36,6 +36,19 @@ The versatility of TQ42 Cryptography enables its use in critical industries such
 
 Whether safeguarding web and mobile applications, ensuring the integrity of blockchain technology, fortifying Raspberry Pi systems, securing cloud and data storage, or protecting IoT devices and servers, TQ42 Cryptography offers comprehensive security solutions. Its applicability extends to numerous other critical scenarios where robust security measures are indispensable.
 
+# CAVP Certificates
+
+The TQ42 Cryptography implementations of the Post-Quantum algorithms ML-KEM, ML-DSA, and SLH-DSA, comply with the latest NIST standards (FIPS 203, 204, and 205). These algorithms have also been validated through the NIST Cryptographic Algorithm Validation Program (CAVP). For further details, please visit the NIST CAVP [webpage](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/details?product=18351).
+
+The validation process spans multiple operating systems and hardware configurations, including:
+
+- Red Hat 9.4 
+- Ubuntu 24.04 
+- Windows 11 
+- Windows 2022 
+- IOS 17.5.1
+- Android 14
+
 # Advanced Quantum Security
 Terra Quantum offers advanced quantum security products, including the Terra Quantum Secure Network (TQSN), a novel solution for organizations looking for full security via Quantum Key Distribution (QKD), a revolutionary technology that leverages the quantum mechanical properties of light and allows for the distribution of cryptographic keys with absolute security, making decryption impossible. Terra Quantum's patented Secure Network solution (TQSN) works well over long distances with high bit rates. It is the world's first scalable, zero-trust Secure Network for global communications. Visit [terraquantum.swiss](https://terraquantum.swiss) to learn more, or contact us at info@terraquantum.swiss.
 [![image](img/introduction_banner.png)](https://terraquantum.swiss/news/terra-quantum-breaks-records-in-quantum-key-distribution-paving-way-to-offering-unprecedented-security-over-existing-fiber-optic-networks-globally)
@@ -43,6 +56,7 @@ Terra Quantum offers advanced quantum security products, including the Terra Qua
 # Quantum Random Number Generator
 
 TQ42 Cryptography can seamlessly integrate into the company security pipeline when paired with the proprietary Pseudo Key Generator PQ17. For enhanced security and a top-tier solution, clients have the option to engage with Terra Quantum to secure a license for integration with true randomness via the Single Photon Quantum Random Number Generator (QRNG), which is aligned with the latest NIST standard (SP 800-90B) and certified by METAS. This cutting-edge technology, a signature offering from Terra Quantum, embodies genuine quantum randomness, guaranteeing the generation of highly secure random numbers. The foundation of this unparalleled security lies in the Heisenberg Uncertainty Principle. The device operates on a true random entropy source, enabling swift and precise generation of random numbers at remarkable speed.
+
 ## Supported Algorithms
 
 ![image](img/introduction_infographic.png)
@@ -82,23 +96,4 @@ Digital Signature:
 As the field of Post-Quantum Cryptography (PQC) continues to evolve, the security algorithms under review present a potential for undiscovered vulnerabilities. Given this scenario, we strongly advise that companies proactively integrate a strategy to include alternative or backup cryptographic algorithms within their security frameworks. Doing so not only prepares your organization for any forthcoming changes in the cryptographic landscape but also enhances overall security resilience.
 Moreover, transitioning to a new algorithm can be seamlessly managed with tools like TQ42 Cryptography. This solution is designed to facilitate easy integration and deployment of robust cryptographic algorithms, ensuring that your security infrastructure remains both current and flexible. By adopting TQ42 Cryptography, your company can efficiently adapt to any cryptographic advancements or requirements, maintaining a leading edge in data protection.
 
-## Security Notice
 
-> Quantum-Safe Algorithm Considerations
-
-While there are no known vulnerabilities in the quantum-safe algorithms
-within this library, caution is crucial. These algorithms have not
-undergone the same level of scrutiny as currently deployed ones. The
-**NIST Post-Quantum Cryptography Standardization** project\'s guidance
-should be followed diligently. As research progresses, algorithm
-security may rapidly change, including potential vulnerabilities to
-classical and quantum computers.
-
-TQ42 Cryptography aligns its algorithm support with the **NIST PQC standardization
-project**. Applications and protocols should rely on outcomes from this
-effort for post-quantum cryptography deployment.
-
-For those considering **quantum-safe cryptography** before the **NIST
-PQC standardization project** concludes, we strongly recommend using
-hybrid cryptography. This approach combines quantum-safe public-key
-algorithms with existing traditional cryptography.
