@@ -18,16 +18,16 @@ class sha3_test_data:
 
 
 def test_sha3(sha3_data: sha3_test_data, pqc: ModuleType):
-    sha3 = pqc.PQC_init_context_hash(pqc.PQC_CIPHER_SHA3, sha3_data.sha_len())
+    sha3 = pqc.PQC_context_init_hash(pqc.PQC_CIPHER_SHA3, sha3_data.sha_len())
 
-    pqc.PQC_add_data(sha3, sha3_data.message)
-    # PQC_add_data adds message content to context.
+    pqc.PQC_hash_update(sha3, sha3_data.message)
+    # PQC_hash_update adds message content to context.
 
     hash_size: int = pqc.PQC_hash_size(sha3)
 
-    hash = pqc.PQC_get_hash(sha3, hash_size)  # PQC_get_hash gets hash from message
+    hash = pqc.PQC_hash_retrieve(sha3, hash_size)  # PQC_hash_retrieve gets hash from message
 
-    pqc.PQC_close_context(sha3)
+    pqc.PQC_context_close(sha3)
 
     assert hash == sha3_data.expected
 

@@ -9,28 +9,28 @@
  */
 typedef struct
 {
-    int16_t coeffs[KYBER_N];
+    int16_t coeffs[ML_N];
 } poly;
 
-void poly_compress(uint8_t r[KYBER_POLYCOMPRESSEDBYTES], poly * a);
+void poly_compress(uint8_t * r, size_t r_size, poly * a);
 
-void poly_decompress(poly * r, const uint8_t a[KYBER_POLYCOMPRESSEDBYTES]);
-
-
-void poly_tobytes(uint8_t r[KYBER_POLYBYTES], poly * a);
-
-void poly_frombytes(poly * r, const uint8_t a[KYBER_POLYBYTES]);
+void poly_decompress(poly * r, const uint8_t * a, size_t a_size);
 
 
-void poly_frommsg(poly * r, const uint8_t msg[KYBER_INDCPA_MSGBYTES]);
+void poly_tobytes(uint8_t r[ML_POLY_SIZE], poly * a);
 
-void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], poly * r);
-
-
-void poly_getnoise_eta1(poly * r, const uint8_t seed[KYBER_SYMBYTES], uint8_t nonce);
+void poly_frombytes(poly * r, const uint8_t a[ML_POLY_SIZE]);
 
 
-void poly_getnoise_eta2(poly * r, const uint8_t seed[KYBER_SYMBYTES], uint8_t nonce);
+void poly_frommsg(poly * r, const uint8_t msg[ML_RH_SIZE]);
+
+void poly_tomsg(uint8_t msg[ML_RH_SIZE], poly * r);
+
+
+void poly_getnoise_eta1(poly * r, const uint8_t seed[ML_RH_SIZE], uint8_t nonce, size_t eta1);
+
+
+void poly_getnoise_eta2(poly * r, const uint8_t seed[ML_RH_SIZE], uint8_t nonce);
 
 
 void poly_ntt(poly * r);

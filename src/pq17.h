@@ -10,7 +10,7 @@ public:
     PQ17prng_engine(const pqc_aes_key * key, const pqc_aes_iv * iv);
 
     uint64_t generate();
-    void random_bytes(uint8_t * buf, size_t size) override;
+    virtual void random_bytes(const BufferView & buffer) override;
 
     static std::unique_ptr<IRandomGenerator> default_generator();
 

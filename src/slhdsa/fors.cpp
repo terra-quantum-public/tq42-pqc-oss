@@ -13,12 +13,12 @@ namespace slh_dsa
 // Algorithm 13: Generate a FORS private-key value
 void fors_SKgen(
     const BufferView & sk, const ConstBufferView & skseed, const ConstBufferView & pkseed, const BufferView & addr,
-    int idx
+    size_t idx, size_t mode
 )
 {
-    assert(sk.size() == PQC_SLH_DSA_N);
-    assert(skseed.size() == PQC_SLH_DSA_N);
-    assert(pkseed.size() == PQC_SLH_DSA_N);
+    assert(sk.size() == ParameterSets[mode].N);
+    assert(skseed.size() == ParameterSets[mode].N);
+    assert(pkseed.size() == ParameterSets[mode].N);
     assert(addr.size() == ADDRESS_SIZE);
 
     Address skAddr;
@@ -29,52 +29,44 @@ void fors_SKgen(
     BufferView tree_index = address::tree_index(skAddr);
     Converter::toByte(tree_index, idx);
 
-    StackBuffer<PQC_SLH_DSA_N + ADDRESS_SIZE + PQC_SLH_DSA_N> joined; // PK.seed || ADRS || SK.seed
-    joined.mid(0, PQC_SLH_DSA_N).store(pkseed);
-    joined.mid(PQC_SLH_DSA_N, ADDRESS_SIZE).store(skAddr);
-    joined.mid(PQC_SLH_DSA_N + ADDRESS_SIZE, PQC_SLH_DSA_N).store(skseed);
-    function_PRF(joined, sk);
+    function_PRF(pkseed, skAddr, skseed, sk);
 }
 
 // Algorithm 14: Compute the root of a Merkle subtree of FORS public values
 void fors_node(
-    const BufferView & node, const ConstBufferView & skseed, const ConstBufferView & pkseed, int i, int z,
-    const BufferView & addr
+    const BufferView & node, const ConstBufferView & skseed, const ConstBufferView & pkseed, size_t i, size_t z,
+    const BufferView & addr, size_t mode
 )
 {
-    assert(node.size() == PQC_SLH_DSA_N);
-    assert(skseed.size() == PQC_SLH_DSA_N);
-    assert(pkseed.size() == PQC_SLH_DSA_N);
+    assert(node.size() == ParameterSets[mode].N);
+    assert(skseed.size() == ParameterSets[mode].N);
+    assert(pkseed.size() == ParameterSets[mode].N);
     assert(addr.size() == ADDRESS_SIZE);
 
-    if (z > PQC_SLH_DSA_A || i >= (PQC_SLH_DSA_K * (1 << (PQC_SLH_DSA_A - z))))
+    if (z > ParameterSets[mode].A || i >= (ParameterSets[mode].K * ((size_t)1 << (ParameterSets[mode].A - z))))
         throw InternalError();
 
     if (z == 0)
     {
-        HeapBuffer<PQC_SLH_DSA_N + ADDRESS_SIZE + PQC_SLH_DSA_N> joined; // PKseed || ADDR || sk
-
-        BufferView sk = joined.mid(PQC_SLH_DSA_N + ADDRESS_SIZE, PQC_SLH_DSA_N);
-        fors_SKgen(sk, skseed, pkseed, addr, i);
+        std::vector<uint8_t> sk_data(ParameterSets[mode].N);
+        BufferView sk(sk_data);
+        fors_SKgen(sk, skseed, pkseed, addr, i, mode);
 
         BufferView tree_height = address::tree_height(addr);
         Converter::toByte(tree_height, 0);
         BufferView tree_index = address::tree_index(addr);
         Converter::toByte(tree_index, i);
 
-        joined.mid(0, PQC_SLH_DSA_N).store(pkseed);
-        joined.mid(PQC_SLH_DSA_N, ADDRESS_SIZE).store(addr);
-
-        function_F(joined, node);
+        function_F(pkseed, addr, sk, node);
     }
     else
     {
-        HeapBuffer<PQC_SLH_DSA_N + ADDRESS_SIZE + PQC_SLH_DSA_N * 2> joined; // pkseed || ADRS || lnode || rnode
+        std::vector<uint8_t> node_data(ParameterSets[mode].N * 2);
+        BufferView lr_nodes(node_data);
 
-        fors_node(joined.mid(PQC_SLH_DSA_N + ADDRESS_SIZE, PQC_SLH_DSA_N), skseed, pkseed, 2 * i, z - 1, addr);
+        fors_node(lr_nodes.mid(0, ParameterSets[mode].N), skseed, pkseed, 2 * i, z - 1, addr, mode);
         fors_node(
-            joined.mid(PQC_SLH_DSA_N + ADDRESS_SIZE + PQC_SLH_DSA_N, PQC_SLH_DSA_N), skseed, pkseed, 2 * i + 1, z - 1,
-            addr
+            lr_nodes.mid(ParameterSets[mode].N, ParameterSets[mode].N), skseed, pkseed, 2 * i + 1, z - 1, addr, mode
         );
 
         BufferView tree_height = address::tree_height(addr);
@@ -82,40 +74,39 @@ void fors_node(
         BufferView tree_index = address::tree_index(addr);
         Converter::toByte(tree_index, i);
 
-        joined.mid(0, PQC_SLH_DSA_N).store(pkseed);
-        joined.mid(PQC_SLH_DSA_N, ADDRESS_SIZE).store(addr);
-
-        function_F(joined, node);
+        function_F(pkseed, addr, lr_nodes, node);
     }
 }
 
 // Algorithm 15: Generate a FORS signature
 void fors_sign(
     const BufferView & sig_fors, const ConstBufferView & md, const ConstBufferView & skseed,
-    const ConstBufferView & pkseed, const BufferView & addr
+    const ConstBufferView & pkseed, const BufferView & addr, size_t mode
 )
 {
-    assert(sig_fors.size() == PQC_SLH_DSA_K * (1 + PQC_SLH_DSA_A) * PQC_SLH_DSA_N);
-    assert(md.size() == PQC_SLH_DSA_MSG_DIGEST_LEN);
-    assert(skseed.size() == PQC_SLH_DSA_N);
-    assert(pkseed.size() == PQC_SLH_DSA_N);
+    assert(sig_fors.size() == ParameterSets[mode].K * (1 + ParameterSets[mode].A) * ParameterSets[mode].N);
+    assert(md.size() == ParameterSets[mode].MSG_DIGEST_LEN);
+    assert(skseed.size() == ParameterSets[mode].N);
+    assert(pkseed.size() == ParameterSets[mode].N);
     assert(addr.size() == ADDRESS_SIZE);
 
-    std::array<int, PQC_SLH_DSA_K> indices;
-    Converter::base_2b(indices.data(), indices.size(), md, PQC_SLH_DSA_A);
+    std::vector<int> indices(ParameterSets[mode].K);
+    Converter::base_2b(indices.data(), indices.size(), md, (int)ParameterSets[mode].A);
 
-    for (int i = 0; i < PQC_SLH_DSA_K; ++i)
+    for (size_t i = 0; i < ParameterSets[mode].K; ++i)
     {
-        BufferView ski = sig_fors.mid(i * ((PQC_SLH_DSA_A + 1) * PQC_SLH_DSA_N), PQC_SLH_DSA_N);
-        fors_SKgen(ski, skseed, pkseed, addr, i * (1 << PQC_SLH_DSA_A) + indices[i]);
+        BufferView ski = sig_fors.mid(i * ((ParameterSets[mode].A + 1) * ParameterSets[mode].N), ParameterSets[mode].N);
+        fors_SKgen(ski, skseed, pkseed, addr, i * ((size_t)1 << ParameterSets[mode].A) + indices[i], mode);
 
-        for (int j = 0; j < PQC_SLH_DSA_A; j++)
+        for (size_t j = 0; j < ParameterSets[mode].A; ++j)
         {
             int s = (indices[i] / (int)(1 << j)) ^ 1;
             BufferView authj = sig_fors.mid(
-                (i * (PQC_SLH_DSA_A + 1) * PQC_SLH_DSA_N) + PQC_SLH_DSA_N + j * PQC_SLH_DSA_N, PQC_SLH_DSA_N
+                (i * (ParameterSets[mode].A + 1) * ParameterSets[mode].N) + ParameterSets[mode].N +
+                    j * ParameterSets[mode].N,
+                ParameterSets[mode].N
             );
-            fors_node(authj, skseed, pkseed, i * (1 << (PQC_SLH_DSA_A - j)) + s, j, addr);
+            fors_node(authj, skseed, pkseed, i * ((size_t)1 << (ParameterSets[mode].A - j)) + s, j, addr, mode);
         }
     }
 }
@@ -123,75 +114,64 @@ void fors_sign(
 // Algorithm 16: Compute a FORS public key from a FORS signature
 void fors_pkFromSig(
     const BufferView & pk, const ConstBufferView & sig_fors, const ConstBufferView & md, const ConstBufferView & pkseed,
-    const BufferView & addr
+    const BufferView & addr, size_t mode
 )
 {
-    assert(pk.size() == PQC_SLH_DSA_N);
-    assert(sig_fors.size() == PQC_SLH_DSA_K * (1 + PQC_SLH_DSA_A) * PQC_SLH_DSA_N);
-    assert(md.size() == PQC_SLH_DSA_MSG_DIGEST_LEN);
-    assert(pkseed.size() == PQC_SLH_DSA_N);
+    assert(pk.size() == ParameterSets[mode].N);
+    assert(sig_fors.size() == ParameterSets[mode].K * (1 + ParameterSets[mode].A) * ParameterSets[mode].N);
+    assert(md.size() == ParameterSets[mode].MSG_DIGEST_LEN);
+    assert(pkseed.size() == ParameterSets[mode].N);
     assert(addr.size() == ADDRESS_SIZE);
 
-    std::array<int, PQC_SLH_DSA_K> indices;
-    Converter::base_2b(indices.data(), indices.size(), md, PQC_SLH_DSA_A);
+    std::vector<int> indices(ParameterSets[mode].K);
+    Converter::base_2b(indices.data(), indices.size(), md, (int)ParameterSets[mode].A);
 
     BufferView tree_height = address::tree_height(addr);
     BufferView tree_index = address::tree_index(addr);
 
-    HeapBuffer<PQC_SLH_DSA_N + ADDRESS_SIZE + PQC_SLH_DSA_K * PQC_SLH_DSA_N>
-        joined_for_Tk; // PK.seed || forspkADRS || root
-    joined_for_Tk.mid(0, PQC_SLH_DSA_N).store(pkseed);
+    std::vector<uint8_t> v_root(ParameterSets[mode].K * ParameterSets[mode].N);
+    BufferView root(v_root);
 
-    HeapBuffer<PQC_SLH_DSA_N + ADDRESS_SIZE + PQC_SLH_DSA_N + PQC_SLH_DSA_N>
-        joined_for_H; // PK.seed || ADRS || node[0] || auth[j]
-    joined_for_H.mid(0, PQC_SLH_DSA_N).store(pkseed);
-    HeapBuffer<PQC_SLH_DSA_N + ADDRESS_SIZE + PQC_SLH_DSA_N> joined_for_F; // PK.seed || ADRS || sk
-    joined_for_F.mid(0, PQC_SLH_DSA_N).store(pkseed);
-    StackBuffer<PQC_SLH_DSA_N> node0;
+    std::vector<uint8_t> v_node0(ParameterSets[mode].N);
+    BufferView node0(v_node0);
 
-    for (int i = 0; i < PQC_SLH_DSA_K; ++i)
+    for (size_t i = 0; i < ParameterSets[mode].K; ++i)
     {
-        ConstBufferView ski = sig_fors.mid(i * ((PQC_SLH_DSA_A + 1) * PQC_SLH_DSA_N), PQC_SLH_DSA_N);
+        ConstBufferView ski =
+            sig_fors.mid(i * ((ParameterSets[mode].A + 1) * ParameterSets[mode].N), ParameterSets[mode].N);
         Converter::toByte(tree_height, 0);
-        Converter::toByte(tree_index, i * (1 << PQC_SLH_DSA_A) + indices[i]);
+        Converter::toByte(tree_index, i * ((size_t)1 << ParameterSets[mode].A) + indices[i]);
 
-        joined_for_F.mid(PQC_SLH_DSA_N, ADDRESS_SIZE).store(addr);
-        joined_for_F.mid(PQC_SLH_DSA_N + ADDRESS_SIZE, PQC_SLH_DSA_N).store(ski);
-        function_F(joined_for_F, node0);
+        function_F(pkseed, addr, ski, node0);
 
-        for (int j = 0; j < PQC_SLH_DSA_A; ++j)
+        for (size_t j = 0; j < ParameterSets[mode].A; ++j)
         {
             ConstBufferView authj = sig_fors.mid(
-                (i * (PQC_SLH_DSA_A + 1) * PQC_SLH_DSA_N) + PQC_SLH_DSA_N + j * PQC_SLH_DSA_N, PQC_SLH_DSA_N
+                (i * (ParameterSets[mode].A + 1) * ParameterSets[mode].N) + ParameterSets[mode].N +
+                    j * ParameterSets[mode].N,
+                ParameterSets[mode].N
             );
             Converter::toByte(tree_height, j + 1);
 
             if ((indices[i] / (int)(1 << j)) % 2 == 0)
             {
                 Converter::toByte(tree_index, Converter::toInteger(tree_index) / 2);
-                joined_for_H.mid(PQC_SLH_DSA_N, ADDRESS_SIZE).store(addr);
-                joined_for_H.mid(PQC_SLH_DSA_N + ADDRESS_SIZE, PQC_SLH_DSA_N).store(node0);
-                joined_for_H.mid(PQC_SLH_DSA_N + ADDRESS_SIZE + PQC_SLH_DSA_N, PQC_SLH_DSA_N).store(authj);
-                function_H(joined_for_H, node0);
+                function_H(pkseed, addr, node0, authj, node0);
             }
             else
             {
                 Converter::toByte(tree_index, (Converter::toInteger(tree_index) - 1) / 2);
-                joined_for_H.mid(PQC_SLH_DSA_N, ADDRESS_SIZE).store(addr);
-                joined_for_H.mid(PQC_SLH_DSA_N + ADDRESS_SIZE, PQC_SLH_DSA_N).store(authj);
-                joined_for_H.mid(PQC_SLH_DSA_N + ADDRESS_SIZE + PQC_SLH_DSA_N, PQC_SLH_DSA_N).store(node0);
-                function_H(joined_for_H, node0);
+                function_H(pkseed, addr, authj, node0, node0);
             }
         }
-        joined_for_Tk.mid(PQC_SLH_DSA_N + ADDRESS_SIZE + i * PQC_SLH_DSA_N, PQC_SLH_DSA_N).store(node0);
+        root.mid(i * ParameterSets[mode].N, ParameterSets[mode].N).store(node0);
     }
 
     Address forspkADRS;
     forspkADRS.store(addr);
     address::setTypeAndClear(forspkADRS, FORS_ROOTS);
     address::keypair_address(forspkADRS).store(address::keypair_address(addr));
-    joined_for_Tk.mid(PQC_SLH_DSA_N, ADDRESS_SIZE).store(forspkADRS);
-    function_Tl(joined_for_Tk, pk);
+    function_Tl(pkseed, forspkADRS, root, pk);
 }
 
 } // namespace slh_dsa

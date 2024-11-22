@@ -13,11 +13,11 @@ static void smallints_to_fpr(fpr * a, const int8_t * b, unsigned degIndx)
     }
 }
 
-typedef int (*samplerZ)(void * ctx, fpr mu, fpr sigma);
+typedef int (*samplerZ)(void * ctx, fpr mu, fpr sigma, IRandomGenerator * rng);
 
 static void ff_sampling_fft_dyntree(
     samplerZ samp, void * sampCtx, fpr * t0, fpr * t1, fpr * c0, fpr * c1, fpr * c2, unsigned origDegIndx,
-    unsigned degIndx, fpr * temp
+    unsigned degIndx, fpr * temp, IRandomGenerator * rng
 )
 {
     size_t elemNum, use;
@@ -30,8 +30,8 @@ static void ff_sampling_fft_dyntree(
 
         leaf = c0[0];
         leaf = fpr_mul(fpr_sqrt(leaf), fpr_inv_sigma[origDegIndx]);
-        t0[0] = fpr_of(samp(sampCtx, t0[0], leaf));
-        t1[0] = fpr_of(samp(sampCtx, t1[0], leaf));
+        t0[0] = fpr_of(samp(sampCtx, t0[0], leaf, rng));
+        t1[0] = fpr_of(samp(sampCtx, t1[0], leaf, rng));
         return;
     }
 
@@ -51,7 +51,7 @@ static void ff_sampling_fft_dyntree(
     z1 = temp + elemNum;
     poly_split_fft(z1, z1 + use, t1, degIndx);
     ff_sampling_fft_dyntree(
-        samp, sampCtx, z1, z1 + use, c2, c2 + use, c1 + use, origDegIndx, degIndx - 1, z1 + elemNum
+        samp, sampCtx, z1, z1 + use, c2, c2 + use, c1 + use, origDegIndx, degIndx - 1, z1 + elemNum, rng
     );
     poly_merge_fft(temp + (elemNum << 1), z1, z1 + use, degIndx);
 
@@ -63,13 +63,13 @@ static void ff_sampling_fft_dyntree(
 
     z0 = temp;
     poly_split_fft(z0, z0 + use, t0, degIndx);
-    ff_sampling_fft_dyntree(samp, sampCtx, z0, z0 + use, c0, c0 + use, c1, origDegIndx, degIndx - 1, z0 + elemNum);
+    ff_sampling_fft_dyntree(samp, sampCtx, z0, z0 + use, c0, c0 + use, c1, origDegIndx, degIndx - 1, z0 + elemNum, rng);
     poly_merge_fft(t0, z0, z0 + use, degIndx);
 }
 
 static int do_sign_dyn(
     samplerZ samp, void * sampCtx, int16_t * s2, const int8_t * a, const int8_t * b, const int8_t * A, const int8_t * B,
-    const uint16_t * h, unsigned degIndx, fpr * temp
+    const uint16_t * h, unsigned degIndx, fpr * temp, IRandomGenerator * rng
 )
 {
     size_t elemNum, counter;
@@ -138,7 +138,7 @@ static int do_sign_dyn(
     t0 = c2 + elemNum;
     t1 = t0 + elemNum;
 
-    ff_sampling_fft_dyntree(samp, sampCtx, t0, t1, c0, c1, c2, degIndx, degIndx, t1 + elemNum);
+    ff_sampling_fft_dyntree(samp, sampCtx, t0, t1, c0, c1, c2, degIndx, degIndx, t1 + elemNum, rng);
 
     b00 = temp;
     b01 = b00 + elemNum;
@@ -202,7 +202,7 @@ static int do_sign_dyn(
     return 0;
 }
 
-int gaussian_0_sampler(prng * inp)
+int gaussian_0_sampler(prng * inp, IRandomGenerator * rng)
 {
 
     static const uint32_t dst[] = {10745844u, 3068844u,  3741698u, 5559083u,  1580863u,  8248194u, 2260429u,  13669192u,
@@ -218,8 +218,8 @@ int gaussian_0_sampler(prng * inp)
     size_t counter;
     int rez;
 
-    l = prng_get_u_64(inp);
-    h = prng_get_u_8(inp);
+    l = prng_get_u_64(inp, rng);
+    h = prng_get_u_8(inp, rng);
     u0 = (uint32_t)l & 0xFFFFFF;
     u1 = (uint32_t)(l >> 24) & 0xFFFFFF;
     u2 = (uint32_t)(l >> 48) | (h << 16);
@@ -241,7 +241,7 @@ int gaussian_0_sampler(prng * inp)
 }
 
 
-static int ber_exp(prng * inp, fpr a, fpr b)
+static int ber_exp(prng * inp, fpr a, fpr b, IRandomGenerator * rng)
 {
     int s;
     fpr k;
@@ -261,13 +261,13 @@ static int ber_exp(prng * inp, fpr a, fpr b)
     do
     {
         i -= 8;
-        d = prng_get_u_8(inp) - ((uint32_t)(e >> i) & 0xFF);
+        d = prng_get_u_8(inp, rng) - ((uint32_t)(e >> i) & 0xFF);
     } while (!d && i > 0);
     return (int)(d >> 31);
 }
 
 
-int sampler(void * k, fpr l, fpr sigma)
+int sampler(void * k, fpr l, fpr sigma, IRandomGenerator * rng)
 {
     sampler_context * use;
     int s;
@@ -287,13 +287,13 @@ int sampler(void * k, fpr l, fpr sigma)
         int z0, z, b;
         fpr x;
 
-        z0 = gaussian_0_sampler(&use->p);
-        b = (int)prng_get_u_8(&use->p) & 1;
+        z0 = gaussian_0_sampler(&use->p, rng);
+        b = (int)prng_get_u_8(&use->p, rng) & 1;
         z = b + ((b << 1) - 1) * z0;
 
         x = fpr_mul(fpr_sqr(fpr_sub(fpr_of(z), r)), d);
         x = fpr_sub(x, fpr_mul(fpr_of(z0 * z0), fpr_inv_2sqrsigma0));
-        if (ber_exp(&use->p, x, c))
+        if (ber_exp(&use->p, x, c, rng))
         {
             return s + z;
         }
@@ -302,7 +302,7 @@ int sampler(void * k, fpr l, fpr sigma)
 
 void sign_dyn(
     int16_t * sig, const int8_t * a, const int8_t * b, const int8_t * A, const int8_t * B, const uint16_t * h,
-    unsigned degIndx, uint8_t * temp
+    unsigned degIndx, uint8_t * temp, IRandomGenerator * rng
 )
 {
     fpr * ftmp;
@@ -316,14 +316,14 @@ void sign_dyn(
 
         spc.sigma_min = fpr_sigma_min[degIndx];
 
-        randombytes(BufferView((&spc.p)->buf.d, sizeof(&spc.p)->buf.d));
-        randombytes(BufferView((&spc.p)->state.d, sizeof(&spc.p)->state.d));
+        rng->random_bytes(BufferView((&spc.p)->buf.d, sizeof(&spc.p)->buf.d));
+        rng->random_bytes(BufferView((&spc.p)->state.d, sizeof(&spc.p)->state.d));
         (&spc.p)->ptr = 0;
 
         samp = sampler;
         sampCtx = &spc;
 
-        if (do_sign_dyn(samp, sampCtx, sig, a, b, A, B, h, degIndx, ftmp))
+        if (do_sign_dyn(samp, sampCtx, sig, a, b, A, B, h, degIndx, ftmp, rng))
         {
             break;
         }

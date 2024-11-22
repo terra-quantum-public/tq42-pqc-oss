@@ -7,28 +7,32 @@ permalink: /post_quantum_algs/
 ---
 
 
-**Post-quantum algorithms**, also known as quantum-resistant or quantum-safe algorithms, are cryptographic methods designed to secure communications against the potential threat posed by quantum computers. 
+## Post-quantum algorithms
+ 
+ also known as quantum-resistant or quantum-safe algorithms, are cryptographic methods designed to secure communications against the potential threat posed by quantum computers. 
 Unlike traditional cryptographic algorithms, whose security relies on the computational difficulty of problems such as integer factorization and discrete logarithms, post-quantum algorithms are based on mathematical problems believed to be resistant to quantum computing attacks. 
 These algorithms aim to ensure the confidentiality, integrity, and authenticity of digital communications in a future where quantum computers could break current encryption methods. 
 The development of post-quantum cryptography encompasses various types of cryptographic algorithms, including those based on structured lattices, hash functions, and other math problems that are considered hard for quantum computers to solve. 
 [What is post-quantum cryptography?](https://www.technologyreview.com/2019/07/12/134211/explainer-what-is-post-quantum-cryptography/?_ga=2.237390464.1268615396.1711369775-2039649111.1711260360)
 
-**The NIST Post-Quantum (PQ) Cryptography Standardization** is a comprehensive initiative aimed at future-proofing cryptographic standards against the potential threat posed by quantum computing. 
-Recognizing the quantum computational power's ability to break many of the current cryptographic algorithms, NIST launched this program to solicit, evaluate, and eventually standardize one or more quantum-resistant public-key cryptographic algorithms. 
-This initiative is integral to maintaining the security of digital communications and data in the coming era of quantum computing.
+## Post-quantum encryption Federal Information Processing Standards (FIPS)
 
-The standardization process involves several key phases:
+In August 2024, the National Institute of Standards and Technology (NIST) announced the release of the first set of finalized post-quantum encryption standards, designed to withstand potential future attacks by quantum computers. These new standards aim to secure a variety of electronic information, from confidential emails to e-commerce transactions    .
 
-- **Call for Proposals**: NIST initiated the Post-Quantum Cryptography Standardization process by inviting the global cryptographic community to submit proposals for quantum-resistant algorithms. This phase aimed to collect a broad range of solutions suitable for various cryptographic applications, including but not limited to encryption, digital signatures, and key establishment protocols.
+The finalized standards comprise three Federal Information Processing Standards (FIPS):
 
-- **Evaluation and Selection**: Submitted proposals undergo rigorous evaluation based on criteria such as security, performance, and implementation feasibility. The evaluation process is iterative, with multiple rounds allowing for refinements and optimizations. This collaborative effort involves feedback from cryptographers, industry professionals, and other stakeholders.
+- **FIPS 203**: This standard is designated for general encryption purposes and is based on the CRYSTALS-Kyber algorithm, now referred to as **ML-KEM** (Module-Lattice-Based Key-Encapsulation Mechanism). It is noted for having comparatively small encryption keys and high speed, making it efficient for exchanging keys between parties.
+    - [FIPS 203 Publication](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.203.pdf)
+    - [TQ42 NIST certified FIPS-203 implementation](kem/ml-kem.html)
 
-- **Standardization**: The final phase involves selecting the most promising algorithms and moving towards formal standardization. These new standards are intended to replace or augment existing cryptographic standards, ensuring robust defense against quantum computer attacks.
+- **FIPS 204**: Focused on protecting digital signatures, this standard utilizes the CRYSTALS-Dilithium algorithm, renamed ML-DSA (Module-Lattice-Based Digital Signature Algorithm). It serves as the primary standard for digital signature protection.
+    - [FIPS 204 Publication](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.204.pdf)
+    - [TQ42 NIST certified FIPS-204 implementation](digital_signature/ml-dsa.html)
 
-[NIST Post-Quantum Cryptography](https://csrc.nist.gov/projects/post-quantum-cryptography)
+- **FIPS 205**: Another digital signature standard, this employs the Sphincs+ algorithm, now called SLH-DSA (Stateless Hash-Based Digital Signature Algorithm), which offers a different mathematical approach than the ML-DSA, intended as a backup in case ML-DSA faces vulnerabilities.
+    - [FIPS 205 Publication](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.205.pdf)
+    - [TQ42 NIST certified FIPS-205 implementation](digital_signature/slh-dsa.html)
 
-Following the NIST Post-Quantum Cryptography (PQC) competition, three draft standards have been proposed:
+The development of these standards marks a significant milestone in cryptography, aiming to prepare security infrastructure for a future where quantum computing might compromise current encryption methods. The need for post-quantum cryptography arises because quantum computers, once mature, could potentially solve the complex mathematical problems that underpin current encryption, rendering them insecure.
 
-- **FIPS 203**: This standard is dedicated to Module-Lattice-Based Key-Encapsulation Mechanism (ML-KEM) algorithms. These algorithms are designed for secure key generation, encapsulation, and decapsulation, critical for safeguarding cryptographic keys against quantum attacks.
-- **FIPS 204**: Focuses on the Module-Lattice-Based Digital Signature Algorithm (ML-DSA), derived from CRYSTALS-Dilithium. This standard specifies the framework for digital signatures that remain secure in the quantum-computing era, ensuring the authenticity and integrity of digital communications.
-- **FIPS 205**: Introduces a Stateless Hash-Based Digital Signature Standard, utilizing SPHINCS+ as its foundation. It is designed for authenticating and verifying digital signatories in a manner resistant to quantum computing threats, enhancing the security of digital signatures further.
+NIST's initiative began in 2016, with a global call for algorithms resistant to quantum attacks. Out of 69 eligible submissions, four key algorithms were identified by 2022, leading to the final standardization process. The release of these standards allows organizations to begin integrating these new algorithms into their systems to ensure the confidentiality and security of electronic information in the quantum era

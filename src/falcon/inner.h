@@ -7,7 +7,7 @@
 #include <buffer.h>
 #include <core.h>
 #include <falcon/fpr.h>
-#include <rng/rng.h>
+#include <rng/random_generator.h>
 
 #if defined _MSC_VER && _MSC_VER
 #pragma warning(disable : 4146)
@@ -106,15 +106,15 @@ typedef struct
     int type;
 } prng;
 
-static inline uint64_t prng_get_u_64(prng * a)
+static inline uint64_t prng_get_u_64(prng * a, IRandomGenerator * rng)
 {
     size_t use;
 
     use = a->ptr;
     if (use >= (sizeof a->buf.d) - 9)
     {
-        randombytes(BufferView(a->buf.d, sizeof a->buf.d));
-        randombytes(BufferView(a->state.d, sizeof a->state.d));
+        rng->random_bytes(BufferView(a->buf.d, sizeof a->buf.d));
+        rng->random_bytes(BufferView(a->state.d, sizeof a->state.d));
         a->ptr = 0;
         use = 0;
     }
@@ -130,15 +130,15 @@ static inline uint64_t prng_get_u_64(prng * a)
 #endif
 }
 
-static inline unsigned prng_get_u_8(prng * a)
+static inline unsigned prng_get_u_8(prng * a, IRandomGenerator * rng)
 {
     unsigned rez;
 
     rez = a->buf.d[a->ptr++];
     if (a->ptr == sizeof a->buf.d)
     {
-        randombytes(BufferView(a->buf.d, sizeof a->buf.d));
-        randombytes(BufferView(a->state.d, sizeof a->state.d));
+        rng->random_bytes(BufferView(a->buf.d, sizeof a->buf.d));
+        rng->random_bytes(BufferView(a->state.d, sizeof a->state.d));
         a->ptr = 0;
     }
     return rez;
@@ -196,7 +196,7 @@ void keygen(
 
 void sign_dyn(
     int16_t * sign, const int8_t * a, const int8_t * b, const int8_t * A, const int8_t * B, const uint16_t * c,
-    unsigned degIndex, uint8_t * temp
+    unsigned degIndex, uint8_t * temp, IRandomGenerator * rng
 );
 
 typedef struct
@@ -206,6 +206,6 @@ typedef struct
 } sampler_context;
 
 
-int sampler(void * a, fpr b, fpr i_sigma);
+int sampler(void * a, fpr b, fpr i_sigma, IRandomGenerator * rng);
 
-int gaussian_0_sampler(prng * a);
+int gaussian_0_sampler(prng * a, IRandomGenerator * rng);

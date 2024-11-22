@@ -1,6 +1,5 @@
 #pragma once
 
-#include "params.h"
 #include <stddef.h>
 #include <stdint.h>
 

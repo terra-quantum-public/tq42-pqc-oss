@@ -5,18 +5,25 @@ def test_sign_falcon(pqc):
     info_size = 10
     data_for_signature = bytes(range(info_size))  # data to be signed
 
-    # Generate keys
-    pub_bob, priv_bob = pqc.PQC_generate_key_pair(pqc.PQC_CIPHER_FALCON)
+    cipher = pqc.PQC_CIPHER_FALCON
 
-    bob = pqc.PQC_init_context(pqc.PQC_CIPHER_FALCON, priv_bob)
+    bob = pqc.PQC_context_init_asymmetric(cipher, None, None)
+    
+    pqc.PQC_context_keypair_generate(bob)
+
+    # Generate keys
+    pub_bob = pqc.PQC_context_get_public_key(bob)
 
     # Sign data
-    signature = pqc.PQC_sign(
-        bob, data_for_signature, pqc.PQC_get_length(pqc.PQC_CIPHER_FALCON, pqc.PQC_LENGTH_SIGNATURE)
+    signature = pqc.PQC_signature_create(
+        bob, data_for_signature, pqc.PQC_cipher_get_length(cipher, pqc.PQC_LENGTH_SIGNATURE)
     )
 
-    assert pqc.PQC_verify(pqc.PQC_CIPHER_FALCON, pub_bob, data_for_signature, signature)
+    alice = pqc.PQC_context_init_asymmetric(cipher, pub_bob, None)
 
-    pqc.PQC_close_context(bob)
+    assert pqc.PQC_signature_verify(alice, data_for_signature, signature)
+
+    pqc.PQC_context_close(bob)
+    pqc.PQC_context_close(alice)
 
     return True

@@ -13,16 +13,16 @@ namespace slh_dsa
 
 // Algorithm 8: Compute the root of a Merkle subtree of WOTS+ public keys
 void xmss_node(
-    const BufferView & node, const ConstBufferView & skseed, int i, int z, const ConstBufferView & pkseed,
-    const BufferView & addr
+    const BufferView & node, const ConstBufferView & skseed, size_t i, size_t z, const ConstBufferView & pkseed,
+    const BufferView & addr, size_t mode
 )
 {
-    assert(node.size() == PQC_SLH_DSA_N);
-    assert(skseed.size() == PQC_SLH_DSA_N);
-    assert(pkseed.size() == PQC_SLH_DSA_N);
+    assert(node.size() == ParameterSets[mode].N);
+    assert(skseed.size() == ParameterSets[mode].N);
+    assert(pkseed.size() == ParameterSets[mode].N);
     assert(addr.size() == ADDRESS_SIZE);
 
-    if (z > PQC_SLH_DSA_H_PRIME || i >= (1 << (PQC_SLH_DSA_H_PRIME - z)))
+    if (z > ParameterSets[mode].H_PRIME || i >= ((size_t)1 << (ParameterSets[mode].H_PRIME - z)))
         throw InternalError();
 
     if (z == 0)
@@ -30,108 +30,104 @@ void xmss_node(
         address::setTypeAndClear(addr, WOTS_HASH);
         BufferView keypair_addr = address::keypair_address(addr);
         Converter::toByte(keypair_addr, i);
-        wots_PKgen(node, pkseed, skseed, addr);
+        wots_PKgen(node, pkseed, skseed, addr, mode);
     }
     else
     {
-        HeapBuffer<PQC_SLH_DSA_N + ADDRESS_SIZE + PQC_SLH_DSA_N * 2> joined; // pkseed || ADRS || lnode || rnode
-        joined.mid(0, PQC_SLH_DSA_N).store(pkseed);
-        BufferView trAddr = joined.mid(PQC_SLH_DSA_N, ADDRESS_SIZE);
-        trAddr.store(addr);
+        std::vector<uint8_t> node_data(ParameterSets[mode].N * 2);
+        BufferView lr_nodes(node_data);
+        auto [lnode, rnode] = lr_nodes.split(ParameterSets[mode].N, ParameterSets[mode].N);
 
-        xmss_node(joined.mid(PQC_SLH_DSA_N + ADDRESS_SIZE, PQC_SLH_DSA_N), skseed, 2 * i, z - 1, pkseed, addr); // lnode
-        xmss_node(
-            joined.mid(PQC_SLH_DSA_N + ADDRESS_SIZE + PQC_SLH_DSA_N, PQC_SLH_DSA_N), skseed, 2 * i + 1, z - 1, pkseed,
-            addr
-        ); // rnode
+        xmss_node(lnode, skseed, 2 * i, z - 1, pkseed, addr, mode);
+        xmss_node(rnode, skseed, 2 * i + 1, z - 1, pkseed, addr, mode);
 
-        address::setTypeAndClear(trAddr, TREE);
-        BufferView tree_height = address::tree_height(trAddr);
+        address::setTypeAndClear(addr, TREE);
+        BufferView tree_height = address::tree_height(addr);
         Converter::toByte(tree_height, z);
-        BufferView tree_index = address::tree_index(trAddr);
+        BufferView tree_index = address::tree_index(addr);
         Converter::toByte(tree_index, i);
 
-        function_H(joined, node);
+        function_H(pkseed, addr, lnode, rnode, node);
     }
 }
 
 // Algorithm 9: Generate an XMSS signature
 void xmss_sign(
-    const BufferView & sig_xmss, const ConstBufferView & m, const ConstBufferView & skseed, int idx,
-    const ConstBufferView & pkseed, const BufferView & addr
+    const BufferView & sig_xmss, const ConstBufferView & m, const ConstBufferView & skseed, size_t idx,
+    const ConstBufferView & pkseed, const BufferView & addr, size_t mode
 )
 {
-    assert(sig_xmss.size() == PQC_SLH_DSA_LEN * PQC_SLH_DSA_N + PQC_SLH_DSA_H_PRIME * PQC_SLH_DSA_N);
-    assert(m.size() == PQC_SLH_DSA_N);
-    assert(pkseed.size() == PQC_SLH_DSA_N);
-    assert(skseed.size() == PQC_SLH_DSA_N);
+    assert(
+        sig_xmss.size() ==
+        ParameterSets[mode].LEN * ParameterSets[mode].N + ParameterSets[mode].H_PRIME * ParameterSets[mode].N
+    );
+    assert(m.size() == ParameterSets[mode].N);
+    assert(pkseed.size() == ParameterSets[mode].N);
+    assert(skseed.size() == ParameterSets[mode].N);
     assert(addr.size() == ADDRESS_SIZE);
 
-    BufferView sig = sig_xmss.mid(0, PQC_SLH_DSA_LEN * PQC_SLH_DSA_N);
-    BufferView auth = sig_xmss.mid(PQC_SLH_DSA_LEN * PQC_SLH_DSA_N, PQC_SLH_DSA_H_PRIME * PQC_SLH_DSA_N);
+    BufferView sig = sig_xmss.mid(0, ParameterSets[mode].LEN * ParameterSets[mode].N);
+    BufferView auth = sig_xmss.mid(
+        ParameterSets[mode].LEN * ParameterSets[mode].N, ParameterSets[mode].H_PRIME * ParameterSets[mode].N
+    );
 
-    for (int j = 0; j < PQC_SLH_DSA_H_PRIME; ++j)
+    for (size_t j = 0; j < ParameterSets[mode].H_PRIME; ++j)
     {
-        int k = (idx / (int)(1 << j)) ^ 1;
-        BufferView authj = auth.mid(j * PQC_SLH_DSA_N, PQC_SLH_DSA_N);
-        xmss_node(authj, skseed, k, j, pkseed, addr);
+        size_t k = (idx / (size_t)((size_t)1 << j)) ^ (size_t)1;
+        BufferView authj = auth.mid(j * ParameterSets[mode].N, ParameterSets[mode].N);
+        xmss_node(authj, skseed, k, j, pkseed, addr, mode);
     }
 
     address::setTypeAndClear(addr, WOTS_HASH);
     BufferView keypair_addr = address::keypair_address(addr);
     Converter::toByte(keypair_addr, idx);
-    wots_sign(sig, m, pkseed, skseed, addr);
+    wots_sign(sig, m, pkseed, skseed, addr, mode);
 }
 
 // Algorithm 10: Compute an XMSS public key from an XMSS signature
 void xmss_PKFromSig(
-    const BufferView & pk, int idx, const ConstBufferView & sig_xmss, const ConstBufferView & m,
-    const ConstBufferView & pkseed, const BufferView & addr
+    const BufferView & pk, size_t idx, const ConstBufferView & sig_xmss, const ConstBufferView & m,
+    const ConstBufferView & pkseed, const BufferView & addr, size_t mode
 )
 {
-    assert(pk.size() == PQC_SLH_DSA_N);
-    assert(sig_xmss.size() == PQC_SLH_DSA_LEN * PQC_SLH_DSA_N + PQC_SLH_DSA_H_PRIME * PQC_SLH_DSA_N);
-    assert(m.size() == PQC_SLH_DSA_N);
-    assert(pkseed.size() == PQC_SLH_DSA_N);
+    assert(pk.size() == ParameterSets[mode].N);
+    assert(
+        sig_xmss.size() ==
+        ParameterSets[mode].LEN * ParameterSets[mode].N + ParameterSets[mode].H_PRIME * ParameterSets[mode].N
+    );
+    assert(m.size() == ParameterSets[mode].N);
+    assert(pkseed.size() == ParameterSets[mode].N);
     assert(addr.size() == ADDRESS_SIZE);
 
     address::setTypeAndClear(addr, WOTS_HASH);
     BufferView keypair_addr = address::keypair_address(addr);
     Converter::toByte(keypair_addr, idx);
 
-    ConstBufferView sig = sig_xmss.mid(0, PQC_SLH_DSA_LEN * PQC_SLH_DSA_N);
-    ConstBufferView auth = sig_xmss.mid(PQC_SLH_DSA_LEN * PQC_SLH_DSA_N, PQC_SLH_DSA_H_PRIME * PQC_SLH_DSA_N);
+    ConstBufferView sig = sig_xmss.mid(0, ParameterSets[mode].LEN * ParameterSets[mode].N);
+    ConstBufferView auth = sig_xmss.mid(
+        ParameterSets[mode].LEN * ParameterSets[mode].N, ParameterSets[mode].H_PRIME * ParameterSets[mode].N
+    );
 
-    wots_PKFromSig(pk, sig, m, pkseed, addr);
-
-    StackBuffer<PQC_SLH_DSA_N + ADDRESS_SIZE + PQC_SLH_DSA_N + PQC_SLH_DSA_N> joined; // PKseed || ADDR || node || authk
-    joined.mid(0, PQC_SLH_DSA_N).store(pkseed);
-    BufferView joined_addr = joined.mid(PQC_SLH_DSA_N, ADDRESS_SIZE);
+    wots_PKFromSig(pk, sig, m, pkseed, addr, mode);
 
     address::setTypeAndClear(addr, TREE);
     BufferView tree_index = address::tree_index(addr);
     Converter::toByte(tree_index, idx);
     BufferView tree_height = address::tree_height(addr);
 
-    for (int k = 0; k < PQC_SLH_DSA_H_PRIME; ++k)
+    for (size_t k = 0; k < ParameterSets[mode].H_PRIME; ++k)
     {
         Converter::toByte(tree_height, k + 1);
-        ConstBufferView authk = auth.mid(k * PQC_SLH_DSA_N, PQC_SLH_DSA_N);
-        if ((idx / (int)(1 << k)) % 2 == 0)
+        ConstBufferView authk = auth.mid(k * ParameterSets[mode].N, ParameterSets[mode].N);
+        if ((idx / (size_t)((size_t)1 << k)) % 2 == 0)
         {
             Converter::toByte(tree_index, Converter::toInteger(tree_index) / 2);
-            joined_addr.store(addr);
-            joined.mid(PQC_SLH_DSA_N + ADDRESS_SIZE, PQC_SLH_DSA_N).store(pk);
-            joined.mid(PQC_SLH_DSA_N + ADDRESS_SIZE + PQC_SLH_DSA_N, PQC_SLH_DSA_N).store(authk);
-            function_H(joined, pk);
+            function_H(pkseed, addr, pk, authk, pk);
         }
         else
         {
             Converter::toByte(tree_index, (Converter::toInteger(tree_index) - 1) / 2);
-            joined_addr.store(addr);
-            joined.mid(PQC_SLH_DSA_N + ADDRESS_SIZE, PQC_SLH_DSA_N).store(authk);
-            joined.mid(PQC_SLH_DSA_N + ADDRESS_SIZE + PQC_SLH_DSA_N, PQC_SLH_DSA_N).store(pk);
-            function_H(joined, pk);
+            function_H(pkseed, addr, authk, pk, pk);
         }
     }
 }

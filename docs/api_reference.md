@@ -20,45 +20,51 @@ Below you may find the reference to the all API methods or examples that exist i
 
 ## Post-Quantum Algorithms
 ### KEM
-- [`PQC_generate_key_pair`](post_quantum_algs/kem/api.html#pqc_generate_key_pair)
-- [`PQC_init_context`](post_quantum_algs/kem/api.html#pqc_init_context)
-- [`PQC_kem_encode`](post_quantum_algs/kem/api.html#pqc_kem_encode)
-- [`PQC_kem_decode`](post_quantum_algs/kem/api.html#pqc_kem_decode)
-- [`PQC_kem_encode_secret`](post_quantum_algs/kem/api.html#pqc_kem_encode_secret)
-- [`PQC_kem_decode_secret`](post_quantum_algs/kem/api.html#pqc_kem_decode_secret)
-- [`PQC_close_context`](post_quantum_algs/kem/api.html#pqc_close_context)
+- [`PQC_context_init_asymmetric`](post_quantum_algs/kem/api.html#pqc_context_init_asymmetric)
+- [`PQC_context_keypair_generate`](post_quantum_algs/kem/api.html#pqc_context_keypair_generate)
+- [`PQC_keypair_generate`](post_quantum_algs/kem/api.html#pqc_keypair_generate)
+- [`PQC_context_get_public_key`](post_quantum_algs/kem/api.html#pqc_context_get_public_key)
+- [`PQC_context_get_keypair`](post_quantum_algs/kem/api.html#pqc_context_get_keypair)
+- [`PQC_kem_encapsulate`](post_quantum_algs/kem/api.html#pqc_kem_encapsulate)
+- [`PQC_kem_decapsulate`](post_quantum_algs/kem/api.html#pqc_kem_decapsulate)
+- [`PQC_kem_encapsulate_secret`](post_quantum_algs/kem/api.html#pqc_kem_encapsulate_secret)
+- [`PQC_kem_decapsulate_secret`](post_quantum_algs/kem/api.html#pqc_kem_decapsulate_secret)
+- [`PQC_context_close`](post_quantum_algs/kem/api.html#pqc_context_close)
 - [McEliece Example](post_quantum_algs/kem/mceliece.html#example)
 - [ML-KEM Example](post_quantum_algs/kem/ml-kem.html#example)
 
 ### Digital Signature
-- [`PQC_generate_key_pair`](post_quantum_algs/digital_signature/api.html#pqc_generate_key_pair)
-- [`PQC_init_context`](post_quantum_algs/digital_signature/api.html#pqc_init_context)
-- [`PQC_sign`](post_quantum_algs/digital_signature/api.html#pqc_sign)
-- [`PQC_verify`](post_quantum_algs/digital_signature/api.html#pqc_verify)
-- [`PQC_close_context`](post_quantum_algs/digital_signature/api.html#pqc_close_context)
+- [`PQC_context_init_asymmetric`](post_quantum_algs/kem/api.html#pqc_context_init_asymmetric)
+- [`PQC_context_keypair_generate`](post_quantum_algs/kem/api.html#pqc_context_keypair_generate)
+- [`PQC_keypair_generate`](post_quantum_algs/kem/api.html#pqc_keypair_generate)
+- [`PQC_context_get_public_key`](post_quantum_algs/kem/api.html#pqc_context_get_public_key)
+- [`PQC_context_get_keypair`](post_quantum_algs/kem/api.html#pqc_context_get_keypair)
+- [`PQC_signature_create`](post_quantum_algs/digital_signature/api.html#pqc_signature_create)
+- [`PQC_signature_verify`](post_quantum_algs/digital_signature/api.html#pqc_signature_verify)
+- [`PQC_context_close`](post_quantum_algs/digital_signature/api.html#pqc_context_close)
 - [Falcon Example](post_quantum_algs/digital_signature/falcon.html#example)
 - [ML-DSA Example](post_quantum_algs/digital_signature/ml-dsa.html#example)
 
 ## Classic Quantum-Resistant Algorithms
 
-### AES-256
-- [`PQC_init_context`](classic_quantum_resistant_algs/aes.html#pqc_init_context)
-- [`PQC_init_context_iv`](classic_quantum_resistant_algs/aes.html#pqc_init_context_iv)
-- [`PQC_set_iv`](classic_quantum_resistant_algs/aes.html#pqc_set_iv)
-- [`PQC_encrypt`](classic_quantum_resistant_algs/aes.html#pqc_encrypt)
-- [`PQC_decrypt`](classic_quantum_resistant_algs/aes.html#pqc_decrypt)
+### AES-256s
+- [`PQC_context_init`](classic_quantum_resistant_algs/aes.html#pqc_context_init)
+- [`PQC_context_init_iv`](classic_quantum_resistant_algs/aes.html#pqc_context_init_iv)
+- [`PQC_context_set_iv`](classic_quantum_resistant_algs/aes.html#pqc_context_set_iv)
+- [`PQC_symmetric_encrypt`](classic_quantum_resistant_algs/aes.html#pqc_symmetric_encrypt)
+- [`PQC_symmetric_decrypt`](classic_quantum_resistant_algs/aes.html#pqc_symmetric_decrypt)
 - [`PQC_aead_encrypt`](classic_quantum_resistant_algs/aes.html#pqc_aead_encrypt)
 - [`PQC_aead_check`](classic_quantum_resistant_algs/aes.html#pqc_aead_check)
 - [`PQC_aead_decrypt`](classic_quantum_resistant_algs/aes.html#pqc_aead_decrypt)
-- [`PQC_close_context`](classic_quantum_resistant_algs/aes.html#pqc_close_context)
+- [`PQC_context_close`](classic_quantum_resistant_algs/aes.html#pqc_context_close)
 - [AES Examples](classic_quantum_resistant_algs/aes.html#examples)
 
 ### SHA-3
-- [`PQC_init_context_hash`](classic_quantum_resistant_algs/sha3.html#pqc_init_context_hash)
-- [`PQC_add_data`](classic_quantum_resistant_algs/sha3.html#pqc_add_data)
+- [`PQC_context_init_hash`](classic_quantum_resistant_algs/sha3.html#pqc_context_init_hash)
+- [`PQC_hash_update`](classic_quantum_resistant_algs/sha3.html#pqc_hash_update)
 - [`PQC_hash_size`](classic_quantum_resistant_algs/sha3.html#pqc_hash_size)
-- [`PQC_get_hash`](classic_quantum_resistant_algs/sha3.html#pqc_get_hash)
-- [`PQC_close_context`](classic_quantum_resistant_algs/sha3.html#pqc_close_context)
+- [`PQC_hash_retrieve`](classic_quantum_resistant_algs/sha3.html#pqc_hash_retrieve)
+- [`PQC_context_close`](classic_quantum_resistant_algs/sha3.html#pqc_context_close)
 - [SHA-3 Example](classic_quantum_resistant_algs/aes.html#examples)
 
 ## Keys
@@ -95,9 +101,10 @@ Below you may find the reference to the all API methods or examples that exist i
 - [Example](keys/keys_container.html#asymmetric-container-example)
 
 ### Randomness Source
-- [`PQC_random_from_pq_17`](keys/PRNG.html#pqc_random_from_pq_17)
-- [`PQC_random_from_external`](keys/PRNG.html#pqc_random_from_external)
-- [`PQC_random_bytes`](keys/PRNG.html#pqc_random_bytes)
+- [`PQC_context_random_set_pq_17`](keys/PRNG.html#pqc_context_random_set_pq_17)
+- [`PQC_context_random_set_external`](keys/PRNG.html#pqc_context_random_set_external)
+- [`PQC_context_init_randomsource`](keys/PRNG.html#pqc_context_init_randomsource)
+- [`PQC_context_random_get_bytes`](keys/PRNG.html#pqc_context_random_get_bytes)
 - [Example](keys/PRNG.html#example)
 
 ### Secure file removal (HDD & SSD)
@@ -109,6 +116,6 @@ Below you may find the reference to the all API methods or examples that exist i
 - [Example](keys/pbkdf2.html#example)
 
 ## Common functions
-- [`PQC_get_length`](common_functions.html#pqc_get_length)
+- [`PQC_cipher_get_length`](common_functions.html#pqc_cipher_get_length)
 - [`PQC_context_get_length`](common_functions.html#pqc_context_get_length)
 - [Constants](common_functions.html#сonstants)

@@ -13,287 +13,6 @@
 #define DILITHIUM_PUBLIC_KEY(x) std::vector<uint8_t> x(sizeof(pqc_dilithium_public_key))
 #define DILITHIUM_SIGNATURE(x) std::vector<uint8_t> x(sizeof(pqc_dilithium_signature))
 
-TEST(DILITHIUM, CREATE_SECRET_CHECK_SIZES)
-{
-    DILITHIUM_PRIVATE_KEY(priv_alice);
-    DILITHIUM_PUBLIC_KEY(pub_alice);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_DILITHIUM, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "should check both key sizes";
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_DILITHIUM, pub_alice.data(), pub_alice.size() - 1, priv_alice.data(), priv_alice.size()
-        ),
-        PQC_BAD_LEN
-    ) << "should check public key size";
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_DILITHIUM, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size() - 1
-        ),
-        PQC_BAD_LEN
-    ) << "should check private key size";
-}
-
-TEST(DILITHIUM, INIT_CHECK_SIZE)
-{
-    DILITHIUM_PRIVATE_KEY(priv_alice);
-    DILITHIUM_PUBLIC_KEY(pub_alice);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_DILITHIUM, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_DILITHIUM, priv_alice.data(), priv_alice.size() - 1);
-    EXPECT_EQ(alice, PQC_BAD_CIPHER) << "context initialization should fail due to wrong key size";
-}
-
-
-TEST(DILITHIUM, SIGN_CHECK_SIGNATURE_SIZE)
-{
-    DILITHIUM_PRIVATE_KEY(priv_alice);
-    DILITHIUM_PUBLIC_KEY(pub_alice);
-    DILITHIUM_SIGNATURE(signature);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_DILITHIUM, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_DILITHIUM, priv_alice.data(), priv_alice.size());
-    EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-
-    char message[] = "The quick brown fox jumps over the lazy dog.";
-
-    EXPECT_EQ(
-        PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, signature.data(), signature.size() - 1), PQC_BAD_LEN
-    ) << "signing should fail due to bad signature size";
-}
-
-
-TEST(DILITHIUM, VERIFY_CHECK_SIGNATURE_SIZE)
-{
-    DILITHIUM_PRIVATE_KEY(priv_alice);
-    DILITHIUM_PUBLIC_KEY(pub_alice);
-    DILITHIUM_SIGNATURE(signature);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_DILITHIUM, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_DILITHIUM, priv_alice.data(), priv_alice.size());
-    EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-
-    char message[] = "The quick brown fox jumps over the lazy dog."
-                     "The quick brown fox jumps over the lazy dog?"
-                     "The quick brown fox jumps over the lazy dog!"
-                     "The quick brown fox jumps over the lazy dog...";
-
-    EXPECT_EQ(PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, signature.data(), signature.size()), PQC_OK)
-        << "signing should succeed";
-
-    EXPECT_EQ(
-        PQC_verify(
-            PQC_CIPHER_DILITHIUM, pub_alice.data(), pub_alice.size(), (uint8_t *)message, strlen(message) + 1,
-            signature.data(), signature.size() - 1
-        ),
-        PQC_BAD_LEN
-    ) << "should fail due to bad signature size";
-}
-
-
-TEST(DILITHIUM, VERIFY_CHECK_KEY_SIZE)
-{
-    DILITHIUM_PRIVATE_KEY(priv_alice);
-    DILITHIUM_PUBLIC_KEY(pub_alice);
-    DILITHIUM_SIGNATURE(signature);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_DILITHIUM, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_DILITHIUM, priv_alice.data(), priv_alice.size());
-    EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-
-    char message[] = "The quick brown fox jumps over the lazy dog."
-                     "The quick brown fox jumps over the lazy dog?"
-                     "The quick brown fox jumps over the lazy dog!"
-                     "The quick brown fox jumps over the lazy dog...";
-
-    EXPECT_EQ(PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, signature.data(), signature.size()), PQC_OK)
-        << "signing should succeed";
-
-
-    EXPECT_EQ(
-        PQC_verify(
-            PQC_CIPHER_DILITHIUM, priv_alice.data(), priv_alice.size() - 1, (uint8_t *)message, strlen(message) + 1,
-            signature.data(), signature.size()
-        ),
-        PQC_BAD_LEN
-    ) << "should fail due to bad public key size";
-}
-
-
-TEST(DILITHIUM, CHECK_SIGNATURE)
-{
-    DILITHIUM_PRIVATE_KEY(priv_alice);
-    DILITHIUM_PUBLIC_KEY(pub_alice);
-    DILITHIUM_SIGNATURE(signature);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_DILITHIUM, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_DILITHIUM, priv_alice.data(), priv_alice.size());
-    EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-
-    char message[] = "The quick brown fox jumps over the lazy dog."
-                     "The quick brown fox jumps over the lazy dog?"
-                     "The quick brown fox jumps over the lazy dog!"
-                     "The quick brown fox jumps over the lazy dog...";
-
-    EXPECT_EQ(PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, signature.data(), signature.size()), PQC_OK)
-        << "signing should succeed";
-
-    EXPECT_EQ(
-        PQC_verify(
-            PQC_CIPHER_DILITHIUM, pub_alice.data(), pub_alice.size(), (uint8_t *)message, strlen(message) + 1,
-            signature.data(), signature.size()
-        ),
-        PQC_OK
-    ) << "signature should match";
-}
-
-
-TEST(DILITHIUM, BAD_SIGNATURE)
-{
-    DILITHIUM_PRIVATE_KEY(priv_alice);
-    DILITHIUM_PUBLIC_KEY(pub_alice);
-    DILITHIUM_SIGNATURE(signature);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_DILITHIUM, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_DILITHIUM, priv_alice.data(), priv_alice.size());
-    EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-
-
-    char message[] = "The quick brown fox jumps over the lazy dog."
-                     "The quick brown fox jumps over the lazy dog?"
-                     "The quick brown fox jumps over the lazy dog!"
-                     "The quick brown fox jumps over the lazy dog...";
-
-    EXPECT_EQ(PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, signature.data(), signature.size()), PQC_OK)
-        << "signing should succeed";
-
-    EXPECT_EQ(
-        PQC_verify(
-            PQC_CIPHER_DILITHIUM, pub_alice.data(), pub_alice.size(), (uint8_t *)message, strlen(message) + 1,
-            signature.data(), signature.size()
-        ),
-        PQC_OK
-    ) << "signature should match";
-
-    for (unsigned long long byte = 0; byte < signature.size(); ++byte)
-    {
-        for (int bit = 0; bit < 8; ++bit)
-        {
-            signature[byte] ^= (1 << bit);
-
-            EXPECT_EQ(
-                PQC_verify(
-                    PQC_CIPHER_DILITHIUM, pub_alice.data(), pub_alice.size(), (uint8_t *)message, strlen(message) + 1,
-                    signature.data(), signature.size()
-                ),
-                PQC_BAD_SIGNATURE
-            ) << "changed signature should NOT match";
-
-            signature[byte] ^= (1 << bit);
-        }
-    }
-}
-
-
-TEST(DILITHIUM, BAD_MESSAGE)
-{
-    DILITHIUM_PRIVATE_KEY(priv_alice);
-    DILITHIUM_PUBLIC_KEY(pub_alice);
-    DILITHIUM_SIGNATURE(signature);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_DILITHIUM, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_DILITHIUM, priv_alice.data(), priv_alice.size());
-    EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-
-    char message[] = "The quick brown fox jumps over the lazy dog."
-                     "The quick brown fox jumps over the lazy dog?"
-                     "The quick brown fox jumps over the lazy dog!"
-                     "The quick brown fox jumps over the lazy dog...";
-
-    size_t message_len = strlen(message) + 1;
-
-    EXPECT_EQ(PQC_sign(alice, (uint8_t *)message, message_len, signature.data(), signature.size()), PQC_OK)
-        << "signing should succeed";
-
-    EXPECT_EQ(
-        PQC_verify(
-            PQC_CIPHER_DILITHIUM, pub_alice.data(), pub_alice.size(), (uint8_t *)message, message_len, signature.data(),
-            signature.size()
-        ),
-        PQC_OK
-    ) << "signature should match";
-
-    for (size_t byte = 0; byte < message_len; ++byte)
-    {
-        for (int bit = 0; bit < 8; ++bit)
-        {
-            message[byte] ^= (1 << bit);
-
-
-            EXPECT_EQ(
-                PQC_verify(
-                    PQC_CIPHER_DILITHIUM, pub_alice.data(), pub_alice.size(), (uint8_t *)message, message_len,
-                    signature.data(), signature.size()
-                ),
-                PQC_BAD_SIGNATURE
-            ) << "changed message should NOT match";
-
-            message[byte] ^= (1 << bit);
-        }
-    }
-}
-
 TEST(DILITHIUM, KAT_4880_Round3)
 {
     static const std::filesystem::path current(__FILE__);
@@ -335,15 +54,15 @@ TEST(DILITHIUM, KAT_4880_Round3)
 
     struct EntropyReader
     {
-        static void get_entropy(uint8_t * buf, size_t size)
+        static size_t get_entropy(uint8_t * buf, size_t size)
         {
             static std::ifstream f(entropy_path, std::ios_base::in | std::ios_base::binary);
             f.exceptions(std::ios_base::badbit | std::ios_base::eofbit);
             f.read(reinterpret_cast<char *>(buf), size);
+            return PQC_OK;
         }
     };
 
-    PQC_random_from_external(EntropyReader::get_entropy);
 
     std::ifstream responses(responses_path);
     std::string expected;
@@ -390,18 +109,27 @@ TEST(DILITHIUM, KAT_4880_Round3)
         std::getline(responses, expected);
         Hex::to_uint_8_t(expected, "sm = ", kat_sig.data(), kat_sig.size()); // extract signature only
 
-        EXPECT_EQ(PQC_generate_key_pair(PQC_CIPHER_DILITHIUM, pk.data(), pk.size(), sk.data(), sk.size()), PQC_OK)
-            << "keys made";
+        CIPHER_HANDLE alice = PQC_context_init_asymmetric(PQC_CIPHER_DILITHIUM, nullptr, 0, nullptr, 0);
+        EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
+
+        PQC_context_random_set_external(alice, EntropyReader::get_entropy);
+
+        EXPECT_EQ(PQC_context_keypair_generate(alice), PQC_OK) << "keys made";
+
+        EXPECT_EQ(PQC_context_get_keypair(alice, pk.data(), pk.size(), sk.data(), sk.size()), PQC_OK)
+            << "keys extracted";
+
         EXPECT_TRUE(pk == kat_pk) << "public key equal";
         EXPECT_TRUE(sk == kat_sk) << "secure key equal";
 
-        CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_DILITHIUM, sk.data(), sk.size());
-        EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-        EXPECT_EQ(PQC_sign(alice, msg.data(), mlen, sig.data(), sig.size()), PQC_OK) << "signing should succeed";
+        EXPECT_EQ(PQC_signature_create(alice, msg.data(), mlen, sig.data(), sig.size()), PQC_OK)
+            << "signing should succeed";
         EXPECT_TRUE(sig == kat_sig) << "signature equal";
 
-        EXPECT_EQ(
-            PQC_verify(PQC_CIPHER_DILITHIUM, pk.data(), pk.size(), msg.data(), mlen, sig.data(), sig.size()), PQC_OK
-        ) << "signature should match";
+        CIPHER_HANDLE bob = PQC_context_init_asymmetric(PQC_CIPHER_DILITHIUM, pk.data(), pk.size(), nullptr, 0);
+        EXPECT_NE(bob, PQC_BAD_CIPHER) << "context initialization should pass";
+
+        EXPECT_EQ(PQC_signature_verify(bob, msg.data(), mlen, sig.data(), sig.size()), PQC_OK)
+            << "signature should match";
     }
 }

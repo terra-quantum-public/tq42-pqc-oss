@@ -10,8 +10,7 @@
 #include <mceliece/declassify.h>
 #include <mceliece/params.h>
 #include <mceliece/special_utils.h>
-#include <rng/rng.h>
-
+#include <rng/random_generator.h>
 
 static int32_t crypto_uint_32_signed_negative_mask(int32_t crypto_uint32_signed_x)
 {
@@ -54,14 +53,14 @@ static inline uint8_t same_mask(uint16_t a, uint16_t b)
     return static_cast<uint8_t>(msk);
 }
 
-static void e_gen(unsigned char * errVec)
+static void e_gen(unsigned char * errVec, IRandomGenerator * rng)
 {
     std::array<uint16_t, SYS_T> id;
     unsigned char val[SYS_T];
 
     while (true)
     {
-        randombytes(id);
+        rng->random_bytes(id);
 
         for (size_t i = 0; i < SYS_T; ++i)
         {
@@ -146,9 +145,11 @@ static void syndrome(unsigned char * sndrm, const unsigned char * pubKey, const 
     }
 }
 
-void mceliece_8192128_f_encrypt(unsigned char * sndrm, unsigned char * errVec, const unsigned char * pubKey)
+void mceliece_8192128_f_encrypt(
+    unsigned char * sndrm, unsigned char * errVec, const unsigned char * pubKey, IRandomGenerator * rng
+)
 {
-    e_gen(errVec);
+    e_gen(errVec, rng);
 
     syndrome(sndrm, pubKey, errVec);
 }

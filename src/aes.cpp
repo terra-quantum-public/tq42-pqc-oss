@@ -98,15 +98,15 @@ static void key_expansion(uint8_t * RoundKey, const pqc_aes_key * Key)
 
 AES::AES(const ConstBufferView & key)
 {
-    key_expansion(RoundKey.data(), (const pqc_aes_key *)key.const_data());
-    IvSet = 0;
+    key_expansion(RoundKey_.data(), (const pqc_aes_key *)key.const_data());
+    IvSet_ = 0;
 }
 
 AES::AES(const ConstBufferView & key, const ConstBufferView & iv)
 {
-    key_expansion(RoundKey.data(), (const pqc_aes_key *)key.const_data());
-    Iv.store(iv);
-    IvSet = 1;
+    key_expansion(RoundKey_.data(), (const pqc_aes_key *)key.const_data());
+    Iv_.store(iv);
+    IvSet_ = 1;
 }
 
 void AES::set_iv(const ConstBufferView & iv)
@@ -115,8 +115,8 @@ void AES::set_iv(const ConstBufferView & iv)
     {
         throw BadLength();
     }
-    Iv.store(iv);
-    IvSet = 1;
+    Iv_.store(iv);
+    IvSet_ = 1;
 }
 
 static void add_round_key(uint8_t round, state_t * state, const uint8_t * RoundKey)
@@ -320,7 +320,7 @@ void AES::ecb_encrypt(const BufferView & data)
 {
     for (BufferView buf : iterate_blocks(data, PQC_AES_BLOCKLEN))
     {
-        cipher(buf, RoundKey);
+        cipher(buf, RoundKey_);
     }
 }
 
@@ -328,21 +328,21 @@ void AES::ecb_decrypt(const BufferView & data)
 {
     for (BufferView buf : iterate_blocks(data, PQC_AES_BLOCKLEN))
     {
-        inv_cipher(buf, RoundKey);
+        inv_cipher(buf, RoundKey_);
     }
 }
 
 void AES::cbc_encrypt_buffer(const BufferView & data)
 {
-    ConstBufferView local_Iv = Iv;
+    ConstBufferView local_Iv = Iv_;
 
     for (BufferView buf : iterate_blocks(data, PQC_AES_BLOCKLEN))
     {
         buf ^= local_Iv;
-        cipher(buf, RoundKey);
+        cipher(buf, RoundKey_);
         local_Iv = buf;
     }
-    Iv.store(local_Iv);
+    Iv_.store(local_Iv);
 }
 
 
@@ -353,29 +353,40 @@ void AES::cbc_decrypt_buffer(const BufferView & data)
     for (BufferView buf : iterate_blocks(data, PQC_AES_BLOCKLEN))
     {
         storeNextIv.store(buf);
-        inv_cipher(buf, RoundKey);
-        buf ^= Iv;
-        Iv.store(storeNextIv);
+        inv_cipher(buf, RoundKey_);
+        buf ^= Iv_;
+        Iv_.store(storeNextIv);
     }
 }
 
-void AES::ofb_xcrypt(const BufferView & data)
+void AES::ofb_xcrypt(BufferView data)
 {
-    StackBuffer<PQC_AES_BLOCKLEN> local_Iv;
-    local_Iv.store(Iv);
+    if (IvOffset_ != 0)
+    {
+        size_t size = std::min((size_t)(PQC_AES_IVLEN - IvOffset_), data.size());
+        data.mid(0, size) ^= Iv_.mid(IvOffset_, size);
+        if (size == data.size())
+        {
+            IvOffset_ = (IvOffset_ + (uint32_t)size) % PQC_AES_IVLEN;
+            return;
+        }
+        data = data.mid(size, std::nullopt);
+        IvOffset_ = 0;
+    }
 
     auto blocks = iterate_blocks(data, PQC_AES_BLOCKLEN);
 
     for (BufferView buf : blocks)
     {
-        cipher(local_Iv, RoundKey);
-        buf ^= local_Iv;
+        cipher(Iv_, RoundKey_);
+        buf ^= Iv_;
     }
     if (blocks.has_extra())
     {
         BufferView buf = blocks.extra();
-        cipher(local_Iv, RoundKey);
-        buf ^= local_Iv.mid(0, buf.size());
+        cipher(Iv_, RoundKey_);
+        buf ^= Iv_.mid(0, buf.size());
+        IvOffset_ = (uint32_t)buf.size();
     }
 }
 
@@ -387,22 +398,22 @@ void AES::ctr_xcrypt(const BufferView & data)
 
     for (size_t data_offset = 0; data_offset < length;)
     {
-        local_Iv.store(Iv);
-        cipher(local_Iv, RoundKey);
+        local_Iv.store(Iv_);
+        cipher(local_Iv, RoundKey_);
 
-        for (; IvOffset < PQC_AES_BLOCKLEN && data_offset < length; ++IvOffset, ++data_offset)
+        for (; IvOffset_ < PQC_AES_BLOCKLEN && data_offset < length; ++IvOffset_, ++data_offset)
         {
-            data[data_offset] ^= local_Iv[IvOffset];
+            data[data_offset] ^= local_Iv[IvOffset_];
         }
 
-        if (IvOffset == PQC_AES_BLOCKLEN)
+        if (IvOffset_ == PQC_AES_BLOCKLEN)
         {
             for (uint8_t carry = 1, j = PQC_AES_BLOCKLEN - 1; j != 0xFF; --j)
             {
-                Iv[j] += carry;
-                carry = (carry == 1 && Iv[j] == 0) ? 1 : 0;
+                Iv_[j] += carry;
+                carry = (carry == 1 && Iv_[j] == 0) ? 1 : 0;
             }
-            IvOffset = 0;
+            IvOffset_ = 0;
         }
     }
 }
@@ -560,7 +571,7 @@ void AES::aead_encrypt(uint32_t mode, const BufferView & data, const ConstBuffer
     }
 
     HeapBuffer<PQC_AES_BLOCKLEN> iv_copy;
-    iv_copy.store(Iv);
+    iv_copy.store(Iv_);
     gcm_xcrypt(data);
     gcm_get_auth_tag(iv_copy, data, aad, auth_tag);
 }
@@ -617,10 +628,10 @@ bool AES::aead_check(
 void AES::gcm_xcrypt(const BufferView & data)
 {
     StackBuffer<PQC_AES_BLOCKLEN> local_Iv;
-    BufferView iv_view = BufferView::from_single(Iv);
+    BufferView iv_view = BufferView::from_single(Iv_);
 
     BufferView fixed_local_iv_part = local_Iv.mid(0, local_Iv.size() - 4);
-    fixed_local_iv_part.store(Iv.mid(0, fixed_local_iv_part.size()));
+    fixed_local_iv_part.store(Iv_.mid(0, fixed_local_iv_part.size()));
 
     uint32_t counter = iv_view.load_32_be(3);
     ++counter;
@@ -630,16 +641,16 @@ void AES::gcm_xcrypt(const BufferView & data)
 
     for (BufferView block : data_blocks)
     {
-        cipher(local_Iv, RoundKey); // can be generated before started encryption
+        cipher(local_Iv, RoundKey_); // can be generated before started encryption
         block ^= local_Iv;
-        fixed_local_iv_part.store(Iv.mid(0, fixed_local_iv_part.size()));
+        fixed_local_iv_part.store(Iv_.mid(0, fixed_local_iv_part.size()));
         ++counter;
         local_Iv.store_32_be(3, counter);
     }
     if (data_blocks.has_extra())
     {
         BufferView extra_data = data_blocks.extra();
-        cipher(local_Iv, RoundKey); // can be generated before started encryption
+        cipher(local_Iv, RoundKey_); // can be generated before started encryption
         extra_data ^= local_Iv.mid(0, extra_data.size());
     }
     iv_view.store_32_be(3, counter);
@@ -764,7 +775,7 @@ void AES::gcm_get_auth_tag(
 )
 {
     StackBuffer<PQC_AES_BLOCKLEN> H;
-    cipher(H, RoundKey);
+    cipher(H, RoundKey_);
     MTable M = build_M(H);
 
     auth_tag.fill(0);
@@ -787,7 +798,7 @@ void AES::gcm_get_auth_tag(
     addBlockIntoAutTeg(buffer, auth_tag, M);
 
     buffer.store(iv_view);
-    cipher(buffer, RoundKey);
+    cipher(buffer, RoundKey_);
 
     auth_tag ^= buffer;
 }
@@ -798,7 +809,7 @@ bool AES::gcm_check_auth_tag(
 )
 {
     StackBuffer<PQC_AES_BLOCKLEN> AutTag;
-    gcm_get_auth_tag(Iv, data, aad, AutTag);
+    gcm_get_auth_tag(Iv_, data, aad, AutTag);
 
     // check AutTag
     bool result = true;

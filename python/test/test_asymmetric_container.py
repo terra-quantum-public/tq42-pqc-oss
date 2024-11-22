@@ -7,13 +7,13 @@ from test import pqc
 def test_asymmetric_container(pqc):
     # Creating a asymmetric key container.
     # Encryption algorithms can be symmetric and asymmetric. Examples of a
-    # asymmetric cipher: McEliece, Falcon.
+    # asymmetric cipher: Kyber, Falcon.
     # The container we are creating is designed for asymmetric
     # keys, not suitable for symmetric keys
 
-    # This example will use McEliece keys. Let's create container
+    # This example will use Kyber keys. Let's create container
 
-    new_container = pqc.PQC_asymmetric_container_create(pqc.PQC_CIPHER_MCELIECE)
+    new_container = pqc.PQC_asymmetric_container_create(pqc.PQC_CIPHER_KYBER_512)
 
     # We can get the size of the key container in bytes using the following code.
     # Additionally, we will check that the size is not zero.
@@ -36,21 +36,21 @@ def test_asymmetric_container(pqc):
     # Args:
     # cipher type and zero
 
-    size2 = pqc.PQC_asymmetric_container_size_special(pqc.PQC_CIPHER_MCELIECE, 0)
+    size2 = pqc.PQC_asymmetric_container_size_special(pqc.PQC_CIPHER_KYBER_512, 0)
 
     assert size2 != 0
     assert size == size2
 
     # So, after creating asymmetric container is empty. There is no control of it.
     # Only user should know, is container empty or not. Now let's generate
-    # McEliece keys and put they inside of the container
+    # Kyber keys and put they inside of the container
 
-    pub_alice, priv_alice = pqc.PQC_generate_key_pair(pqc.PQC_CIPHER_MCELIECE)
+    pub_alice, priv_alice = pqc.PQC_keypair_generate(pqc.PQC_CIPHER_KYBER_512)
 
-    pqc.PQC_asymmetric_container_put_keys(pqc.PQC_CIPHER_MCELIECE, new_container, pub_alice, priv_alice)
+    pqc.PQC_asymmetric_container_put_keys(pqc.PQC_CIPHER_KYBER_512, new_container, pub_alice, priv_alice)
 
     # Now there are public and secret keys inside. We can get them out. Let's do it.
-    sk_test, pk_test = pqc.PQC_asymmetric_container_get_keys(pqc.PQC_CIPHER_MCELIECE, new_container)
+    sk_test, pk_test = pqc.PQC_asymmetric_container_get_keys(pqc.PQC_CIPHER_KYBER_512, new_container)
 
     # keys sould be same with others we had put in. Checking:
     assert pub_alice == pk_test
@@ -65,11 +65,11 @@ def test_asymmetric_container(pqc):
 
 
 def test_asymmetric_container_from_string(pqc):
-    # Creating a asymmetric key container. Generate and put key inside. Cipher McEliece.
-    new_container = pqc.PQC_asymmetric_container_create(pqc.PQC_CIPHER_MCELIECE)
+    # Creating a asymmetric key container. Generate and put key inside. Cipher Kyber.
+    new_container = pqc.PQC_asymmetric_container_create(pqc.PQC_CIPHER_KYBER_512)
 
-    pub_alice, priv_alice = pqc.PQC_generate_key_pair(pqc.PQC_CIPHER_MCELIECE)
-    pqc.PQC_asymmetric_container_put_keys(pqc.PQC_CIPHER_MCELIECE, new_container, pub_alice, priv_alice)
+    pub_alice, priv_alice = pqc.PQC_keypair_generate(pqc.PQC_CIPHER_KYBER_512)
+    pqc.PQC_asymmetric_container_put_keys(pqc.PQC_CIPHER_KYBER_512, new_container, pub_alice, priv_alice)
 
     version1 = pqc.PQC_asymmetric_container_get_version(new_container)
     creation_ts1 = pqc.PQC_asymmetric_container_get_creation_time(new_container)
@@ -89,10 +89,10 @@ def test_asymmetric_container_from_string(pqc):
     # Let's restore container from string. The keys inside should be equal with others we generated before
 
     resultContainer = pqc.PQC_asymmetric_container_from_data(
-        pqc.PQC_CIPHER_MCELIECE, container_data, creation_key, creation_iv
+        pqc.PQC_CIPHER_KYBER_512, container_data, creation_key, creation_iv
     )
 
-    sk_test, pk_test = pqc.PQC_asymmetric_container_get_keys(pqc.PQC_CIPHER_MCELIECE, resultContainer)
+    sk_test, pk_test = pqc.PQC_asymmetric_container_get_keys(pqc.PQC_CIPHER_KYBER_512, resultContainer)
 
     version2 = pqc.PQC_asymmetric_container_get_version(resultContainer)
     creation_ts2 = pqc.PQC_asymmetric_container_get_creation_time(resultContainer)
@@ -112,13 +112,13 @@ def test_asymmetric_container_from_string(pqc):
 
 
 def test_asymmetric_container_file_io(pqc):
-    # Creating a asymmetric key container. Generate and put key inside. Cipher McEliece.
+    # Creating a asymmetric key container. Generate and put key inside. Cipher Kyber.
 
-    new_container = pqc.PQC_asymmetric_container_create(pqc.PQC_CIPHER_MCELIECE)
+    new_container = pqc.PQC_asymmetric_container_create(pqc.PQC_CIPHER_KYBER_512)
 
-    pub_alice, priv_alice = pqc.PQC_generate_key_pair(pqc.PQC_CIPHER_MCELIECE)
+    pub_alice, priv_alice = pqc.PQC_keypair_generate(pqc.PQC_CIPHER_KYBER_512)
 
-    pqc.PQC_asymmetric_container_put_keys(pqc.PQC_CIPHER_MCELIECE, new_container, pub_alice, priv_alice)
+    pqc.PQC_asymmetric_container_put_keys(pqc.PQC_CIPHER_KYBER_512, new_container, pub_alice, priv_alice)
 
     version1 = pqc.PQC_asymmetric_container_get_version(new_container)
     creation_ts1 = pqc.PQC_asymmetric_container_get_creation_time(new_container)
@@ -126,7 +126,7 @@ def test_asymmetric_container_file_io(pqc):
 
     # Now let's try to save the container to a file.
     pqc.PQC_asymmetric_container_save_as(
-        pqc.PQC_CIPHER_MCELIECE,
+        pqc.PQC_CIPHER_KYBER_512,
         new_container,
         "test_asymmetric_container_file_io.pqc",
         "password",
@@ -136,10 +136,10 @@ def test_asymmetric_container_file_io(pqc):
     # Let's create new container, get kes from file and compare with old keys
 
     resultContainer = pqc.PQC_asymmetric_container_open(
-        pqc.PQC_CIPHER_MCELIECE, "test_asymmetric_container_file_io.pqc", "password", "salt"
+        pqc.PQC_CIPHER_KYBER_512, "test_asymmetric_container_file_io.pqc", "password", "salt"
     )
 
-    sk_test, pk_test = pqc.PQC_asymmetric_container_get_keys(pqc.PQC_CIPHER_MCELIECE, resultContainer)
+    sk_test, pk_test = pqc.PQC_asymmetric_container_get_keys(pqc.PQC_CIPHER_KYBER_512, resultContainer)
 
     version2 = pqc.PQC_asymmetric_container_get_version(resultContainer)
     creation_ts2 = pqc.PQC_asymmetric_container_get_creation_time(resultContainer)
@@ -156,21 +156,25 @@ def test_asymmetric_container_file_io(pqc):
 
 
 def test_asymmetric_container_file_delete(pqc):
-    # Creating a asymmetric key container. Generate and put key inside. Cipher McEliece.
+    # Creating a asymmetric key container. Generate and put key inside. Cipher Kyber.
+    new_container = pqc.PQC_asymmetric_container_create(pqc.PQC_CIPHER_KYBER_512)
 
-    new_container = pqc.PQC_asymmetric_container_create(pqc.PQC_CIPHER_MCELIECE)
+    pub_alice, priv_alice = pqc.PQC_keypair_generate(pqc.PQC_CIPHER_KYBER_512)
 
-    pub_alice, priv_alice = pqc.PQC_generate_key_pair(pqc.PQC_CIPHER_MCELIECE)
-
-    pqc.PQC_asymmetric_container_put_keys(pqc.PQC_CIPHER_MCELIECE, new_container, pub_alice, priv_alice)
+    pqc.PQC_asymmetric_container_put_keys(pqc.PQC_CIPHER_KYBER_512, new_container, pub_alice, priv_alice)
 
     # Now let's try to save the container to a file.
     pqc.PQC_asymmetric_container_save_as(
-        pqc.PQC_CIPHER_MCELIECE,
+        pqc.PQC_CIPHER_KYBER_512,
         new_container,
         "test_asymmetric_container_file_delete.pqc",
         "password",
         "salt",
     )
     pqc.PQC_asymmetric_container_close(new_container)
-    pqc.PQC_asymmetric_container_delete("test_asymmetric_container_file_delete.pqc")
+    
+    ctx = pqc.PQC_context_init_randomsource()
+
+    pqc.PQC_asymmetric_container_delete(ctx, "test_asymmetric_container_file_delete.pqc")
+    
+    pqc.PQC_context_close(ctx)

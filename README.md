@@ -16,7 +16,7 @@ The library will expand to include support for additional languages (e.g., Pytho
 
 # CAVP Certificates
 
-The TQ42 Cryptography implementations of the Post-Quantum algorithms ML-KEM, ML-DSA, and SLH-DSA, comply with the latest NIST standards (FIPS 203, 204, and 205). These algorithms have also been validated through the NIST Cryptographic Algorithm Validation Program (CAVP). For further details, please visit the NIST CAVP [webpage](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/details?product=18351).
+The TQ42 Cryptography v0.2.2 implementations of the Post-Quantum algorithms ML-KEM, ML-DSA, and SLH-DSA, comply with the latest NIST standards (FIPS 203, 204, and 205). These algorithms have also been validated through the NIST Cryptographic Algorithm Validation Program (CAVP). For further details, please visit the NIST CAVP [webpage](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/details?product=18351).
 
 The validation process spans multiple operating systems and hardware configurations, including:
 
@@ -52,12 +52,12 @@ Symmetric Encryption:
 
 Key Encapsulation Mechanism:
 
--   [ML-KEM](https://terra-quantum-public.github.io/tq42-pqc-oss/post_quantum_algs/kem/ml-kem.html)
+-   [ML-KEM](https://terra-quantum-public.github.io/tq42-pqc-oss/post_quantum_algs/kem/ml-kem.html) (modes: ML-KEM-512, ML-KEM-768, ML-KEM-1024)
 -   [Classic McEliece 8192128f](https://terra-quantum-public.github.io/tq42-pqc-oss/post_quantum_algs/kem/mceliece.html)
 
 Digital Signature:
--   [SLH-DSA](https://terra-quantum-public.github.io/tq42-pqc-oss/post_quantum_algs/digital_signature/slh-dsa.html)
--   [ML-DSA](https://terra-quantum-public.github.io/tq42-pqc-oss/post_quantum_algs/digital_signature/ml-dsa.html)
+-   [SLH-DSA](https://terra-quantum-public.github.io/tq42-pqc-oss/post_quantum_algs/digital_signature/slh-dsa.html) (modes: SLH-DSA-SHAKE-128s, SLH-DSA-SHAKE-128f, SLH-DSA-SHAKE-192s, SLH-DSA-SHAKE-192f, SLH-DSA-SHAKE-256s, SLH-DSA-SHAKE-256f)
+-   [ML-DSA](https://terra-quantum-public.github.io/tq42-pqc-oss/post_quantum_algs/digital_signature/ml-dsa.html) (modes: ML-DSA-44, ML-DSA-65, ML-DSA-87)
 -   [Falcon padded 1024](https://terra-quantum-public.github.io/tq42-pqc-oss/post_quantum_algs/digital_signature/falcon.html)
 
 ### Key Management

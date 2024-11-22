@@ -11,8 +11,13 @@ transform it back.
 
 int main()
 {
+    CIPHER_HANDLE context = PQC_context_init_randomsource();
+    if (context == PQC_BAD_CONTEXT)
+    {
+        std::cout << "Context intialization failed" << std::endl;
+    }
+    PQC_CONTAINER_HANDLE new_container = PQC_symmetric_container_create(context);
 
-    PQC_CONTAINER_HANDLE new_container = PQC_symmetric_container_create();
     if (new_container == PQC_FAILED_TO_CREATE_CONTAINER)
         std::cout << "\nFailed of container creation\n";
 
@@ -35,7 +40,6 @@ int main()
     */
     std::shared_ptr<uint8_t[]> container_data(new uint8_t[size]); // Pointer to buffer to store container data to
     uint8_t creation_key[PQC_AES_KEYLEN] = {
-        1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 9,
         1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 9}; // Key AES key used to encrypt container, should point to
                                                          // pqc_aes_key structure or any buffer of size PQC_AES_KEYLEN
     uint8_t creation_iv[PQC_AES_IVLEN] = {
@@ -54,12 +58,13 @@ int main()
     PQC_symmetric_container_close(new_container); // delete old container
 
     PQC_CONTAINER_HANDLE container_a = PQC_symmetric_container_from_data(
-        container_data.get(), size, creation_key, sizeof(creation_key), creation_iv, sizeof(creation_iv)
+        context, container_data.get(), size, creation_key, sizeof(creation_key), creation_iv, sizeof(creation_iv)
     );
     if (container_a == PQC_FAILED_TO_CREATE_CONTAINER)
         std::cout << "\nFailed of container_a creation\n";
 
     PQC_symmetric_container_close(container_a); // delete container
 
+    PQC_context_close(context);
     return 0;
 }

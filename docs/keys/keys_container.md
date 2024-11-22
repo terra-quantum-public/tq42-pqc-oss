@@ -53,10 +53,13 @@ Please be aware that symmetric and asymmetric containers are stored in separate 
 ### `PQC_symmetric_container_create`
 **Function signature:**
 ```cpp
-PQC_CONTAINER_HANDLE PQC_symmetric_container_create();
+PQC_CONTAINER_HANDLE PQC_symmetric_container_create(CIPHER_HANDLE handle);
 ```
 -   The function that is used to create a Symmetric Key Container.
 -   This function returns a handle, denoted as  `PQC_CONTAINER_HANDLE`, which serves as a reference to the newly created container within the program's memory.
+
+**Parameters**
+*	`handle`: The encryption context handle. This is used to provide random source for container creation. Use `PQC_container_create_randomsource` to create context for a sole purpose of generating random numbers.
 
 **Initialization with Random Keys**:
 When the container is created, it fetches keys from a selected randomness source. This step ensures that the keys generated for the container are sufficiently random and secure for cryptographic operations.
@@ -158,7 +161,8 @@ The function can yield the following return values:
 ### `PQC_symmetric_container_from_data`
 **Function signature**
 ```cpp
-PQC_CONTAINER_HANDLE PQC_symmetric_container_from_data(const uint8_t* container_data,
+PQC_CONTAINER_HANDLE PQC_symmetric_container_from_data(CIPHER_HANDLE handle,
+														const uint8_t* container_data,
                                                         size_t data_length,
                                                         const uint8_t *key,
                                                         size_t key_length,
@@ -168,6 +172,7 @@ PQC_CONTAINER_HANDLE PQC_symmetric_container_from_data(const uint8_t* container_
 is designed to reconstruct a container from the extracted data, allowing for the restoration of the original container structure.
 
 **Parameters**: 
+  - `handle`: The encryption context handle. This is used to provide random source for container creation. Use `PQC_container_create_randomsource` to create context for a sole purpose of generating random numbers.
   - `container_data`: Pointer to a buffer containing the extracted container data that needs to be reconstructed.
   - `data_length`: Length of the buffer pointed to by  `container_data`, ensuring that the data is correctly sized for the reconstruction process.
   - `key`: AES key utilized to encrypt the container. It should point to a  `pqc_aes_key`  structure or any buffer of size  `PQC_AES_KEYLEN`.
@@ -177,6 +182,7 @@ is designed to reconstruct a container from the extracted data, allowing for the
   
 **Return Values**:   
 - `PQC_FAILED_TO_CREATE_CONTAINER`: Indicates that the container creation process failed, likely due to incorrect input buffer sizes. This return value helps to identify issues during the container reconstruction.
+- `PQC_RANDOM_FAILURE`: External random source returns error 
 - Otherwise: The handle of the created container is returned upon successful reconstruction, enabling further manipulation or processing of the container.
      
 **File Association Reminder**:
@@ -209,14 +215,15 @@ int PQC_symmetric_container_save_as(PQC_CONTAINER_HANDLE container,
 ### `PQC_symmetric_container_open`
 **Function signature**
 ```cpp
-PQC_CONTAINER_HANDLE PQC_symmetric_container_open(const char* filename,
+PQC_CONTAINER_HANDLE PQC_symmetric_container_open(CIPHER_HANDLE handle,
+                                                    const char* filename,
                                                     const char* password,
                                                     const char* salt);
 ```
 - is designed to load a container from a file.
 
 **Parameters**:    
-
+ - `handle`: The encryption context handle. This is used to provide random source for container creation. Use `PQC_container_create_randomsource` to create context for a sole purpose of generating random numbers.
 - `filename`: File name that will be used to save container.
 - `client_m`: Client name used for filename generation.
 - `client_k`: Client name used for filename generation.
@@ -225,6 +232,7 @@ PQC_CONTAINER_HANDLE PQC_symmetric_container_open(const char* filename,
 
 **Return Values**:
   - `PQC_FAILED_TO_CREATE_CONTAINER`: Indicates that there was an error, most probably an I/O error, during container loading.
+  - `PQC_RANDOM_FAILURE`: External random source returns error  
   - Otherwise: The return value is a handle to a container, allowing for further manipulation or processing of the loaded container.
 
 **Additional Notes**
@@ -295,13 +303,13 @@ PQC_symmetric_container_close(PQC_CONTAINER_HANDLE container)
 ### `PQC_symmetric_container_delete`
 **Function signature:**    
 ```cpp
-size_t PQC_API PQC_symmetric_container_delete(const char * filename)
+size_t PQC_API PQC_symmetric_container_delete(CIPHER_HANDLE handle, const char * filename)
 ```
 
 - This function deletes a file with the specified name.
 
 **Parameters**:
-
+ - `handle`: The encryption context handle. This is used to provide random source for container creation. Use `PQC_container_create_randomsource` to create context for a sole purpose of generating random numbers.
 - `filename`: A string representing the name of the file to be deleted.
 
 
@@ -309,7 +317,7 @@ size_t PQC_API PQC_symmetric_container_delete(const char * filename)
 
 -  **`PQC_OK`**: Indicates that the operation was successful.
 -  **`PQC_IO_ERROR`**: Indicates that the operation was not performed due to an input/output error.
-
+-  **PQC_RANDOM_FAILURE**: External random source returns error 
 
 
 ### Symmetric container example
@@ -475,7 +483,7 @@ int PQC_asymmetric_container_put_keys(uint32_t cipher,
                                         uint8_t* sk, 
                                         size_t sk_length);
 ```
- is responsible for inserting keys into an asymmetric container. It is important to note that asymmetric containers do not automatically generate keys and they need to be generated separately using the  `PQC_generate_key_pair()`  function before being inserted into the container.
+ is responsible for inserting keys into an asymmetric container. It is important to note that asymmetric containers do not automatically generate keys and they need to be generated separately using the  `PQC_keypair_generate()`  function before being inserted into the container.
 
 **Parameters**
 -   `cipher`: Constant used to select the cipher algorithm. Possible values are  `PQC_CIPHER_FALCON`  (5). The cipher selected should match the cipher used for the keys and the container.
@@ -496,7 +504,7 @@ int PQC_asymmetric_container_put_keys(uint32_t cipher,
 
 **Additional Notes**
 
--   It is essential to generate the keys using  `PQC_generate_key_pair()`  before inserting them into the container.
+-   It is essential to generate the keys using  `PQC_keypair_generate()`  before inserting them into the container.
 -   The function ensures that the keys are inserted correctly with respect to the chosen cipher within the container.
 
 ### `PQC_asymmetric_container_get_keys`
@@ -618,22 +626,24 @@ is utilized to close a container handle when it is no longer in use.
 ### `PQC_asymmetric_container_delete`
 **Function signature:**    
 ```cpp
-size_t PQC_API PQC_asymmetric_container_delete(const char * filename)
+size_t PQC_API PQC_asymmetric_container_delete(CIPHER_HANDLE handle, const char * filename)
 ```
 - This function deletes a file with the specified name.
 
 **Parameters**:
 
+- `handle`: The encryption context handle. This is used to provide random source for container creation. Use `PQC_container_create_randomsource` to create context for a sole purpose of generating random numbers.
 - `filename`: A string representing the name of the file to be deleted.
 
 **Return Values:**
 
 -  **`PQC_OK`**: Indicates that the operation was successful.
 -  **`PQC_IO_ERROR`**: Indicates that the operation was not performed due to an input/output error.
+-  **PQC_RANDOM_FAILURE**: External random source returns error 
 
 ## Asymmetric container example
 
 ```cpp
-{% include examples/asymmetric_container/asymmetric_container_example_3_write_read_to_file_falcon.cpp %}
+{% include examples/asymmetric_container/asymmetric_container_example_3_file_falcon.cpp %}
 ```
 

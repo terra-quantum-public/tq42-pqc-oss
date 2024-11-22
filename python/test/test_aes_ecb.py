@@ -15,13 +15,13 @@ data_len = len(data)
 def ECB_encrypt(pqc):
     def encrypt(key, data):
         # Initialize the context
-        context = pqc.PQC_init_context(pqc.PQC_CIPHER_AES, key)
+        context = pqc.PQC_context_init(pqc.PQC_CIPHER_AES, key)
 
         # Encrypt the data
-        buffer = pqc.PQC_encrypt(context, pqc.PQC_AES_M_ECB, data)
+        buffer = pqc.PQC_symmetric_encrypt(context, pqc.PQC_AES_M_ECB, data)
 
         # Close the context
-        pqc.PQC_close_context(context)
+        pqc.PQC_context_close(context)
 
         return buffer
 
@@ -33,13 +33,13 @@ def ECB_encrypt(pqc):
 def ECB_decrypt(pqc):
     def decrypt(key, data):
         # Initialize the context
-        context = pqc.PQC_init_context(pqc.PQC_CIPHER_AES, key)
+        context = pqc.PQC_context_init(pqc.PQC_CIPHER_AES, key)
 
         # Decrypt the data
-        buffer = pqc.PQC_decrypt(context, pqc.PQC_AES_M_ECB, data)
+        buffer = pqc.PQC_symmetric_decrypt(context, pqc.PQC_AES_M_ECB, data)
 
         # Close the context`
-        pqc.PQC_close_context(context)
+        pqc.PQC_context_close(context)
 
         return buffer
 

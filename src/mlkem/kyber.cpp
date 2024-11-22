@@ -7,116 +7,121 @@
 #include <mlkem/params.h>
 #include <mlkem/symmetric.h>
 #include <mlkem/verify.h>
-#include <rng/rng.h>
+#include <rng/random_generator.h>
 
 
-uint32_t KyberFactory::cipher_id() const { return PQC_CIPHER_KYBER; }
+template <size_t MODE> uint32_t KyberFactory<MODE>::cipher_id() const { return ParameterSets[MODE].CIPHER_ID; }
 
-std::unique_ptr<PQC_Context> KyberFactory::create_context(const ConstBufferView & private_key) const
-{
-    if (private_key.size() != PQC_KYBER_PRIVATE_KEYLEN)
-    {
-        throw BadLength();
-    }
-    return std::make_unique<KyberContext>(reinterpret_cast<const pqc_kyber_private_key *>(private_key.const_data()));
-}
-
-void KyberFactory::generate_keypair(const BufferView & public_key, const BufferView & private_key) const
-{
-    if (private_key.size() != PQC_KYBER_PRIVATE_KEYLEN || public_key.size() != PQC_KYBER_PUBLIC_KEYLEN)
-    {
-        throw BadLength();
-    }
-    indcpa_keypair(public_key, private_key.mid(0, KYBER_INDCPA_SECRETKEYBYTES));
-    private_key.mid(KYBER_INDCPA_SECRETKEYBYTES, PQC_KYBER_PUBLIC_KEYLEN).store(public_key);
-    hash_h(private_key.data() + KYBER_SECRETKEYBYTES - 2 * KYBER_SYMBYTES, public_key.data(), KYBER_PUBLICKEYBYTES);
-    randombytes(private_key.mid(KYBER_SECRETKEYBYTES - KYBER_SYMBYTES, KYBER_SYMBYTES));
-}
-
-void KyberFactory::kem_encode_secret(
-    const BufferView & message, const ConstBufferView public_key, const BufferView & shared_secret
+template <size_t MODE>
+std::unique_ptr<PQC_Context> KyberFactory<MODE>::create_context_asymmetric(
+    const ConstBufferView & public_key, const ConstBufferView & private_key
 ) const
 {
-    if (message.size() != PQC_KYBER_MESSAGE_LENGTH || shared_secret.size() != PQC_KYBER_SHARED_LENGTH ||
-        public_key.size() != PQC_KYBER_PUBLIC_KEYLEN)
+    check_size_or_empty(private_key, ParameterSets[MODE].PRIVATE_KEY_LEN);
+    check_size_or_empty(public_key, ParameterSets[MODE].PUBLIC_KEY_LEN);
+    return std::make_unique<KyberContext<MODE>>(public_key, private_key);
+}
+
+
+template <size_t MODE> void KyberContext<MODE>::generate_keypair()
+{
+    auto [public_key_view, private_key_view] =
+        allocate_keys(ParameterSets[MODE].PUBLIC_KEY_LEN, ParameterSets[MODE].PRIVATE_KEY_LEN);
+
+    auto [sk_part, pk_part, pk_hash, z] = private_key_view.split(
+        ParameterSets[MODE].POLYVEC_SIZE, ParameterSets[MODE].PUBLIC_KEY_LEN, ML_RH_SIZE, ML_RH_SIZE
+    );
+
+    indcpa_keypair(public_key_view, sk_part, MODE, &get_random_generator());
+    pk_part.store(public_key_view);
+    function_H(public_key_view, pk_hash);
+    get_random_generator().random_bytes(z);
+}
+
+template <size_t MODE>
+void KyberContext<MODE>::kem_encapsulate_secret(const BufferView & message, const BufferView & shared_secret)
+{
+    if (message.size() != ParameterSets[MODE].MESSAGE_LEN || shared_secret.size() != ParameterSets[MODE].SHARED_LEN)
     {
         throw BadLength();
     }
 
-    uint8_t buf[2 * KYBER_SYMBYTES];
-    /* Will contain key, coins */
-    uint8_t kr[2 * KYBER_SYMBYTES];
+    StackBuffer<2 * ML_RH_SIZE> buf;
+    auto [m, pk_hash] = buf.split(ML_RH_SIZE, ML_RH_SIZE);
+    StackBuffer<2 * ML_RH_SIZE> kr;
+    auto [K, r] = kr.split(ML_RH_SIZE, ML_RH_SIZE);
 
-    randombytes(BufferView(&buf, KYBER_SYMBYTES));
-    /* Don't release system RNG output */
-    hash_h(buf, buf, KYBER_SYMBYTES);
+    get_random_generator().random_bytes(m);
+    function_H(m, m);
+    function_H(public_key(), pk_hash);
+    function_G(buf, kr);
 
-    /* Multitarget countermeasure for coins + contributory KEM */
-    hash_h(buf + KYBER_SYMBYTES, public_key.const_data(), KYBER_PUBLICKEYBYTES);
-    hash_g(kr, buf, 2 * KYBER_SYMBYTES);
-
-    /* coins are in kr+KYBER_SYMBYTES */
-    indcpa_enc(message.data(), buf, public_key.const_data(), kr + KYBER_SYMBYTES);
-
-    /* overwrite coins in kr with H(c) */
-    hash_h(kr + KYBER_SYMBYTES, message.data(), KYBER_CIPHERTEXTBYTES);
-    /* hash concatenation of pre-k and H(c) to k */
-    kdf(shared_secret.data(), kr, 2 * KYBER_SYMBYTES);
+    indcpa_enc(message.data(), buf.const_data(), public_key(), r.const_data(), MODE);
+    function_H(message, r);
+    function_J(kr, shared_secret);
 }
 
-size_t KyberFactory::get_length(uint32_t type) const
+template <size_t MODE> size_t KyberFactory<MODE>::get_length(uint32_t type) const
 {
     switch (type)
     {
     case PQC_LENGTH_PUBLIC:
-        return PQC_KYBER_PUBLIC_KEYLEN;
+        return ParameterSets[MODE].PUBLIC_KEY_LEN;
     case PQC_LENGTH_PRIVATE:
-        return PQC_KYBER_PRIVATE_KEYLEN;
+        return ParameterSets[MODE].PRIVATE_KEY_LEN;
     case PQC_LENGTH_MESSAGE:
-        return PQC_KYBER_MESSAGE_LENGTH;
+        return ParameterSets[MODE].MESSAGE_LEN;
     case PQC_LENGTH_SHARED:
-        return PQC_KYBER_SHARED_LENGTH;
+        return ParameterSets[MODE].SHARED_LEN;
     }
     return 0;
 }
 
-void KyberContext::kem_decode_secret(ConstBufferView message, BufferView shared_secret) const
+template <size_t MODE>
+void KyberContext<MODE>::kem_decapsulate_secret(ConstBufferView message, BufferView shared_secret) const
 {
-    if (message.size() != PQC_KYBER_MESSAGE_LENGTH || shared_secret.size() != PQC_KYBER_SHARED_LENGTH)
+    if (message.size() != ParameterSets[MODE].MESSAGE_LEN || shared_secret.size() != ParameterSets[MODE].SHARED_LEN)
     {
         throw BadLength();
     }
 
-    size_t i;
-    int fail;
-    uint8_t buf[2 * KYBER_SYMBYTES];
+    uint8_t buf[2 * ML_RH_SIZE];
     /* Will contain key, coins */
-    uint8_t kr[2 * KYBER_SYMBYTES];
-    uint8_t cmp[KYBER_CIPHERTEXTBYTES];
+    uint8_t kr[2 * ML_RH_SIZE];
+    BufferView kr_buf = BufferView(&kr, 2 * ML_RH_SIZE);
+    uint8_t cmp[ParameterSets[MODE].MESSAGE_LEN];
 
-    const uint8_t * sk = ConstBufferView(private_key_).const_data();
-    const uint8_t * pk = sk + KYBER_INDCPA_SECRETKEYBYTES;
+    const uint8_t * sk = private_key().const_data();
+    ConstBufferView pk = private_key().mid(ParameterSets[MODE].POLYVEC_SIZE, ParameterSets[MODE].PUBLIC_KEY_LEN);
 
-    indcpa_dec(buf, message.const_data(), sk);
+    indcpa_dec(buf, message.const_data(), private_key(), MODE);
 
     /* Multitarget countermeasure for coins + contributory KEM */
-    for (i = 0; i < KYBER_SYMBYTES; i++)
-        buf[KYBER_SYMBYTES + i] = sk[KYBER_SECRETKEYBYTES - 2 * KYBER_SYMBYTES + i];
-    hash_g(kr, buf, 2 * KYBER_SYMBYTES);
+    for (size_t i = 0; i < ML_RH_SIZE; ++i)
+        buf[ML_RH_SIZE + i] = sk[ParameterSets[MODE].PRIVATE_KEY_LEN - 2 * ML_RH_SIZE + i];
+    hash_g(kr, buf, 2 * ML_RH_SIZE);
 
-    /* coins are in kr+KYBER_SYMBYTES */
-    indcpa_enc(cmp, buf, pk, kr + KYBER_SYMBYTES);
+    /* coins are in kr+ML_RH_SIZE */
+    indcpa_enc(cmp, buf, pk, kr + ML_RH_SIZE, MODE);
 
-    fail = verify(message.const_data(), cmp, KYBER_CIPHERTEXTBYTES);
+    int fail = verify(message.const_data(), cmp, ParameterSets[MODE].MESSAGE_LEN);
 
     /* overwrite coins in kr with H(c) */
-    hash_h(kr + KYBER_SYMBYTES, message.const_data(), KYBER_CIPHERTEXTBYTES);
+    hash_h(kr + ML_RH_SIZE, message.const_data(), ParameterSets[MODE].MESSAGE_LEN);
 
     /* Overwrite pre-k with z on re-encryption failure */
-    cmov(kr, sk + KYBER_SECRETKEYBYTES - KYBER_SYMBYTES, KYBER_SYMBYTES, static_cast<uint8_t>(fail));
+    cmov(kr, sk + ParameterSets[MODE].PRIVATE_KEY_LEN - ML_RH_SIZE, ML_RH_SIZE, static_cast<uint8_t>(fail));
 
     /* hash concatenation of pre-k and H(c) to k */
-    kdf(shared_secret.data(), kr, 2 * KYBER_SYMBYTES);
+    function_J(kr_buf, shared_secret);
 }
 
-size_t KyberContext::get_length(uint32_t type) const { return KyberFactory().get_length(type); }
+template <size_t MODE> size_t KyberContext<MODE>::get_length(uint32_t type) const
+{
+    return KyberFactory<MODE>().get_length(type);
+}
+
+
+template class KyberFactory<KYBER_512>;
+template class KyberFactory<KYBER_768>;
+template class KyberFactory<KYBER_1024>;

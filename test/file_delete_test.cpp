@@ -10,7 +10,12 @@ TEST(FileDelete, input_size_less_than_AES_BLOCKLEN)
     MyFile << "-123456789012abc";
     MyFile.close();
 
-    PQC_file_delete(filename);
+    CIPHER_HANDLE context = PQC_context_init_randomsource();
+    EXPECT_NE(context, PQC_BAD_CONTEXT) << "Context intialization should pass";
+
+    EXPECT_EQ(PQC_file_delete(context, filename), PQC_OK) << "file remove should return OK";
+
+    PQC_context_close(context);
 
     std::ifstream iff(filename);
 
@@ -31,7 +36,12 @@ TEST(FileDelete, input_size_multiple_AES_BLOCKLEN)
               "123456789012abc-123456789012abc";
     MyFile.close();
 
-    PQC_file_delete(filename);
+    CIPHER_HANDLE context = PQC_context_init_randomsource();
+    EXPECT_NE(context, PQC_BAD_CONTEXT) << "Context intialization should pass";
+
+    EXPECT_EQ(PQC_file_delete(context, filename), PQC_OK) << "file remove should return OK";
+
+    PQC_context_close(context);
 
     std::ifstream iff(filename);
 
@@ -53,7 +63,12 @@ TEST(FileDelete, input_size_bigger_not_multiple_AES_BLOCKLEN)
               "123456789012abc-123456789012abcqwerty";
     MyFile.close();
 
-    PQC_file_delete(filename);
+    CIPHER_HANDLE context = PQC_context_init_randomsource();
+    EXPECT_NE(context, PQC_BAD_CONTEXT) << "Context intialization should pass";
+
+    EXPECT_EQ(PQC_file_delete(context, filename), PQC_OK) << "file remove should return OK";
+
+    PQC_context_close(context);
 
     std::ifstream iff(filename);
 
@@ -70,5 +85,10 @@ TEST(FileDelete, BadInput)
 {
     const char * filename = "BadInput.txt";
 
-    EXPECT_EQ(PQC_file_delete(filename), PQC_IO_ERROR);
+    CIPHER_HANDLE context = PQC_context_init_randomsource();
+    EXPECT_NE(context, PQC_BAD_CONTEXT) << "Context intialization should pass";
+
+    EXPECT_EQ(PQC_file_delete(context, filename), PQC_IO_ERROR);
+
+    PQC_context_close(context);
 }

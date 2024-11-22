@@ -5,7 +5,7 @@
 #include <pqc/mceliece.h>
 
 
-#define TEST_SIZE(type, cipher, len) EXPECT_EQ(PQC_get_length(cipher, type), len);
+#define TEST_SIZE(type, cipher, len) EXPECT_EQ(PQC_cipher_get_length(cipher, type), len);
 
 TEST(SIZE, ALL)
 {

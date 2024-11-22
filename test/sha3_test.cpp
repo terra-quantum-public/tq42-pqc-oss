@@ -10,60 +10,60 @@
 
 TEST(SHA3, len)
 {
-    CIPHER_HANDLE sha3_224 = PQC_init_context_hash(PQC_CIPHER_SHA3, PQC_SHA3_224);
+    CIPHER_HANDLE sha3_224 = PQC_context_init_hash(PQC_CIPHER_SHA3, PQC_SHA3_224);
     EXPECT_EQ(PQC_hash_size(sha3_224), 224 / 8);
-    PQC_close_context(sha3_224);
+    PQC_context_close(sha3_224);
 
-    CIPHER_HANDLE sha3_256 = PQC_init_context_hash(PQC_CIPHER_SHA3, PQC_SHA3_256);
+    CIPHER_HANDLE sha3_256 = PQC_context_init_hash(PQC_CIPHER_SHA3, PQC_SHA3_256);
     EXPECT_EQ(PQC_hash_size(sha3_256), 256 / 8);
-    PQC_close_context(sha3_256);
+    PQC_context_close(sha3_256);
 
-    CIPHER_HANDLE sha3_384 = PQC_init_context_hash(PQC_CIPHER_SHA3, PQC_SHA3_384);
+    CIPHER_HANDLE sha3_384 = PQC_context_init_hash(PQC_CIPHER_SHA3, PQC_SHA3_384);
     EXPECT_EQ(PQC_hash_size(sha3_224), 384 / 8);
-    PQC_close_context(sha3_384);
+    PQC_context_close(sha3_384);
 
-    CIPHER_HANDLE sha3_512 = PQC_init_context_hash(PQC_CIPHER_SHA3, PQC_SHA3_512);
+    CIPHER_HANDLE sha3_512 = PQC_context_init_hash(PQC_CIPHER_SHA3, PQC_SHA3_512);
     EXPECT_EQ(PQC_hash_size(sha3_512), 512 / 8);
-    PQC_close_context(sha3_512);
+    PQC_context_close(sha3_512);
 }
 
 TEST(SHA3, empty)
 {
     uint8_t hash[512 / 8];
 
-    CIPHER_HANDLE sha3_224 = PQC_init_context_hash(PQC_CIPHER_SHA3, PQC_SHA3_224);
-    EXPECT_EQ(PQC_get_hash(sha3_224, hash, 224 / 8), PQC_OK);
+    CIPHER_HANDLE sha3_224 = PQC_context_init_hash(PQC_CIPHER_SHA3, PQC_SHA3_224);
+    EXPECT_EQ(PQC_hash_retrieve(sha3_224, hash, 224 / 8), PQC_OK);
     uint8_t expected_224[] = {0x6b, 0x4e, 0x03, 0x42, 0x36, 0x67, 0xdb, 0xb7, 0x3b, 0x6e, 0x15, 0x45, 0x4f, 0x0e,
                               0xb1, 0xab, 0xd4, 0x59, 0x7f, 0x9a, 0x1b, 0x07, 0x8e, 0x3f, 0x5b, 0x5a, 0x6b, 0xc7};
     EXPECT_EQ(memcmp(hash, expected_224, 224 / 8), 0);
-    PQC_close_context(sha3_224);
+    PQC_context_close(sha3_224);
 
-    CIPHER_HANDLE sha3_256 = PQC_init_context_hash(PQC_CIPHER_SHA3, PQC_SHA3_256);
-    EXPECT_EQ(PQC_get_hash(sha3_256, hash, 256 / 8), PQC_OK);
+    CIPHER_HANDLE sha3_256 = PQC_context_init_hash(PQC_CIPHER_SHA3, PQC_SHA3_256);
+    EXPECT_EQ(PQC_hash_retrieve(sha3_256, hash, 256 / 8), PQC_OK);
     uint8_t expected_256[] = {0xa7, 0xff, 0xc6, 0xf8, 0xbf, 0x1e, 0xd7, 0x66, 0x51, 0xc1, 0x47,
                               0x56, 0xa0, 0x61, 0xd6, 0x62, 0xf5, 0x80, 0xff, 0x4d, 0xe4, 0x3b,
                               0x49, 0xfa, 0x82, 0xd8, 0x0a, 0x4b, 0x80, 0xf8, 0x43, 0x4a};
     EXPECT_EQ(memcmp(hash, expected_256, 256 / 8), 0);
-    PQC_close_context(sha3_256);
+    PQC_context_close(sha3_256);
 
-    CIPHER_HANDLE sha3_384 = PQC_init_context_hash(PQC_CIPHER_SHA3, PQC_SHA3_384);
-    EXPECT_EQ(PQC_get_hash(sha3_384, hash, 384 / 8), PQC_OK);
+    CIPHER_HANDLE sha3_384 = PQC_context_init_hash(PQC_CIPHER_SHA3, PQC_SHA3_384);
+    EXPECT_EQ(PQC_hash_retrieve(sha3_384, hash, 384 / 8), PQC_OK);
     uint8_t expected_384[] = {0x0c, 0x63, 0xa7, 0x5b, 0x84, 0x5e, 0x4f, 0x7d, 0x01, 0x10, 0x7d, 0x85,
                               0x2e, 0x4c, 0x24, 0x85, 0xc5, 0x1a, 0x50, 0xaa, 0xaa, 0x94, 0xfc, 0x61,
                               0x99, 0x5e, 0x71, 0xbb, 0xee, 0x98, 0x3a, 0x2a, 0xc3, 0x71, 0x38, 0x31,
                               0x26, 0x4a, 0xdb, 0x47, 0xfb, 0x6b, 0xd1, 0xe0, 0x58, 0xd5, 0xf0, 0x04};
     EXPECT_EQ(memcmp(hash, expected_384, 384 / 8), 0);
-    PQC_close_context(sha3_384);
+    PQC_context_close(sha3_384);
 
-    CIPHER_HANDLE sha3_512 = PQC_init_context_hash(PQC_CIPHER_SHA3, PQC_SHA3_512);
-    EXPECT_EQ(PQC_get_hash(sha3_512, hash, 512 / 8), PQC_OK);
+    CIPHER_HANDLE sha3_512 = PQC_context_init_hash(PQC_CIPHER_SHA3, PQC_SHA3_512);
+    EXPECT_EQ(PQC_hash_retrieve(sha3_512, hash, 512 / 8), PQC_OK);
     uint8_t expected_512[] = {0xa6, 0x9f, 0x73, 0xcc, 0xa2, 0x3a, 0x9a, 0xc5, 0xc8, 0xb5, 0x67, 0xdc, 0x18,
                               0x5a, 0x75, 0x6e, 0x97, 0xc9, 0x82, 0x16, 0x4f, 0xe2, 0x58, 0x59, 0xe0, 0xd1,
                               0xdc, 0xc1, 0x47, 0x5c, 0x80, 0xa6, 0x15, 0xb2, 0x12, 0x3a, 0xf1, 0xf5, 0xf9,
                               0x4c, 0x11, 0xe3, 0xe9, 0x40, 0x2c, 0x3a, 0xc5, 0x58, 0xf5, 0x00, 0x19, 0x9d,
                               0x95, 0xb6, 0xd3, 0xe3, 0x01, 0x75, 0x85, 0x86, 0x28, 0x1d, 0xcd, 0x26};
     EXPECT_EQ(memcmp(hash, expected_512, 512 / 8), 0);
-    PQC_close_context(sha3_512);
+    PQC_context_close(sha3_512);
 }
 
 std::vector<int> message1600_steps = {1, 2, 4, 8, 10, 13, 20, 32, 64};
@@ -87,26 +87,26 @@ TEST(SHA3, sha3_224_message1600)
         0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3};
     uint8_t hash[sha_len];
 
-    CIPHER_HANDLE sha3 = PQC_init_context_hash(PQC_CIPHER_SHA3, sha_len * 8);
-    EXPECT_EQ(PQC_add_data(sha3, message, message_len), PQC_OK);
-    EXPECT_EQ(PQC_get_hash(sha3, hash, sha_len), PQC_OK);
+    CIPHER_HANDLE sha3 = PQC_context_init_hash(PQC_CIPHER_SHA3, sha_len * 8);
+    EXPECT_EQ(PQC_hash_update(sha3, message, message_len), PQC_OK);
+    EXPECT_EQ(PQC_hash_retrieve(sha3, hash, sha_len), PQC_OK);
     uint8_t expected[] = {0x93, 0x76, 0x81, 0x6A, 0xBA, 0x50, 0x3F, 0x72, 0xF9, 0x6C, 0xE7, 0xEB, 0x65, 0xAC,
                           0x09, 0x5D, 0xEE, 0xE3, 0xBE, 0x4B, 0xF9, 0xBB, 0xC2, 0xA1, 0xCB, 0x7E, 0x11, 0xE0};
 
     EXPECT_EQ(memcmp(hash, expected, sha_len), 0);
-    PQC_close_context(sha3);
+    PQC_context_close(sha3);
 
     for (int step : message1600_steps)
     {
-        sha3 = PQC_init_context_hash(PQC_CIPHER_SHA3, sha_len * 8);
+        sha3 = PQC_context_init_hash(PQC_CIPHER_SHA3, sha_len * 8);
         for (int i = 0; i < message_len; i += step)
         {
-            EXPECT_EQ(PQC_add_data(sha3, message + i, std::min(step, message_len - i)), PQC_OK);
-            EXPECT_EQ(PQC_get_hash(sha3, hash, sha_len), PQC_OK);
+            EXPECT_EQ(PQC_hash_update(sha3, message + i, std::min(step, message_len - i)), PQC_OK);
+            EXPECT_EQ(PQC_hash_retrieve(sha3, hash, sha_len), PQC_OK);
         }
-        EXPECT_EQ(PQC_get_hash(sha3, hash, sha_len), PQC_OK);
+        EXPECT_EQ(PQC_hash_retrieve(sha3, hash, sha_len), PQC_OK);
         EXPECT_EQ(memcmp(hash, expected, sha_len), 0);
-        PQC_close_context(sha3);
+        PQC_context_close(sha3);
     }
 }
 
@@ -129,27 +129,27 @@ TEST(SHA3, sha3_256_message1600)
         0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3};
     uint8_t hash[sha_len];
 
-    CIPHER_HANDLE sha3 = PQC_init_context_hash(PQC_CIPHER_SHA3, sha_len * 8);
-    EXPECT_EQ(PQC_add_data(sha3, message, message_len), PQC_OK);
-    EXPECT_EQ(PQC_get_hash(sha3, hash, sha_len), PQC_OK);
+    CIPHER_HANDLE sha3 = PQC_context_init_hash(PQC_CIPHER_SHA3, sha_len * 8);
+    EXPECT_EQ(PQC_hash_update(sha3, message, message_len), PQC_OK);
+    EXPECT_EQ(PQC_hash_retrieve(sha3, hash, sha_len), PQC_OK);
     uint8_t expected[] = {0x79, 0xF3, 0x8A, 0xDE, 0xC5, 0xC2, 0x03, 0x07, 0xA9, 0x8E, 0xF7,
                           0x6E, 0x83, 0x24, 0xAF, 0xBF, 0xD4, 0x6C, 0xFD, 0x81, 0xB2, 0x2E,
                           0x39, 0x73, 0xC6, 0x5F, 0xA1, 0xBD, 0x9D, 0xE3, 0x17, 0x87};
 
     EXPECT_EQ(memcmp(hash, expected, sha_len), 0);
-    PQC_close_context(sha3);
+    PQC_context_close(sha3);
 
     for (int step : message1600_steps)
     {
-        sha3 = PQC_init_context_hash(PQC_CIPHER_SHA3, sha_len * 8);
+        sha3 = PQC_context_init_hash(PQC_CIPHER_SHA3, sha_len * 8);
         for (int i = 0; i < message_len; i += step)
         {
-            EXPECT_EQ(PQC_add_data(sha3, message + i, std::min(step, message_len - i)), PQC_OK);
-            EXPECT_EQ(PQC_get_hash(sha3, hash, sha_len), PQC_OK);
+            EXPECT_EQ(PQC_hash_update(sha3, message + i, std::min(step, message_len - i)), PQC_OK);
+            EXPECT_EQ(PQC_hash_retrieve(sha3, hash, sha_len), PQC_OK);
         }
-        EXPECT_EQ(PQC_get_hash(sha3, hash, sha_len), PQC_OK);
+        EXPECT_EQ(PQC_hash_retrieve(sha3, hash, sha_len), PQC_OK);
         EXPECT_EQ(memcmp(hash, expected, sha_len), 0);
-        PQC_close_context(sha3);
+        PQC_context_close(sha3);
     }
 }
 
@@ -172,28 +172,28 @@ TEST(SHA3, sha3_384_message1600)
         0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3};
     uint8_t hash[sha_len];
 
-    CIPHER_HANDLE sha3 = PQC_init_context_hash(PQC_CIPHER_SHA3, sha_len * 8);
-    EXPECT_EQ(PQC_add_data(sha3, message, message_len), PQC_OK);
-    EXPECT_EQ(PQC_get_hash(sha3, hash, sha_len), PQC_OK);
+    CIPHER_HANDLE sha3 = PQC_context_init_hash(PQC_CIPHER_SHA3, sha_len * 8);
+    EXPECT_EQ(PQC_hash_update(sha3, message, message_len), PQC_OK);
+    EXPECT_EQ(PQC_hash_retrieve(sha3, hash, sha_len), PQC_OK);
     uint8_t expected[] = {0x18, 0x81, 0xDE, 0x2C, 0xA7, 0xE4, 0x1E, 0xF9, 0x5D, 0xC4, 0x73, 0x2B,
                           0x8F, 0x5F, 0x00, 0x2B, 0x18, 0x9C, 0xC1, 0xE4, 0x2B, 0x74, 0x16, 0x8E,
                           0xD1, 0x73, 0x26, 0x49, 0xCE, 0x1D, 0xBC, 0xDD, 0x76, 0x19, 0x7A, 0x31,
                           0xFD, 0x55, 0xEE, 0x98, 0x9F, 0x2D, 0x70, 0x50, 0xDD, 0x47, 0x3E, 0x8F};
 
     EXPECT_EQ(memcmp(hash, expected, sha_len), 0);
-    PQC_close_context(sha3);
+    PQC_context_close(sha3);
 
     for (int step : message1600_steps)
     {
-        sha3 = PQC_init_context_hash(PQC_CIPHER_SHA3, sha_len * 8);
+        sha3 = PQC_context_init_hash(PQC_CIPHER_SHA3, sha_len * 8);
         for (int i = 0; i < message_len; i += step)
         {
-            EXPECT_EQ(PQC_add_data(sha3, message + i, std::min(step, message_len - i)), PQC_OK);
-            EXPECT_EQ(PQC_get_hash(sha3, hash, sha_len), PQC_OK);
+            EXPECT_EQ(PQC_hash_update(sha3, message + i, std::min(step, message_len - i)), PQC_OK);
+            EXPECT_EQ(PQC_hash_retrieve(sha3, hash, sha_len), PQC_OK);
         }
-        EXPECT_EQ(PQC_get_hash(sha3, hash, sha_len), PQC_OK);
+        EXPECT_EQ(PQC_hash_retrieve(sha3, hash, sha_len), PQC_OK);
         EXPECT_EQ(memcmp(hash, expected, sha_len), 0);
-        PQC_close_context(sha3);
+        PQC_context_close(sha3);
     }
 }
 
@@ -216,9 +216,9 @@ TEST(SHA3, sha3_512_message1600)
         0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3};
     uint8_t hash[sha_len];
 
-    CIPHER_HANDLE sha3 = PQC_init_context_hash(PQC_CIPHER_SHA3, sha_len * 8);
-    EXPECT_EQ(PQC_add_data(sha3, message, message_len), PQC_OK);
-    EXPECT_EQ(PQC_get_hash(sha3, hash, sha_len), PQC_OK);
+    CIPHER_HANDLE sha3 = PQC_context_init_hash(PQC_CIPHER_SHA3, sha_len * 8);
+    EXPECT_EQ(PQC_hash_update(sha3, message, message_len), PQC_OK);
+    EXPECT_EQ(PQC_hash_retrieve(sha3, hash, sha_len), PQC_OK);
     uint8_t expected[] = {0xE7, 0x6D, 0xFA, 0xD2, 0x20, 0x84, 0xA8, 0xB1, 0x46, 0x7F, 0xCF, 0x2F, 0xFA,
                           0x58, 0x36, 0x1B, 0xEC, 0x76, 0x28, 0xED, 0xF5, 0xF3, 0xFD, 0xC0, 0xE4, 0x80,
                           0x5D, 0xC4, 0x8C, 0xAE, 0xEC, 0xA8, 0x1B, 0x7C, 0x13, 0xC3, 0x0A, 0xDF, 0x52,
@@ -226,19 +226,19 @@ TEST(SHA3, sha3_512_message1600)
                           0xA1, 0xA4, 0xA8, 0x41, 0x6D, 0xF6, 0x54, 0x5A, 0x1C, 0xE8, 0xBA, 0x00};
 
     EXPECT_EQ(memcmp(hash, expected, sha_len), 0);
-    PQC_close_context(sha3);
+    PQC_context_close(sha3);
 
     for (int step : message1600_steps)
     {
-        sha3 = PQC_init_context_hash(PQC_CIPHER_SHA3, sha_len * 8);
+        sha3 = PQC_context_init_hash(PQC_CIPHER_SHA3, sha_len * 8);
         for (int i = 0; i < message_len; i += step)
         {
-            EXPECT_EQ(PQC_add_data(sha3, message + i, std::min(step, message_len - i)), PQC_OK);
-            EXPECT_EQ(PQC_get_hash(sha3, hash, sha_len), PQC_OK);
+            EXPECT_EQ(PQC_hash_update(sha3, message + i, std::min(step, message_len - i)), PQC_OK);
+            EXPECT_EQ(PQC_hash_retrieve(sha3, hash, sha_len), PQC_OK);
         }
-        EXPECT_EQ(PQC_get_hash(sha3, hash, sha_len), PQC_OK);
+        EXPECT_EQ(PQC_hash_retrieve(sha3, hash, sha_len), PQC_OK);
         EXPECT_EQ(memcmp(hash, expected, sha_len), 0);
-        PQC_close_context(sha3);
+        PQC_context_close(sha3);
     }
 }
 
@@ -272,9 +272,9 @@ TEST(SHA3, shake128_check_HASH)
 
     std::vector<uint8_t> out(messageForCheck.size());
 
-    CIPHER_HANDLE sha3 = PQC_init_context_hash(PQC_CIPHER_SHA3, PQC_SHAKE_128);
-    EXPECT_EQ(PQC_add_data(sha3, (uint8_t *)"1234567890", 10), PQC_OK);
-    EXPECT_EQ(PQC_get_hash(sha3, out.data(), out.size()), PQC_OK);
+    CIPHER_HANDLE sha3 = PQC_context_init_hash(PQC_CIPHER_SHA3, PQC_SHAKE_128);
+    EXPECT_EQ(PQC_hash_update(sha3, (uint8_t *)"1234567890", 10), PQC_OK);
+    EXPECT_EQ(PQC_hash_retrieve(sha3, out.data(), out.size()), PQC_OK);
 
     EXPECT_EQ(out, messageForCheck);
 }
@@ -308,9 +308,9 @@ TEST(SHA3, shake256_check_HASH)
 
     std::vector<uint8_t> out(messageForCheck.size());
 
-    CIPHER_HANDLE sha3 = PQC_init_context_hash(PQC_CIPHER_SHA3, PQC_SHAKE_256);
-    EXPECT_EQ(PQC_add_data(sha3, (uint8_t *)"1234567890", 10), PQC_OK);
-    EXPECT_EQ(PQC_get_hash(sha3, out.data(), out.size()), PQC_OK);
+    CIPHER_HANDLE sha3 = PQC_context_init_hash(PQC_CIPHER_SHA3, PQC_SHAKE_256);
+    EXPECT_EQ(PQC_hash_update(sha3, (uint8_t *)"1234567890", 10), PQC_OK);
+    EXPECT_EQ(PQC_hash_retrieve(sha3, out.data(), out.size()), PQC_OK);
 
     EXPECT_EQ(out, messageForCheck);
 }

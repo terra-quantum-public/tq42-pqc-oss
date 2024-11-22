@@ -1,5 +1,6 @@
 #include <cstring>
 #include <iostream>
+#include <memory>
 
 #include <pqc/container.h>
 #include <pqc/mceliece.h>
@@ -23,7 +24,10 @@ int main()
 
     PQC_CONTAINER_HANDLE new_container = PQC_asymmetric_container_create(PQC_CIPHER_MCELIECE);
     if (new_container == PQC_FAILED_TO_CREATE_CONTAINER)
+    {
         std::cout << "\nERROR!!! Failed of container creation!\n";
+        return 1;
+    }
 
     /*
     We can get the size of the key container in bytes using the following code.
@@ -31,7 +35,11 @@ int main()
     */
     size_t size = PQC_asymmetric_container_size(new_container);
     if (size == 0)
+    {
         std::cout << "\nERROR!!! Failed container size!\n";
+        return 1;
+    }
+
     /*
     This function has second veriant of using. When we have only the cipher type
     without container. We can get size of the container of this type.
@@ -40,50 +48,57 @@ int main()
     */
     size = PQC_asymmetric_container_size_special(PQC_CIPHER_MCELIECE, 0);
     if (size == 0)
+    {
         std::cout << "\nERROR!!! Failed container size!\n";
+        return 1;
+    }
 
     /*
     So, after creating asymmetric container is empty. There is no control of it.
     Only user should know, is container empty or not. Now let's generate
     falcon keys and put they inside of the container
     */
-    pqc_mceliece_private_key priv_alice;
-    pqc_mceliece_public_key pub_alice;
-    PQC_generate_key_pair(
-        PQC_CIPHER_MCELIECE, (uint8_t *)&pub_alice, sizeof(pub_alice), (uint8_t *)&priv_alice, sizeof(priv_alice)
+    auto priv_alice = std::make_unique<pqc_mceliece_private_key>();
+    auto pub_alice = std::make_unique<pqc_mceliece_public_key>();
+    PQC_keypair_generate(
+        PQC_CIPHER_MCELIECE, pub_alice->public_key, sizeof(pub_alice->public_key), priv_alice->private_key,
+        sizeof(priv_alice->private_key)
     );
 
     PQC_asymmetric_container_put_keys(
-        PQC_CIPHER_MCELIECE, new_container, (uint8_t *)&pub_alice, sizeof(pub_alice), (uint8_t *)&priv_alice,
-        sizeof(priv_alice)
+        PQC_CIPHER_MCELIECE, new_container, pub_alice->public_key, sizeof(pub_alice->public_key),
+        priv_alice->private_key, sizeof(priv_alice->private_key)
     );
 
     /*
     Now there are public and secret keys inside. We can get them out. Let's do it.
     */
-    pqc_mceliece_private_key sk_test;
-    pqc_mceliece_public_key pk_test;
-
+    auto sk_test = std::make_unique<pqc_mceliece_private_key>();
+    auto pk_test = std::make_unique<pqc_mceliece_public_key>();
     PQC_asymmetric_container_get_keys(
-        PQC_CIPHER_MCELIECE, new_container, (uint8_t *)&pk_test, sizeof(pk_test), (uint8_t *)&sk_test, sizeof(sk_test)
+        PQC_CIPHER_MCELIECE, new_container, pk_test->public_key, sizeof(pk_test->public_key), sk_test->private_key,
+        sizeof(sk_test->private_key)
     );
 
     /*
     keys sould be same with others we had put in. Checking:
     */
-    if (memcmp((uint8_t *)&pub_alice, (uint8_t *)&pk_test, sizeof(pub_alice)) != 0)
+    if (memcmp(pub_alice->public_key, pk_test->public_key, sizeof(pub_alice->public_key)) != 0)
     {
         std::cout << "\nERROR!!! Bad public key!\n";
+        return 1;
     }
-    if (memcmp((uint8_t *)&priv_alice, (uint8_t *)&sk_test, sizeof(priv_alice)) != 0)
+    if (memcmp(priv_alice->private_key, sk_test->private_key, sizeof(priv_alice->private_key)) != 0)
     {
         std::cout << "\nERROR!!! Bad secret key!\n";
+        return 1;
     }
 
     // delete container
     if (PQC_asymmetric_container_close(new_container) != PQC_OK)
     {
         std::cout << "\nERROR!!! Failed to delete container!\n";
+        return 1;
     }
     return 0;
 }

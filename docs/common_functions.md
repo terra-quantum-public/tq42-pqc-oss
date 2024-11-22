@@ -20,12 +20,12 @@ The section provides detailed descriptions of common functions and constants use
 
 ## Common functions 
 
-### `PQC_get_length`
+### `PQC_cipher_get_length`
 
 **Function signature**
 
 ```cpp
-size_t PQC_API PQC_get_length(uint32_t cipher, uint32_t type);
+size_t PQC_API PQC_cipher_get_length(uint32_t cipher, uint32_t type);
 ```
 
 **Purpose**: This function returns the size of a specific variable in bytes for a given algorithm type.

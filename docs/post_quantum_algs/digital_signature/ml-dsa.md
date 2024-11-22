@@ -27,18 +27,28 @@ or [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0.html)
 
 ## FIPS 204 ML-DSA
 
-FIPS 204 is the Module-Lattice-Based Digital Signature Standard, which was developed by the National Institute of Standards and Technology (NIST) to provide a quantum-resistant digital signature mechanism. FIPS 204 specifies a module-lattice-based digital signature algorithm (ML-DSA), designed to ensure the security and integrity of digital communications and data against attacks that might be feasible with quantum computers  
-- [FIPS 204](https://csrc.nist.gov/pubs/fips/204/ipd) 
+FIPS 204 is the Module-Lattice-Based Digital Signature Standard developed by the National Institute of Standards and Technology (NIST) to offer a quantum-resistant digital signature solution. This standard outlines the Module-Lattice-Based Digital Signature Algorithm (ML-DSA), designed to safeguard the security and integrity of digital communications and data against quantum computer threats.
 
-The standard is derived from the CRYSTALS-Dilithium submission, which was a selection from the NIST Post-Quantum Cryptography Standardization Project 
-- [Nist post quantum cryptography](https://www.infosecurity-magazine.com/news/nist-post-quantum-cryptography/)  .
+Derived from the CRYSTALS-Dilithium selection of the NIST Post-Quantum Cryptography Standardization Project, ML-DSA leverages lattice-based cryptographic constructs. These constructs are highly regarded for their resilience against both classical and quantum attacks, making ML-DSA a strong option for ensuring long-term data integrity.
 
-ML-DSA is based on lattice-based cryptographic constructs, which are considered to be secure against both classical and quantum adversaries. This makes it a robust choice for long-term data integrity  
-    
-The standard provides detailed specifications for generating, verifying, and managing digital signatures to ensure consistent and secure implementation across various applications.
+FIPS 204 provides comprehensive guidelines for generating, verifying, and managing digital signatures, ensuring secure and consistent implementation across diverse applications.
 
-FIPS 204 was initially published as a draft on August 24, 2023, with a public comment period that concluded on November 22, 2023  . Following the public comment period, necessary revisions were made to address feedback, and NIST aims to finalize and publish the standard for use in 2024.
-    
+The standard was initially released as a draft on August 24, 2023, with a public comment period ending on November 22, 2023. NIST officially standardized ML-DSA on August 13, 2024, marking a significant step forward in enhancing cryptographic security in the quantum computing era.
+- [FIPS 204 Initial Public Draft](https://csrc.nist.gov/pubs/fips/204/final)
+- [FIPS 204 Publication](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.204.pdf)
+
+## ML-DSA CAVP Validation
+
+The TQ42 Cryptography v0.2.2 implementations of ML-DSA are fully compliant with the latest NIST standard, FIPS 204. The algorithm has undergone validation through the NIST Cryptographic Algorithm Validation Program (CAVP). For additional information, please visit the For further details, please visit the NIST CAVP [webpage](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/details?product=18351).
+
+The validation process spans multiple operating systems and hardware configurations, including:
+
+- Red Hat 9.4 
+- Ubuntu 24.04 
+- Windows 11 
+- Windows 2022 
+- IOS 17.5.1
+- Android 14
 
 ### Applications:
 
@@ -62,10 +72,11 @@ Module-Lattice-based Digital Signature Algorithms (ML-DSA), such as those based 
 
 ## ML-DSA - Parameter set summary
 
-- ML-DSA-87 -  security category **5**
-- Public key size - **2592** bytes
-- Private key size - **4896** bytes 
-- Signature size - **4627** bytes
+|           | Public key size | Private key size | Signature size | Security category |
+|:---------:|:---------------:|:----------------:|:--------------:|:-----------------:|
+| ML-DSA-44 | 1312 bytes      | 2560 bytes       | 2420 bytes     | 2                 |
+| ML-DSA-65 | 1952 bytes      | 4032 bytes       | 3309 bytes     | 3                 |
+| ML-DSA-87 | 2592 bytes      | 4896 bytes       | 4627 bytes     | 5                 |
 
 ## NIST's Known Answer Tests (KAT)
 The TQ42 Cryptography ML-DSA algorithm implementation has successfully passed the Known Answer Tests (KAT) provided by NIST. This confirms that the algorithm performs reliably as anticipated. For those interested in a deeper dive into the specifics of these tests, they are available [for review](https://github.com/terra-quantum-public/tq42-pqc-oss/tree/main/test/mldsa).
@@ -78,7 +89,7 @@ The customization of the ML-DSA algorithm within TQ42 Cryptography is designed t
 
 To include the necessary library, please refer to the  [Getting Started Guide](../../getting_started.html).
 After following the guide, include the `pqc/ml-dsa.h` header in your code.
-All Signature Schemes algorithms have a unified API. For ML-DSA 87, you can set the algorithm to work using the constant **PQC_CIPHER_ML_DSA**.
+All Signature Schemes algorithms have a unified API. For ML-DSA you can set the algorithm to work using the constants **PQC_CIPHER_ML_DSA_44**, **PQC_CIPHER_ML_DSA_65** or **PQC_CIPHER_ML_DSA_87**.
 To learn about all the available methods for signature algorithms, visit the [Signature Schemes Generic API Overview page](api.html).
 
 
@@ -87,4 +98,4 @@ To learn about all the available methods for signature algorithms, visit the [Si
 **Code**
 
 ```cpp
-{% include examples/signature/example_mldsa.cpp %}```
+{% include examples/signature/example_signature.cpp %}```

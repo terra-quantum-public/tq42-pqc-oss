@@ -17,13 +17,13 @@ data_len = len(data)
 def GCM_encrypt(pqc):
     def encrypt(key, data):
         # Initialize the context
-        context = pqc.PQC_init_context_iv(pqc.PQC_CIPHER_AES, key, iv)
+        context = pqc.PQC_context_init_iv(pqc.PQC_CIPHER_AES, key, iv)
 
         # Encrypt the data
         buffer, tag = pqc.PQC_aead_encrypt(context, pqc.PQC_AES_M_GCM, data, aad)
 
         # Close the context
-        pqc.PQC_close_context(context)
+        pqc.PQC_context_close(context)
 
         return buffer, tag
 
@@ -35,13 +35,13 @@ def GCM_encrypt(pqc):
 def GCM_check(pqc):
     def check(key, data, tag):
         # Initialize the context
-        context = pqc.PQC_init_context_iv(pqc.PQC_CIPHER_AES, key, iv)
+        context = pqc.PQC_context_init_iv(pqc.PQC_CIPHER_AES, key, iv)
 
         # Decrypt the data
         result = pqc.PQC_aead_check(context, pqc.PQC_AES_M_GCM, data, aad, tag)
 
         # Close the context
-        pqc.PQC_close_context(context)
+        pqc.PQC_context_close(context)
 
         return result
 
@@ -52,13 +52,13 @@ def GCM_check(pqc):
 def GCM_decrypt(pqc):
     def decrypt(key, data, tag):
         # Initialize the context
-        context = pqc.PQC_init_context_iv(pqc.PQC_CIPHER_AES, key, iv)
+        context = pqc.PQC_context_init_iv(pqc.PQC_CIPHER_AES, key, iv)
 
         # Decrypt the data
         buffer = pqc.PQC_aead_decrypt(context, pqc.PQC_AES_M_GCM, data, aad, tag)
 
         # Close the context
-        pqc.PQC_close_context(context)
+        pqc.PQC_context_close(context)
 
         return buffer
 

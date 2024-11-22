@@ -33,7 +33,7 @@ TEST(ASYMMETRIC_CONTAINER, ASYMMETRIC_CONTAINER_KeyGen_Put)
     MCELIECE_PUBLIC(pub_alice);
 
     EXPECT_EQ(
-        PQC_generate_key_pair(
+        PQC_keypair_generate(
             PQC_CIPHER_MCELIECE, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
         ),
         PQC_OK
@@ -71,7 +71,7 @@ TEST(ASYMMETRIC_CONTAINER, ASYMMETRIC_CONTAINER_ToFrom_DATA)
     MCELIECE_PUBLIC(pub_alice);
 
     EXPECT_EQ(
-        PQC_generate_key_pair(
+        PQC_keypair_generate(
             PQC_CIPHER_MCELIECE, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
         ),
         PQC_OK
@@ -143,7 +143,7 @@ TEST(ASYMMETRIC_CONTAINER, ASYMMETRIC_CONTAINER_ToFromFile)
     MCELIECE_PUBLIC(pub_alice);
 
     EXPECT_EQ(
-        PQC_generate_key_pair(
+        PQC_keypair_generate(
             PQC_CIPHER_MCELIECE, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
         ),
         PQC_OK
@@ -209,7 +209,7 @@ TEST(ASYMMETRIC_CONTAINER, ASYMMETRIC_CONTAINER_McEliece_ToFrom_DATA)
     std::vector<uint8_t> pub_alice(sizeof(pqc_mceliece_public_key));
 
     EXPECT_EQ(
-        PQC_generate_key_pair(
+        PQC_keypair_generate(
             PQC_CIPHER_MCELIECE, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
         ),
         PQC_OK
@@ -280,7 +280,7 @@ TEST(ASYMMETRIC_CONTAINER, ASYMMETRIC_CONTAINER_ToFrom_DATA_IncorrectedCiphers)
     FALCON_PUBLIC(pub_alice);
 
     EXPECT_EQ(
-        PQC_generate_key_pair(
+        PQC_keypair_generate(
             PQC_CIPHER_FALCON, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
         ),
         PQC_OK

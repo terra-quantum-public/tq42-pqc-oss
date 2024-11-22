@@ -11,7 +11,12 @@ We support the following versions
 
 | Version | Supported          |
 | ------- | ------------------ |
-| [0.1](https://github.com/terra-quantum-public/tq42-pqc-oss/releases/tag/v0.1.0)   | :white_check_mark: |
+| [0.3](https://github.com/terra-quantum-public/tq42-pqc-oss/releases/tag/v0.3.0)   | :white_check_mark: |
+| [0.2.2](https://github.com/terra-quantum-public/tq42-pqc-oss/releases/tag/v0.2.2)   | :white_check_mark: |
+| [0.2.1](https://github.com/terra-quantum-public/tq42-pqc-oss/releases/tag/v0.2.1)   | :x: |
+| [0.2.0](https://github.com/terra-quantum-public/tq42-pqc-oss/releases/tag/v0.2.0)   | :x: |
+| [0.1.1](https://github.com/terra-quantum-public/tq42-pqc-oss/releases/tag/v0.1.1)   | :x: |
+| [0.1](https://github.com/terra-quantum-public/tq42-pqc-oss/releases/tag/v0.1.0)   | :x: |
 
 ## Reporting a Vulnerability
 

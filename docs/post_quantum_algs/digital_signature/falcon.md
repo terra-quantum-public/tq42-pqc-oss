@@ -79,5 +79,5 @@ To learn about all the available methods for signature algorithms, visit the [Si
 **Code**
 
 ```cpp
-{% include examples/signature/falcon_example.cpp %}
+{% include examples/signature/example_signature.cpp %}
 ```

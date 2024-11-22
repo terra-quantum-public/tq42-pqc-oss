@@ -17,7 +17,7 @@ extern "C"
 {
 #endif
 
-    PQC_CONTAINER_HANDLE PQC_API PQC_symmetric_container_create();
+    PQC_CONTAINER_HANDLE PQC_API PQC_symmetric_container_create(CIPHER_HANDLE handle);
 
     size_t PQC_API PQC_symmetric_container_size(PQC_CONTAINER_HANDLE container);
 
@@ -33,8 +33,8 @@ extern "C"
     );
 
     PQC_CONTAINER_HANDLE PQC_API PQC_symmetric_container_from_data(
-        const uint8_t * container_data, size_t data_length, const uint8_t * key, size_t key_length, const uint8_t * iv,
-        size_t iv_length
+        CIPHER_HANDLE handle, const uint8_t * container_data, size_t data_length, const uint8_t * key,
+        size_t key_length, const uint8_t * iv, size_t iv_length
     );
 
     size_t PQC_API PQC_symmetric_container_save_as(
@@ -47,11 +47,11 @@ extern "C"
     );
 
     PQC_CONTAINER_HANDLE PQC_API
-    PQC_symmetric_container_open(const char * filename, const char * password, const char * salt);
+    PQC_symmetric_container_open(CIPHER_HANDLE ctx, const char * filename, const char * password, const char * salt);
 
     size_t PQC_API PQC_symmetric_container_close(PQC_CONTAINER_HANDLE container);
 
-    size_t PQC_API PQC_symmetric_container_delete(const char * filename);
+    size_t PQC_API PQC_symmetric_container_delete(CIPHER_HANDLE handle, const char * filename);
 
     PQC_CONTAINER_HANDLE PQC_API PQC_asymmetric_container_create(uint32_t cipher);
 
@@ -92,7 +92,7 @@ extern "C"
 
     size_t PQC_API PQC_asymmetric_container_close(PQC_CONTAINER_HANDLE container);
 
-    size_t PQC_API PQC_asymmetric_container_delete(const char * filename);
+    size_t PQC_API PQC_asymmetric_container_delete(CIPHER_HANDLE handle, const char * filename);
 
 #ifdef __cplusplus
 }

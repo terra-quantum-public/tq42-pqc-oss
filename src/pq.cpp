@@ -19,42 +19,60 @@
 #include <core.h>
 #include <pbkdf2/pbkdf2.h>
 #include <pq17.h>
+#include <registry.h>
 #include <rng/external_random_generator.h>
-#include <rng/rng.h>
 #include <secure_delete.h>
 #include <sha3.h>
 
+static Registry<CIPHER_HANDLE, PQC_Context> contexts;
 
-static std::vector<std::unique_ptr<PQC_Context>> contexts;
+
 AlgorithmRegistry algorithm_registry;
 
-SymmetricContext * to_symmetric(std::unique_ptr<PQC_Context> & context)
+void check_size_or_empty(const ConstBufferView & buffer, size_t expected_size)
 {
-    SymmetricContext * symmetric = dynamic_cast<SymmetricContext *>(context.get());
+    if (buffer.const_data() && buffer.size() != expected_size)
+    {
+        throw BadLength();
+    }
+}
+
+SymmetricContext * to_symmetric(PQC_Context * context)
+{
+    SymmetricContext * symmetric = dynamic_cast<SymmetricContext *>(context);
     if (!symmetric)
         throw UnsupportedOperation();
     return symmetric;
 }
 
-KEMContext * to_kem(std::unique_ptr<PQC_Context> & context)
+AsymmetricContext * to_asymmetric(PQC_Context * context)
 {
-    KEMContext * kem = dynamic_cast<KEMContext *>(context.get());
+    AsymmetricContext * asymmetric = dynamic_cast<AsymmetricContext *>(context);
+    if (!asymmetric)
+        throw UnsupportedOperation();
+    return asymmetric;
+}
+
+
+KEMContext * to_kem(PQC_Context * context)
+{
+    KEMContext * kem = dynamic_cast<KEMContext *>(context);
     if (!kem)
         throw UnsupportedOperation();
     return kem;
 }
 
-SignatureContext * to_signature(std::unique_ptr<PQC_Context> & context)
+SignatureContext * to_signature(PQC_Context * context)
 {
-    SignatureContext * signature = dynamic_cast<SignatureContext *>(context.get());
+    SignatureContext * signature = dynamic_cast<SignatureContext *>(context);
     if (!signature)
         throw UnsupportedOperation();
     return signature;
 }
 
-HashContext * to_hash(std::unique_ptr<PQC_Context> & context)
+HashContext * to_hash(PQC_Context * context)
 {
-    HashContext * hash = dynamic_cast<HashContext *>(context.get());
+    HashContext * hash = dynamic_cast<HashContext *>(context);
     if (!hash)
         throw UnsupportedOperation();
     return hash;
@@ -82,12 +100,9 @@ const AlgorithmFactory * AlgorithmRegistry::get_factory(uint32_t cipher)
     return iterator->second.get();
 }
 
-void AlgorithmRegistry::set_random_generator(std::unique_ptr<IRandomGenerator> rng)
-{
-    std::swap(random_generator_, rng);
-}
+void PQC_Context::set_random_generator(std::unique_ptr<IRandomGenerator> rng) { std::swap(random_generator_, rng); }
 
-IRandomGenerator & AlgorithmRegistry::get_random_generator()
+IRandomGenerator & PQC_Context::get_random_generator()
 {
     if (!random_generator_)
     {
@@ -97,37 +112,14 @@ IRandomGenerator & AlgorithmRegistry::get_random_generator()
     return *random_generator_;
 }
 
-CIPHER_HANDLE new_context()
-{
-    CIPHER_HANDLE h;
 
-    for (h = 0; h < contexts.size(); ++h)
-    {
-        if (!contexts[h])
-        {
-            return h;
-        }
-    }
-    contexts.push_back(nullptr);
-    return h;
-}
-
-bool is_valid_context(CIPHER_HANDLE ctx) { return ctx < contexts.size() && contexts[ctx]; }
-
-#define CHECK_CONTEXT(ctx)                                                                                             \
-    if (!is_valid_context(ctx))                                                                                        \
-    {                                                                                                                  \
-        return PQC_BAD_CONTEXT;                                                                                        \
-    }
-
-CIPHER_HANDLE PQC_API PQC_init_context(uint32_t cipher, const uint8_t * key, size_t key_length)
+CIPHER_HANDLE PQC_API PQC_context_init(uint32_t cipher, const uint8_t * key, size_t key_length)
 {
     try
     {
         const AlgorithmFactory * factory = algorithm_registry.get_factory(cipher);
-        CIPHER_HANDLE ctx = new_context();
-        contexts[ctx] = factory->create_context(ConstBufferView(key, key_length));
-        return ctx;
+
+        return contexts.add(factory->create_context(ConstBufferView(key, key_length)));
     }
     catch (...)
     {
@@ -136,14 +128,12 @@ CIPHER_HANDLE PQC_API PQC_init_context(uint32_t cipher, const uint8_t * key, siz
 }
 
 CIPHER_HANDLE PQC_API
-PQC_init_context_iv(uint32_t cipher, const uint8_t * key, size_t key_length, const uint8_t * iv, size_t iv_length)
+PQC_context_init_iv(uint32_t cipher, const uint8_t * key, size_t key_length, const uint8_t * iv, size_t iv_length)
 {
     try
     {
         const AlgorithmFactory * factory = algorithm_registry.get_factory(cipher);
-        CIPHER_HANDLE ctx = new_context();
-        contexts[ctx] = factory->create_context(ConstBufferView(key, key_length), ConstBufferView(iv, iv_length));
-        return ctx;
+        return contexts.add(factory->create_context(ConstBufferView(key, key_length), ConstBufferView(iv, iv_length)));
     }
     catch (...)
     {
@@ -151,14 +141,12 @@ PQC_init_context_iv(uint32_t cipher, const uint8_t * key, size_t key_length, con
     }
 }
 
-CIPHER_HANDLE PQC_API PQC_init_context_hash(uint32_t algorithm, uint32_t mode)
+CIPHER_HANDLE PQC_API PQC_context_init_hash(uint32_t algorithm, uint32_t mode)
 {
     try
     {
         const AlgorithmFactory * factory = algorithm_registry.get_factory(algorithm);
-        CIPHER_HANDLE ctx = new_context();
-        contexts[ctx] = factory->create_context_hash(mode);
-        return ctx;
+        return contexts.add(factory->create_context_hash(mode));
     }
     catch (...)
     {
@@ -166,13 +154,47 @@ CIPHER_HANDLE PQC_API PQC_init_context_hash(uint32_t algorithm, uint32_t mode)
     }
 }
 
-size_t PQC_API PQC_set_iv(CIPHER_HANDLE ctx, const uint8_t * iv, size_t iv_len)
+CIPHER_HANDLE
+PQC_context_init_asymmetric(
+    uint32_t cipher, uint8_t * public_key, size_t public_size, uint8_t * private_key, size_t private_size
+)
 {
-    CHECK_CONTEXT(ctx);
+    try
+    {
+        const AlgorithmFactory * factory = algorithm_registry.get_factory(cipher);
+        return contexts.add(factory->create_context_asymmetric(
+            ConstBufferView(public_key, public_size), ConstBufferView(private_key, private_size)
+        ));
+    }
+    catch (...)
+    {
+        return PQC_BAD_CIPHER;
+    }
+}
+
+CIPHER_HANDLE PQC_API PQC_context_init_randomsource()
+{
+    try
+    {
+        return contexts.add(std::make_unique<PQC_Context>());
+    }
+    catch (...)
+    {
+        return PQC_BAD_CIPHER;
+    }
+}
+
+size_t PQC_API PQC_context_set_iv(CIPHER_HANDLE ctx, const uint8_t * iv, size_t iv_len)
+{
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
 
     try
     {
-        contexts[ctx]->set_iv(ConstBufferView(iv, iv_len));
+        context->set_iv(ConstBufferView(iv, iv_len));
         return PQC_OK;
     }
     catch (BadLength)
@@ -183,15 +205,23 @@ size_t PQC_API PQC_set_iv(CIPHER_HANDLE ctx, const uint8_t * iv, size_t iv_len)
     {
         return PQC_BAD_CIPHER;
     }
+    catch (...)
+    {
+        return PQC_INTERNAL_ERROR;
+    }
 }
 
-size_t PQC_API PQC_encrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t * buffer, size_t length)
+size_t PQC_API PQC_symmetric_encrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t * buffer, size_t length)
 {
-    CHECK_CONTEXT(ctx)
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
 
     try
     {
-        to_symmetric(contexts[ctx])->encrypt(mode, BufferView(buffer, length));
+        to_symmetric(context)->encrypt(mode, BufferView(buffer, length));
         return PQC_OK;
     }
     catch (UnsupportedOperation)
@@ -210,16 +240,24 @@ size_t PQC_API PQC_encrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t * buffer, s
     {
         return PQC_BAD_MODE;
     }
+    catch (...)
+    {
+        return PQC_INTERNAL_ERROR;
+    }
 }
 
 
-size_t PQC_API PQC_decrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t * buffer, size_t length)
+size_t PQC_API PQC_symmetric_decrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t * buffer, size_t length)
 {
-    CHECK_CONTEXT(ctx)
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
 
     try
     {
-        to_symmetric(contexts[ctx])->decrypt(mode, BufferView(buffer, length));
+        to_symmetric(context)->decrypt(mode, BufferView(buffer, length));
         return PQC_OK;
     }
     catch (UnsupportedOperation)
@@ -237,6 +275,10 @@ size_t PQC_API PQC_decrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t * buffer, s
     catch (BadMode)
     {
         return PQC_BAD_MODE;
+    }
+    catch (...)
+    {
+        return PQC_INTERNAL_ERROR;
     }
 }
 
@@ -245,14 +287,17 @@ size_t PQC_API PQC_aead_encrypt(
     uint8_t * auth_tag, size_t auth_tag_len
 )
 {
-    CHECK_CONTEXT(ctx)
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
 
     try
     {
-        to_symmetric(contexts[ctx])
-            ->aead_encrypt(
-                mode, BufferView(buffer, length), ConstBufferView(aad, aad_length), BufferView(auth_tag, auth_tag_len)
-            );
+        to_symmetric(context)->aead_encrypt(
+            mode, BufferView(buffer, length), ConstBufferView(aad, aad_length), BufferView(auth_tag, auth_tag_len)
+        );
         return PQC_OK;
     }
     catch (UnsupportedOperation)
@@ -271,6 +316,10 @@ size_t PQC_API PQC_aead_encrypt(
     {
         return PQC_BAD_MODE;
     }
+    catch (...)
+    {
+        return PQC_INTERNAL_ERROR;
+    }
 }
 
 size_t PQC_API PQC_aead_decrypt(
@@ -278,15 +327,17 @@ size_t PQC_API PQC_aead_decrypt(
     const uint8_t * auth_tag, size_t auth_tag_len
 )
 {
-    CHECK_CONTEXT(ctx)
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
 
     try
     {
-        to_symmetric(contexts[ctx])
-            ->aead_decrypt(
-                mode, BufferView(buffer, length), ConstBufferView(aad, aad_length),
-                ConstBufferView(auth_tag, auth_tag_len)
-            );
+        to_symmetric(context)->aead_decrypt(
+            mode, BufferView(buffer, length), ConstBufferView(aad, aad_length), ConstBufferView(auth_tag, auth_tag_len)
+        );
         return PQC_OK;
     }
     catch (UnsupportedOperation)
@@ -309,6 +360,10 @@ size_t PQC_API PQC_aead_decrypt(
     {
         return PQC_AUTHENTICATION_FAILURE;
     }
+    catch (...)
+    {
+        return PQC_INTERNAL_ERROR;
+    }
 }
 
 size_t PQC_API PQC_aead_check(
@@ -316,13 +371,18 @@ size_t PQC_API PQC_aead_check(
     const uint8_t * auth_tag, size_t auth_tag_len
 )
 {
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
+
     try
     {
-        if (to_symmetric(contexts[ctx])
-                ->aead_check(
-                    mode, BufferView(buffer, length), ConstBufferView(aad, aad_length),
-                    ConstBufferView(auth_tag, auth_tag_len)
-                ))
+        if (to_symmetric(context)->aead_check(
+                mode, BufferView(buffer, length), ConstBufferView(aad, aad_length),
+                ConstBufferView(auth_tag, auth_tag_len)
+            ))
         {
             return PQC_OK;
         }
@@ -348,25 +408,29 @@ size_t PQC_API PQC_aead_check(
     {
         return PQC_AUTHENTICATION_FAILURE;
     }
+    catch (...)
+    {
+        return PQC_INTERNAL_ERROR;
+    }
 }
 
-size_t PQC_API PQC_close_context(CIPHER_HANDLE ctx)
+size_t PQC_API PQC_context_close(CIPHER_HANDLE ctx)
 {
-    CHECK_CONTEXT(ctx)
-
-    contexts[ctx].reset();
-
+    contexts.remove(ctx);
     return PQC_OK;
 }
 
-size_t PQC_API PQC_generate_key_pair(
-    uint32_t cipher, uint8_t * public_key, size_t public_size, uint8_t * private_key, size_t private_size
-)
+size_t PQC_API PQC_context_keypair_generate(CIPHER_HANDLE ctx)
 {
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
+
     try
     {
-        const AlgorithmFactory * factory = algorithm_registry.get_factory(cipher);
-        factory->generate_keypair(BufferView(public_key, public_size), BufferView(private_key, private_size));
+        to_asymmetric(context)->generate_keypair();
         return PQC_OK;
     }
     catch (UnknownID)
@@ -380,6 +444,105 @@ size_t PQC_API PQC_generate_key_pair(
     catch (BadLength)
     {
         return PQC_BAD_LEN;
+    }
+    catch (RandomFailure)
+    {
+        return PQC_RANDOM_FAILURE;
+    }
+    catch (...)
+    {
+        return PQC_INTERNAL_ERROR;
+    }
+}
+
+size_t PQC_API PQC_keypair_generate(
+    uint32_t cipher, uint8_t * public_key, size_t public_size, uint8_t * private_key, size_t private_size
+)
+{
+    CIPHER_HANDLE context = PQC_context_init_asymmetric(cipher, nullptr, 0, nullptr, 0);
+
+    if (context == PQC_BAD_CONTEXT)
+    {
+        return PQC_BAD_CIPHER;
+    }
+
+    size_t result = PQC_context_keypair_generate(context);
+    if (result != PQC_OK)
+    {
+        PQC_context_close(context);
+        return result;
+    }
+
+    result = PQC_context_get_keypair(context, public_key, public_size, private_key, private_size);
+    PQC_context_close(context);
+    return result;
+}
+
+size_t PQC_API PQC_context_get_keypair(
+    CIPHER_HANDLE ctx, uint8_t * public_key, size_t public_size, uint8_t * private_key, size_t private_size
+)
+{
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
+
+    try
+    {
+        to_asymmetric(context)->get_keypair(BufferView(public_key, public_size), BufferView(private_key, private_size));
+        return PQC_OK;
+    }
+    catch (UnknownID)
+    {
+        return PQC_BAD_CIPHER;
+    }
+    catch (UnsupportedOperation)
+    {
+        return PQC_BAD_CIPHER;
+    }
+    catch (BadLength)
+    {
+        return PQC_BAD_LEN;
+    }
+    catch (KeyNotSet)
+    {
+        return PQC_KEY_NOT_SET;
+    }
+    catch (...)
+    {
+        return PQC_INTERNAL_ERROR;
+    }
+}
+
+size_t PQC_API PQC_context_get_public_key(CIPHER_HANDLE ctx, uint8_t * public_key, size_t public_size)
+{
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
+
+    try
+    {
+        to_asymmetric(context)->get_public_key(BufferView(public_key, public_size));
+        return PQC_OK;
+    }
+    catch (UnknownID)
+    {
+        return PQC_BAD_CIPHER;
+    }
+    catch (UnsupportedOperation)
+    {
+        return PQC_BAD_CIPHER;
+    }
+    catch (BadLength)
+    {
+        return PQC_BAD_LEN;
+    }
+    catch (KeyNotSet)
+    {
+        return PQC_KEY_NOT_SET;
     }
     catch (...)
     {
@@ -398,13 +561,13 @@ size_t PQC_API PQC_kdf(
     {
         SHA3 sha3_variables(PQC_SHA3_512);
 
-        sha3_variables.add_data(ConstBufferView(shared_secret, shared_length));
-        sha3_variables.add_data(ConstBufferView(&counter, sizeof(counter)));
-        sha3_variables.add_data(ConstBufferView(party_a_info, info_length));
-        sha3_variables.add_data(ConstBufferView(&sub_pub_info, sizeof(sub_pub_info)));
+        sha3_variables.update(ConstBufferView(shared_secret, shared_length));
+        sha3_variables.update(ConstBufferView(&counter, sizeof(counter)));
+        sha3_variables.update(ConstBufferView(party_a_info, info_length));
+        sha3_variables.update(ConstBufferView(&sub_pub_info, sizeof(sub_pub_info)));
 
         size_t size = std::min(sha3_variables.hash_size(), key_length);
-        memcpy(key, sha3_variables.get_hash(), size);
+        memcpy(key, sha3_variables.retrieve(), size);
 
         key += size;
         key_length -= size;
@@ -413,17 +576,20 @@ size_t PQC_API PQC_kdf(
     return PQC_OK;
 }
 
-size_t PQC_API PQC_kem_encode_secret(
-    uint32_t cipher, uint8_t * message, size_t message_length, const uint8_t * public_key, size_t publickey_length,
-    uint8_t * shared_secret, size_t shared_secret_length
+size_t PQC_API PQC_kem_encapsulate_secret(
+    CIPHER_HANDLE ctx, uint8_t * message, size_t message_length, uint8_t * shared_secret, size_t shared_secret_length
 )
 {
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
+
     try
     {
-        const AlgorithmFactory * factory = algorithm_registry.get_factory(cipher);
-        factory->kem_encode_secret(
-            BufferView(message, message_length), ConstBufferView(public_key, publickey_length),
-            BufferView(shared_secret, shared_secret_length)
+        to_kem(context)->kem_encapsulate_secret(
+            BufferView(message, message_length), BufferView(shared_secret, shared_secret_length)
         );
         return PQC_OK;
     }
@@ -435,21 +601,36 @@ size_t PQC_API PQC_kem_encode_secret(
     {
         return PQC_BAD_CIPHER;
     }
+    catch (KeyNotSet)
+    {
+        return PQC_KEY_NOT_SET;
+    }
+    catch (RandomFailure)
+    {
+        return PQC_RANDOM_FAILURE;
+    }
+    catch (...)
+    {
+        return PQC_INTERNAL_ERROR;
+    }
 }
 
-size_t PQC_API PQC_kem_decode_secret(
+size_t PQC_API PQC_kem_decapsulate_secret(
     CIPHER_HANDLE ctx, const uint8_t * message, size_t message_length, uint8_t * shared_secret,
     size_t shared_secret_length
 )
 {
-    CHECK_CONTEXT(ctx);
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
 
     try
     {
-        to_kem(contexts[ctx])
-            ->kem_decode_secret(
-                ConstBufferView(message, message_length), BufferView(shared_secret, shared_secret_length)
-            );
+        to_kem(context)->kem_decapsulate_secret(
+            ConstBufferView(message, message_length), BufferView(shared_secret, shared_secret_length)
+        );
     }
     catch (BadLength)
     {
@@ -459,47 +640,53 @@ size_t PQC_API PQC_kem_decode_secret(
     {
         return PQC_BAD_CIPHER;
     }
+    catch (KeyNotSet)
+    {
+        return PQC_KEY_NOT_SET;
+    }
+    catch (...)
+    {
+        return PQC_INTERNAL_ERROR;
+    }
 
     return PQC_OK;
 }
 
-size_t PQC_API PQC_kem_encode(
-    uint32_t cipher, uint8_t * message, size_t message_length, const uint8_t * party_a_info, size_t info_length,
-    const uint8_t * public_key, size_t key_length, uint8_t * shared_key, size_t shared_key_length
+size_t PQC_API PQC_kem_encapsulate(
+    CIPHER_HANDLE ctx, uint8_t * message, size_t message_length, const uint8_t * party_a_info, size_t info_length,
+    uint8_t * shared_key, size_t shared_key_length
 )
 {
-    try
+    size_t size = PQC_context_get_length(ctx, PQC_LENGTH_SHARED);
+    if (size == 0)
     {
-        const AlgorithmFactory * factory = algorithm_registry.get_factory(cipher);
-
-        size_t size = factory->get_length(PQC_LENGTH_SHARED);
-        std::vector<uint8_t> secret(size, 0);
-
-        size_t result =
-            PQC_kem_encode_secret(cipher, message, message_length, public_key, key_length, secret.data(), size);
-        if (result != PQC_OK)
-            return result;
-        return PQC_kdf(secret.data(), size, party_a_info, info_length, shared_key, shared_key_length);
+        return PQC_BAD_CONTEXT;
     }
-    catch (UnknownID)
-    {
-        return PQC_BAD_CIPHER;
-    }
+    std::vector<uint8_t> secret(size, 0);
+
+    size_t result = PQC_kem_encapsulate_secret(ctx, message, message_length, secret.data(), size);
+    if (result != PQC_OK)
+        return result;
+    return PQC_kdf(secret.data(), size, party_a_info, info_length, shared_key, shared_key_length);
 }
 
-size_t PQC_API PQC_kem_decode(
+size_t PQC_API PQC_kem_decapsulate(
     CIPHER_HANDLE ctx, const uint8_t * message, size_t message_length, const uint8_t * party_a_info, size_t info_length,
     uint8_t * shared_key, size_t shared_key_length
 )
 {
-    CHECK_CONTEXT(ctx);
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
 
     try
     {
-        size_t size = contexts[ctx]->get_length(PQC_LENGTH_SHARED);
+        size_t size = context->get_length(PQC_LENGTH_SHARED);
         std::vector<uint8_t> secret(size, 0);
 
-        size_t result = PQC_kem_decode_secret(ctx, message, message_length, secret.data(), size);
+        size_t result = PQC_kem_decapsulate_secret(ctx, message, message_length, secret.data(), size);
         if (result != PQC_OK)
             return result;
         return PQC_kdf(secret.data(), size, party_a_info, info_length, shared_key, shared_key_length);
@@ -508,16 +695,25 @@ size_t PQC_API PQC_kem_decode(
     {
         return PQC_BAD_CIPHER;
     }
+    catch (...)
+    {
+        return PQC_INTERNAL_ERROR;
+    }
 }
 
-size_t PQC_API
-PQC_sign(CIPHER_HANDLE ctx, const uint8_t * buffer, size_t length, uint8_t * signature, size_t signature_len)
+size_t PQC_API PQC_signature_create(
+    CIPHER_HANDLE ctx, const uint8_t * buffer, size_t length, uint8_t * signature, size_t signature_len
+)
 {
-    CHECK_CONTEXT(ctx);
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
 
     try
     {
-        to_signature(contexts[ctx])->sign(ConstBufferView(buffer, length), BufferView(signature, signature_len));
+        to_signature(context)->create_signature(ConstBufferView(buffer, length), BufferView(signature, signature_len));
         return PQC_OK;
     }
     catch (UnsupportedOperation)
@@ -528,24 +724,34 @@ PQC_sign(CIPHER_HANDLE ctx, const uint8_t * buffer, size_t length, uint8_t * sig
     {
         return PQC_BAD_LEN;
     }
+    catch (KeyNotSet)
+    {
+        return PQC_KEY_NOT_SET;
+    }
+    catch (RandomFailure)
+    {
+        return PQC_RANDOM_FAILURE;
+    }
     catch (...)
     {
         return PQC_INTERNAL_ERROR;
     }
 }
 
-size_t PQC_API PQC_verify(
-    uint32_t cipher, const uint8_t * public_key, size_t public_keylen, const uint8_t * buffer, size_t length,
-    const uint8_t * signature, size_t signature_len
+size_t PQC_API PQC_signature_verify(
+    CIPHER_HANDLE ctx, const uint8_t * buffer, size_t length, const uint8_t * signature, size_t signature_len
 )
 {
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
+
     try
     {
-        const AlgorithmFactory * factory = algorithm_registry.get_factory(cipher);
-
-        if (factory->verify(
-                ConstBufferView(public_key, public_keylen), ConstBufferView(buffer, length),
-                ConstBufferView(signature, signature_len)
+        if (to_signature(context)->verify_signature(
+                ConstBufferView(buffer, length), ConstBufferView(signature, signature_len)
             ))
             return PQC_OK;
         return PQC_BAD_SIGNATURE;
@@ -558,34 +764,55 @@ size_t PQC_API PQC_verify(
     {
         return PQC_BAD_CIPHER;
     }
-
     catch (BadLength)
 
     {
         return PQC_BAD_LEN;
     }
+    catch (KeyNotSet)
+    {
+        return PQC_KEY_NOT_SET;
+    }
+    catch (...)
+    {
+        return PQC_INTERNAL_ERROR;
+    }
 }
 
-size_t PQC_API PQC_add_data(CIPHER_HANDLE ctx, const uint8_t * buffer, size_t length)
+size_t PQC_API PQC_hash_update(CIPHER_HANDLE ctx, const uint8_t * buffer, size_t length)
 {
-    CHECK_CONTEXT(ctx);
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
 
     try
     {
-        to_hash(contexts[ctx])->add_data(ConstBufferView(buffer, length));
+        to_hash(context)->update(ConstBufferView(buffer, length));
         return PQC_OK;
     }
     catch (UnsupportedOperation)
     {
         return PQC_BAD_CIPHER;
     }
+    catch (...)
+    {
+        return PQC_INTERNAL_ERROR;
+    }
 }
 
 size_t PQC_API PQC_hash_size(CIPHER_HANDLE ctx)
 {
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
+
     try
     {
-        return to_hash(contexts[ctx])->hash_size();
+        return to_hash(context)->hash_size();
     }
     catch (...)
     {
@@ -593,13 +820,17 @@ size_t PQC_API PQC_hash_size(CIPHER_HANDLE ctx)
     }
 }
 
-size_t PQC_API PQC_get_hash(CIPHER_HANDLE ctx, uint8_t * hash, size_t hash_length)
+size_t PQC_API PQC_hash_retrieve(CIPHER_HANDLE ctx, uint8_t * hash, size_t hash_length)
 {
-    CHECK_CONTEXT(ctx);
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
 
     try
     {
-        to_hash(contexts[ctx])->get_hash(BufferView(hash, hash_length));
+        to_hash(context)->retrieve(BufferView(hash, hash_length));
         return PQC_OK;
     }
     catch (BadLength)
@@ -610,100 +841,143 @@ size_t PQC_API PQC_get_hash(CIPHER_HANDLE ctx, uint8_t * hash, size_t hash_lengt
     {
         return PQC_BAD_CIPHER;
     }
+    catch (...)
+    {
+        return PQC_INTERNAL_ERROR;
+    }
 }
 
 
-void PQC_random_from_external(_get_external_random get_ext_random)
+size_t PQC_context_random_set_external(CIPHER_HANDLE ctx, _get_external_random get_ext_random)
 {
-    algorithm_registry.set_random_generator(std::make_unique<ExternalRandomGenerator>(get_ext_random));
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
+
+    context->set_random_generator(std::make_unique<ExternalRandomGenerator>(get_ext_random));
+
+    return PQC_OK;
 }
 
 
-size_t PQC_API PQC_random_from_pq_17(const uint8_t * key, size_t key_len, const uint8_t * iv, size_t iv_len)
+size_t PQC_API
+PQC_context_random_set_pq_17(CIPHER_HANDLE ctx, const uint8_t * key, size_t key_len, const uint8_t * iv, size_t iv_len)
 {
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
+
     if (key_len != PQC_AES_KEYLEN || iv_len != PQC_AES_IVLEN)
     {
         return PQC_BAD_LEN;
     }
 
-    algorithm_registry.set_random_generator(
-        std::make_unique<PQ17prng_engine>((const pqc_aes_key *)key, (const pqc_aes_iv *)iv)
-    );
+    context->set_random_generator(std::make_unique<PQ17prng_engine>((const pqc_aes_key *)key, (const pqc_aes_iv *)iv));
 
     return PQC_OK;
 }
 
-void PQC_API PQC_random_bytes(void * x, size_t length) { return randombytes(BufferView(x, length)); }
+size_t PQC_API PQC_context_random_get_bytes(CIPHER_HANDLE ctx, void * x, size_t length)
+{
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
+
+    try
+    {
+        context->get_random_generator().random_bytes(BufferView(x, length));
+    }
+    catch (RandomFailure)
+    {
+        return PQC_RANDOM_FAILURE;
+    }
+    catch (...)
+    {
+        return PQC_INTERNAL_ERROR;
+    }
+    return PQC_OK;
+}
 
 //---------------------------------------------------- Symmetric Container
 //----------------------------------------------------
 
-std::vector<std::shared_ptr<SymmetricKeyContainer>> symmetric_containers;
+Registry<PQC_CONTAINER_HANDLE, SymmetricKeyContainer> symmetric_containers;
 
-PQC_CONTAINER_HANDLE store_new_symmetric_container(std::shared_ptr<SymmetricKeyContainer> container)
+PQC_CONTAINER_HANDLE PQC_API PQC_symmetric_container_create(CIPHER_HANDLE ctx)
 {
-    for (size_t i = 0; i < symmetric_containers.size(); ++i)
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
     {
-        if (!symmetric_containers[i])
-        {
-            symmetric_containers[i] = container;
-            return i;
-        }
+        return PQC_FAILED_TO_CREATE_CONTAINER;
+    }
+    try
+    {
+        return symmetric_containers.add(std::make_unique<SymmetricKeyContainer>(&context->get_random_generator()));
+    }
+    catch (RandomFailure)
+    {
+        return PQC_RANDOM_FAILURE;
+    }
+}
+
+uint32_t PQC_API PQC_symmetric_container_get_version(PQC_CONTAINER_HANDLE handle)
+{
+    SymmetricKeyContainer * container = symmetric_containers.get(handle);
+    if (!container)
+    {
+        return PQC_BAD_CONTAINER;
     }
 
-    symmetric_containers.push_back(container);
-    return symmetric_containers.size() - 1;
+    return container->get_version();
 }
 
-PQC_CONTAINER_HANDLE PQC_API PQC_symmetric_container_create()
+uint64_t PQC_API PQC_symmetric_container_get_creation_time(PQC_CONTAINER_HANDLE handle)
 {
-    return store_new_symmetric_container(std::make_shared<SymmetricKeyContainer>());
-}
-
-bool is_valid_container(PQC_CONTAINER_HANDLE ctx)
-{
-    return ctx < symmetric_containers.size() && symmetric_containers[ctx];
-}
-
-#define CHECK_CONTAINER(ctx)                                                                                           \
-    if (!is_valid_container(ctx))                                                                                      \
-    {                                                                                                                  \
-        return PQC_BAD_CONTAINER;                                                                                      \
+    SymmetricKeyContainer * container = symmetric_containers.get(handle);
+    if (!container)
+    {
+        return PQC_BAD_CONTAINER;
     }
+
+    return container->get_creation_ts();
+}
 
 size_t PQC_symmetric_container_size(PQC_CONTAINER_HANDLE container) { return SymmetricKeyContainer::data_size(); }
 
-uint32_t PQC_API PQC_symmetric_container_get_version(PQC_CONTAINER_HANDLE container)
+uint64_t PQC_API PQC_symmetric_container_get_expiration_time(PQC_CONTAINER_HANDLE handle)
 {
-    CHECK_CONTAINER(container);
-    return symmetric_containers[container]->get_version();
-}
+    SymmetricKeyContainer * container = symmetric_containers.get(handle);
+    if (!container)
+    {
+        return PQC_BAD_CONTAINER;
+    }
 
-uint64_t PQC_API PQC_symmetric_container_get_creation_time(PQC_CONTAINER_HANDLE container)
-{
-    CHECK_CONTAINER(container);
-    return symmetric_containers[container]->get_creation_ts();
-}
-
-uint64_t PQC_API PQC_symmetric_container_get_expiration_time(PQC_CONTAINER_HANDLE container)
-{
-    CHECK_CONTAINER(container);
-    return symmetric_containers[container]->get_expiration_ts();
+    return container->get_expiration_ts();
 }
 
 size_t PQC_API PQC_symmetric_container_get_data(
-    PQC_CONTAINER_HANDLE container, uint8_t * container_data, size_t data_length, const uint8_t * key,
-    size_t key_length, const uint8_t * iv, size_t iv_length
+    PQC_CONTAINER_HANDLE handle, uint8_t * container_data, size_t data_length, const uint8_t * key, size_t key_length,
+    const uint8_t * iv, size_t iv_length
 )
 {
-    CHECK_CONTAINER(container);
+    SymmetricKeyContainer * container = symmetric_containers.get(handle);
+    if (!container)
+    {
+        return PQC_BAD_CONTAINER;
+    }
 
     if (data_length != SymmetricKeyContainer::data_size() || key_length != PQC_AES_KEYLEN || iv_length != PQC_AES_IVLEN)
     {
         return PQC_BAD_LEN;
     }
 
-    symmetric_containers[container]->get_data(
+    container->get_data(
         container_data, reinterpret_cast<const pqc_aes_key *>(key), reinterpret_cast<const pqc_aes_iv *>(iv)
     );
 
@@ -711,8 +985,8 @@ size_t PQC_API PQC_symmetric_container_get_data(
 }
 
 PQC_CONTAINER_HANDLE PQC_API PQC_symmetric_container_from_data(
-    const uint8_t * container_data, size_t data_length, const uint8_t * key, size_t key_length, const uint8_t * iv,
-    size_t iv_length
+    CIPHER_HANDLE ctx, const uint8_t * container_data, size_t data_length, const uint8_t * key, size_t key_length,
+    const uint8_t * iv, size_t iv_length
 )
 {
     if (data_length != SymmetricKeyContainer::data_size() || key_length != PQC_AES_KEYLEN || iv_length != PQC_AES_IVLEN)
@@ -720,19 +994,37 @@ PQC_CONTAINER_HANDLE PQC_API PQC_symmetric_container_from_data(
         return PQC_FAILED_TO_CREATE_CONTAINER;
     }
 
-    return store_new_symmetric_container(std::make_shared<SymmetricKeyContainer>(
-        container_data, reinterpret_cast<const pqc_aes_key *>(key), reinterpret_cast<const pqc_aes_iv *>(iv)
-    ));
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_FAILED_TO_CREATE_CONTAINER;
+    }
+
+    try
+    {
+        return symmetric_containers.add(std::make_unique<SymmetricKeyContainer>(
+            container_data, reinterpret_cast<const pqc_aes_key *>(key), reinterpret_cast<const pqc_aes_iv *>(iv),
+            &context->get_random_generator()
+        ));
+    }
+    catch (RandomFailure)
+    {
+        return PQC_RANDOM_FAILURE;
+    }
 }
 
 size_t PQC_API PQC_symmetric_container_get_key(
-    PQC_CONTAINER_HANDLE container, int index, size_t bytes_encoded, uint32_t cipher, uint32_t method, uint8_t * key,
+    PQC_CONTAINER_HANDLE handle, int index, size_t bytes_encoded, uint32_t cipher, uint32_t method, uint8_t * key,
     size_t key_length
 )
 {
-    CHECK_CONTAINER(container);
+    SymmetricKeyContainer * container = symmetric_containers.get(handle);
+    if (!container)
+    {
+        return PQC_BAD_CONTAINER;
+    }
 
-    return symmetric_containers[container]->get(index, bytes_encoded, cipher, method, BufferView(key, key_length));
+    return container->get(index, bytes_encoded, cipher, method, BufferView(key, key_length));
 }
 
 size_t PQC_API PQC_pbkdf_2(
@@ -748,16 +1040,21 @@ size_t PQC_API PQC_pbkdf_2(
 
 
 PQC_CONTAINER_HANDLE PQC_API
-PQC_symmetric_container_open(const char * filename, const char * password, const char * salt)
+PQC_symmetric_container_open(CIPHER_HANDLE ctx, const char * filename, const char * password, const char * salt)
 {
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
+        return PQC_FAILED_TO_CREATE_CONTAINER;
+    }
     try
     {
         std::shared_ptr<pqc_aes_key> master_key = std::make_shared<pqc_aes_key>();
 
         uint8_t buffer[64] = {0};
         SHA3 sha3(PQC_SHA3_512);
-        sha3.add_data(ConstBufferView(salt, strlen(salt)));
-        memcpy(buffer, sha3.get_hash(), std::min<size_t>(sha3.hash_size(), 64));
+        sha3.update(ConstBufferView(salt, strlen(salt)));
+        memcpy(buffer, sha3.retrieve(), std::min<size_t>(sha3.hash_size(), 64));
         size_t hash_length = 256;
         size_t iterations = 10000;
         size_t result = pbkdf_2(
@@ -772,23 +1069,38 @@ PQC_symmetric_container_open(const char * filename, const char * password, const
 
         std::shared_ptr<pqc_aes_iv> iv = std::make_shared<pqc_aes_iv>();
         memcpy(iv.get(), buffer, PQC_AES_IVLEN);
-
-        return store_new_symmetric_container(std::make_shared<SymmetricKeyContainer>(
-            std::make_shared<SymmetricKeyContainerFile>(false, filename), master_key, iv
-        ));
+        try
+        {
+            return symmetric_containers.add(std::make_unique<SymmetricKeyContainer>(
+                std::make_shared<SymmetricKeyContainerFile>(false, filename), master_key, iv,
+                &context->get_random_generator()
+            ));
+        }
+        catch (RandomFailure)
+        {
+            return PQC_RANDOM_FAILURE;
+        }
     }
     catch (const std::ios_base::failure &)
     {
         return PQC_FAILED_TO_CREATE_CONTAINER;
     }
+    catch (...)
+    {
+        return PQC_INTERNAL_ERROR;
+    }
 }
 
 
 size_t PQC_API PQC_symmetric_container_save_as(
-    PQC_CONTAINER_HANDLE container, const char * filename, const char * password, const char * salt
+    PQC_CONTAINER_HANDLE handle, const char * filename, const char * password, const char * salt
 )
 {
-    CHECK_CONTAINER(container);
+    SymmetricKeyContainer * container = symmetric_containers.get(handle);
+    if (!container)
+    {
+        return PQC_BAD_CONTAINER;
+    }
 
     try
     {
@@ -798,8 +1110,8 @@ size_t PQC_API PQC_symmetric_container_save_as(
 
         uint8_t buffer[64] = {0};
         SHA3 sha3(PQC_SHA3_512);
-        sha3.add_data(ConstBufferView(salt, strlen(salt)));
-        memcpy(buffer, sha3.get_hash(), std::min<size_t>(sha3.hash_size(), 64));
+        sha3.update(ConstBufferView(salt, strlen(salt)));
+        memcpy(buffer, sha3.retrieve(), std::min<size_t>(sha3.hash_size(), 64));
         size_t hash_length = 256;
         size_t iterations = 10000;
         size_t result = pbkdf_2(
@@ -815,7 +1127,7 @@ size_t PQC_API PQC_symmetric_container_save_as(
         std::shared_ptr<pqc_aes_iv> iv = std::make_shared<pqc_aes_iv>();
         memcpy(iv.get(), buffer, PQC_AES_IVLEN);
 
-        if (symmetric_containers[container]->save_as(file, master_key, iv))
+        if (container->save_as(file, master_key, iv))
             return PQC_OK;
         else
             return PQC_IO_ERROR;
@@ -824,18 +1136,16 @@ size_t PQC_API PQC_symmetric_container_save_as(
     {
         return PQC_IO_ERROR;
     }
+    catch (...)
+    {
+        return PQC_INTERNAL_ERROR;
+    }
 }
 
 
 size_t PQC_API PQC_symmetric_container_close(PQC_CONTAINER_HANDLE container)
 {
-    if (container >= symmetric_containers.size() || !symmetric_containers[container])
-    {
-        return PQC_BAD_CONTAINER;
-    }
-
-    symmetric_containers[container].reset();
-
+    symmetric_containers.remove(container);
     return PQC_OK;
 }
 
@@ -844,68 +1154,57 @@ size_t PQC_API PQC_symmetric_container_close(PQC_CONTAINER_HANDLE container)
 //----------------------------------------------------
 
 
-std::vector<std::shared_ptr<AsymmetricContainer>> asymmetric_containers;
-
-bool is_valid_asymmetric_container(PQC_CONTAINER_HANDLE ctx)
-{
-    return ctx < asymmetric_containers.size() && asymmetric_containers[ctx];
-}
-
-#define CHECK_ASYMMETRIC_CONTAINER(ctx)                                                                                \
-    if (!is_valid_asymmetric_container(ctx))                                                                           \
-    {                                                                                                                  \
-        return PQC_BAD_CONTAINER;                                                                                      \
-    }
-
-PQC_CONTAINER_HANDLE store_new_asymmetric_container(std::shared_ptr<AsymmetricContainer> container)
-{
-    for (size_t i = 0; i < asymmetric_containers.size(); ++i)
-    {
-        if (!asymmetric_containers[i])
-        {
-            asymmetric_containers[i] = container;
-            return i;
-        }
-    }
-
-    asymmetric_containers.push_back(container);
-    return asymmetric_containers.size() - 1;
-}
-
+Registry<PQC_CONTAINER_HANDLE, AsymmetricContainer> asymmetric_containers;
 
 PQC_CONTAINER_HANDLE PQC_API PQC_asymmetric_container_create(uint32_t cipher)
 {
-    return store_new_asymmetric_container(std::make_shared<AsymmetricContainer>(cipher));
+    return asymmetric_containers.add(std::make_unique<AsymmetricContainer>(cipher));
 }
 
-size_t PQC_API PQC_asymmetric_container_size(PQC_CONTAINER_HANDLE container)
+size_t PQC_API PQC_asymmetric_container_size(PQC_CONTAINER_HANDLE handle)
 {
-    CHECK_ASYMMETRIC_CONTAINER(container);
-    return asymmetric_containers[container]->data_size();
+    AsymmetricContainer * container = asymmetric_containers.get(handle);
+    if (!container)
+    {
+        return PQC_BAD_CONTAINER;
+    }
+    return container->data_size();
 }
 
-uint32_t PQC_API PQC_asymmetric_container_get_version(PQC_CONTAINER_HANDLE container)
+uint32_t PQC_API PQC_asymmetric_container_get_version(PQC_CONTAINER_HANDLE handle)
 {
-    CHECK_ASYMMETRIC_CONTAINER(container);
-    return asymmetric_containers[container]->get_version();
+    AsymmetricContainer * container = asymmetric_containers.get(handle);
+    if (!container)
+    {
+        return PQC_BAD_CONTAINER;
+    }
+    return container->get_version();
 }
 
-uint64_t PQC_API PQC_asymmetric_container_get_creation_time(PQC_CONTAINER_HANDLE container)
+uint64_t PQC_API PQC_asymmetric_container_get_creation_time(PQC_CONTAINER_HANDLE handle)
 {
-    CHECK_ASYMMETRIC_CONTAINER(container);
-    return asymmetric_containers[container]->get_creation_ts();
+    AsymmetricContainer * container = asymmetric_containers.get(handle);
+    if (!container)
+    {
+        return PQC_BAD_CONTAINER;
+    }
+    return container->get_creation_ts();
 }
 
-uint64_t PQC_API PQC_asymmetric_container_get_expiration_time(PQC_CONTAINER_HANDLE container)
+uint64_t PQC_API PQC_asymmetric_container_get_expiration_time(PQC_CONTAINER_HANDLE handle)
 {
-    CHECK_ASYMMETRIC_CONTAINER(container);
-    return asymmetric_containers[container]->get_expiration_ts();
+    AsymmetricContainer * container = asymmetric_containers.get(handle);
+    if (!container)
+    {
+        return PQC_BAD_CONTAINER;
+    }
+    return container->get_expiration_ts();
 }
 
 size_t PQC_asymmetric_container_size_special(uint32_t cipher, uint16_t mode)
 {
     // it is cipher check! Not public key
-    if (PQC_get_length(cipher, PQC_LENGTH_PUBLIC) == 0)
+    if (PQC_cipher_get_length(cipher, PQC_LENGTH_PUBLIC) == 0)
     {
         return PQC_BAD_CIPHER;
     }
@@ -919,19 +1218,22 @@ size_t PQC_asymmetric_container_size_special(uint32_t cipher, uint16_t mode)
 
 
 size_t PQC_API PQC_asymmetric_container_get_data(
-    PQC_CONTAINER_HANDLE container, uint8_t * container_data, size_t data_length, const uint8_t * key,
-    size_t key_length, const uint8_t * iv, size_t iv_length
+    PQC_CONTAINER_HANDLE handle, uint8_t * container_data, size_t data_length, const uint8_t * key, size_t key_length,
+    const uint8_t * iv, size_t iv_length
 )
 {
-    CHECK_ASYMMETRIC_CONTAINER(container);
+    AsymmetricContainer * container = asymmetric_containers.get(handle);
+    if (!container)
+    {
+        return PQC_BAD_CONTAINER;
+    }
 
-    if (data_length != PQC_asymmetric_container_size(container) || key_length != PQC_AES_KEYLEN ||
-        iv_length != PQC_AES_IVLEN)
+    if (data_length != container->data_size() || key_length != PQC_AES_KEYLEN || iv_length != PQC_AES_IVLEN)
     {
         return PQC_BAD_LEN;
     }
 
-    asymmetric_containers[container]->get_data(
+    container->get_data(
         container_data, reinterpret_cast<const pqc_aes_key *>(key), reinterpret_cast<const pqc_aes_iv *>(iv)
     );
 
@@ -945,7 +1247,7 @@ PQC_CONTAINER_HANDLE PQC_API PQC_asymmetric_container_from_data(
 )
 {
     // it is cipher check! Not public key
-    if (PQC_get_length(cipher, PQC_LENGTH_PUBLIC) == 0)
+    if (PQC_cipher_get_length(cipher, PQC_LENGTH_PUBLIC) == 0)
     {
         return PQC_FAILED_TO_CREATE_CONTAINER;
     }
@@ -959,7 +1261,7 @@ PQC_CONTAINER_HANDLE PQC_API PQC_asymmetric_container_from_data(
     auto _data = std::make_unique<uint8_t[]>(data_length);
     memcpy(_data.get(), container_data, data_length);
 
-    PQC_CONTAINER_HANDLE result = store_new_asymmetric_container(std::make_shared<AsymmetricContainer>(
+    PQC_CONTAINER_HANDLE result = asymmetric_containers.add(std::make_unique<AsymmetricContainer>(
         cipher, _data.get(), reinterpret_cast<const pqc_aes_key *>(key), reinterpret_cast<const pqc_aes_iv *>(iv)
     ));
 
@@ -967,27 +1269,39 @@ PQC_CONTAINER_HANDLE PQC_API PQC_asymmetric_container_from_data(
 }
 
 size_t PQC_API PQC_asymmetric_container_put_keys(
-    uint32_t cipher, PQC_CONTAINER_HANDLE container, uint8_t * pk, size_t pk_length, uint8_t * sk, size_t sk_length
+    uint32_t cipher, PQC_CONTAINER_HANDLE handle, uint8_t * pk, size_t pk_length, uint8_t * sk, size_t sk_length
 )
 {
-    CHECK_ASYMMETRIC_CONTAINER(container);
-    return asymmetric_containers[container]->put_keys_inside(pk, sk, pk_length, sk_length, cipher);
+    AsymmetricContainer * container = asymmetric_containers.get(handle);
+    if (!container)
+    {
+        return PQC_BAD_CONTAINER;
+    }
+    return container->put_keys_inside(pk, sk, pk_length, sk_length, cipher);
 }
 
 size_t PQC_API PQC_asymmetric_container_get_keys(
-    uint32_t cipher, PQC_CONTAINER_HANDLE container, uint8_t * pk, size_t pk_length, uint8_t * sk, size_t sk_length
+    uint32_t cipher, PQC_CONTAINER_HANDLE handle, uint8_t * pk, size_t pk_length, uint8_t * sk, size_t sk_length
 )
 {
-    CHECK_ASYMMETRIC_CONTAINER(container);
-    return asymmetric_containers[container]->get_keys(pk, sk, pk_length, sk_length, cipher);
+    AsymmetricContainer * container = asymmetric_containers.get(handle);
+    if (!container)
+    {
+        return PQC_BAD_CONTAINER;
+    }
+    return container->get_keys(pk, sk, pk_length, sk_length, cipher);
 }
 
 
 size_t PQC_API PQC_asymmetric_container_save_as(
-    uint32_t cipher, PQC_CONTAINER_HANDLE container, const char * filename, const char * password, const char * salt
+    uint32_t cipher, PQC_CONTAINER_HANDLE handle, const char * filename, const char * password, const char * salt
 )
 {
-    CHECK_ASYMMETRIC_CONTAINER(container);
+    AsymmetricContainer * container = asymmetric_containers.get(handle);
+    if (!container)
+    {
+        return PQC_BAD_CONTAINER;
+    }
 
     try
     {
@@ -997,8 +1311,8 @@ size_t PQC_API PQC_asymmetric_container_save_as(
         std::shared_ptr<pqc_aes_key> master_key = std::make_shared<pqc_aes_key>();
         uint8_t buffer[64] = {0};
         SHA3 sha3(PQC_SHA3_512);
-        sha3.add_data(ConstBufferView(salt, strlen(salt)));
-        memcpy(buffer, sha3.get_hash(), std::min<size_t>(sha3.hash_size(), 64));
+        sha3.update(ConstBufferView(salt, strlen(salt)));
+        memcpy(buffer, sha3.retrieve(), std::min<size_t>(sha3.hash_size(), 64));
         size_t hash_length = 256;
         size_t iterations = 10000;
         size_t pbkdfResult = pbkdf_2(
@@ -1014,7 +1328,7 @@ size_t PQC_API PQC_asymmetric_container_save_as(
         std::shared_ptr<pqc_aes_iv> iv = std::make_shared<pqc_aes_iv>();
         memcpy(iv.get(), buffer, PQC_AES_IVLEN);
 
-        if (asymmetric_containers[container]->save_as(file, master_key, iv))
+        if (container->save_as(file, master_key, iv))
             return PQC_OK;
         else
             return PQC_IO_ERROR;
@@ -1022,6 +1336,10 @@ size_t PQC_API PQC_asymmetric_container_save_as(
     catch (const std::ios_base::failure &)
     {
         return PQC_IO_ERROR;
+    }
+    catch (...)
+    {
+        return PQC_INTERNAL_ERROR;
     }
 }
 
@@ -1038,8 +1356,8 @@ PQC_asymmetric_container_open(uint32_t cipher, const char * filename, const char
         std::shared_ptr<pqc_aes_key> master_key = std::make_shared<pqc_aes_key>();
         uint8_t buffer[64] = {0};
         SHA3 sha3(PQC_SHA3_512);
-        sha3.add_data(ConstBufferView(salt, strlen(salt)));
-        memcpy(buffer, sha3.get_hash(), std::min<size_t>(sha3.hash_size(), 64));
+        sha3.update(ConstBufferView(salt, strlen(salt)));
+        memcpy(buffer, sha3.retrieve(), std::min<size_t>(sha3.hash_size(), 64));
         size_t hash_length = 256;
         size_t iterations = 10000;
         size_t pbkdfResult = pbkdf_2(
@@ -1062,8 +1380,8 @@ PQC_asymmetric_container_open(uint32_t cipher, const char * filename, const char
 
         if (result)
         {
-            returnContainer = store_new_asymmetric_container(
-                std::make_shared<AsymmetricContainer>(cipher, _data.get(), master_key.get(), iv.get())
+            returnContainer = asymmetric_containers.add(
+                std::make_unique<AsymmetricContainer>(cipher, _data.get(), master_key.get(), iv.get())
             );
         }
 
@@ -1076,31 +1394,32 @@ PQC_asymmetric_container_open(uint32_t cipher, const char * filename, const char
     {
         return PQC_FAILED_TO_CREATE_CONTAINER;
     }
+    catch (...)
+    {
+        return PQC_INTERNAL_ERROR;
+    }
 
     return returnContainer;
 }
 
-
 size_t PQC_API PQC_asymmetric_container_close(PQC_CONTAINER_HANDLE container)
 {
-
-    if (container >= asymmetric_containers.size() || !asymmetric_containers[container])
-    {
-        return PQC_BAD_CONTAINER;
-    }
-    asymmetric_containers[container].reset();
+    asymmetric_containers.remove(container);
     return PQC_OK;
 }
 
-size_t PQC_API PQC_context_get_length(CIPHER_HANDLE context, uint32_t type)
+size_t PQC_API PQC_context_get_length(CIPHER_HANDLE ctx, uint32_t type)
 {
-    if (!is_valid_context(context))
+    PQC_Context * context = contexts.get(ctx);
+    if (!context)
+    {
         return 0;
+    }
 
-    return contexts[context]->get_length(type);
+    return context->get_length(type);
 }
 
-size_t PQC_API PQC_get_length(uint32_t cipher, uint32_t type)
+size_t PQC_API PQC_cipher_get_length(uint32_t cipher, uint32_t type)
 {
     try
     {
@@ -1112,14 +1431,32 @@ size_t PQC_API PQC_get_length(uint32_t cipher, uint32_t type)
     }
 }
 
-size_t PQC_API PQC_file_delete(const char * filename)
+size_t PQC_API PQC_file_delete(CIPHER_HANDLE handle, const char * filename)
 {
-    if (!file_delete(filename))
-        return PQC_IO_ERROR;
+    PQC_Context * context = contexts.get(handle);
+    if (!context)
+    {
+        return PQC_BAD_CONTEXT;
+    }
 
+    try
+    {
+        if (!file_delete(filename, &context->get_random_generator()))
+            return PQC_IO_ERROR;
+    }
+    catch (RandomFailure)
+    {
+        return PQC_RANDOM_FAILURE;
+    }
     return PQC_OK;
 }
 
-size_t PQC_API PQC_symmetric_container_delete(const char * filename) { return PQC_file_delete(filename); }
+size_t PQC_API PQC_symmetric_container_delete(CIPHER_HANDLE handle, const char * filename)
+{
+    return PQC_file_delete(handle, filename);
+}
 
-size_t PQC_API PQC_asymmetric_container_delete(const char * filename) { return PQC_file_delete(filename); }
+size_t PQC_API PQC_asymmetric_container_delete(CIPHER_HANDLE handle, const char * filename)
+{
+    return PQC_file_delete(handle, filename);
+}

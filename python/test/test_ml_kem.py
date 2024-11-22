@@ -1,18 +1,25 @@
 from test import pqc
 
 
-def test_ml_kem_(pqc):
+def test_ml_kem(pqc):
     info_size = 10
     party_a_info = bytes(range(info_size))  # additional data to be used for key derivation
+    cipher = pqc.PQC_CIPHER_ML_KEM_512
 
-    pub_bob, priv_bob = pqc.PQC_generate_key_pair(pqc.PQC_CIPHER_ML_KEM)
+    bob = pqc.PQC_context_init_asymmetric(cipher, None, None)
+    
+    pqc.PQC_context_keypair_generate(bob)
+
+    pub_bob = pqc.PQC_context_get_public_key(bob)
+    
+    alice = pqc.PQC_context_init_asymmetric(cipher, pub_bob, None)
 
     # To derive shared key to be used for data encryption and message for other party call
-    shared_alice, message = pqc.PQC_kem_encode(pqc.PQC_CIPHER_ML_KEM, party_a_info, pub_bob)
+    shared_alice, message = pqc.PQC_kem_encapsulate(alice, party_a_info)
 
     # (Bob) To derive shared key from message and private key
-    bob = pqc.PQC_init_context(pqc.PQC_CIPHER_ML_KEM, priv_bob)
-    shared_bob = pqc.PQC_kem_decode(bob, message, party_a_info)
+    shared_bob = pqc.PQC_kem_decapsulate(bob, message, party_a_info)
     assert shared_alice == shared_bob
 
-    pqc.PQC_close_context(bob)
+    pqc.PQC_context_close(bob)
+    pqc.PQC_context_close(alice)

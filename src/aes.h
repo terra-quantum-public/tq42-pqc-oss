@@ -44,12 +44,12 @@ public:
     void cbc_encrypt_buffer(const BufferView & data);
     void cbc_decrypt_buffer(const BufferView & data);
 
-    void ofb_xcrypt(const BufferView & data);
+    void ofb_xcrypt(BufferView data);
 
     // CTR
     void ctr_xcrypt(const BufferView & data);
 
-    bool is_iv_set() const { return IvSet; }
+    bool is_iv_set() const { return IvSet_; }
 
     virtual size_t get_length(uint32_t type) const override;
 
@@ -62,10 +62,10 @@ public:
     gcm_check_auth_tag(const ConstBufferView & data, const ConstBufferView & aad, const ConstBufferView & auth_tag);
 
 private:
-    StackBuffer<PQC_AES_keyExpSize> RoundKey;
-    StackBuffer<PQC_AES_IVLEN> Iv;
-    uint8_t IvSet = false;
-    uint32_t IvOffset = 0;
+    StackBuffer<PQC_AES_keyExpSize> RoundKey_;
+    StackBuffer<PQC_AES_IVLEN> Iv_;
+    uint8_t IvSet_ = false;
+    uint32_t IvOffset_ = 0;
 };
 
 class AESFactory : public AlgorithmFactory

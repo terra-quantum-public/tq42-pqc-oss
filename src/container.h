@@ -6,6 +6,7 @@
 #include <string>
 
 #include "aes.h"
+#include "rng/random_generator.h"
 
 #define PQC_SYMMETRIC_CONTAINER_KEY_LENGTH 32
 #define PQC_SYMMETRIC_CONTAINER_NUM_KEYS 6
@@ -53,11 +54,11 @@ public:
 #pragma pack(pop)
 
 public:
-    SymmetricKeyContainer();
-    SymmetricKeyContainer(const uint8_t * data, const pqc_aes_key * key, const pqc_aes_iv * iv);
+    SymmetricKeyContainer(IRandomGenerator * rng);
+    SymmetricKeyContainer(const uint8_t * data, const pqc_aes_key * key, const pqc_aes_iv * iv, IRandomGenerator * rng);
     SymmetricKeyContainer(
         std::shared_ptr<SymmetricKeyContainerFile> file, std::shared_ptr<pqc_aes_key> key,
-        std::shared_ptr<pqc_aes_iv> iv
+        std::shared_ptr<pqc_aes_iv> iv, IRandomGenerator * rng
     );
 
     int get(int index, size_t encrypted_bytes, uint32_t cipher, uint32_t mode, const BufferView & key);

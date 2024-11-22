@@ -7,6 +7,6 @@
 void sha_3_hash_256(const BufferView & res, const ConstBufferView & input)
 {
     SHA3 sha3El(PQC_SHAKE_256);
-    sha3El.add_data(input);
-    sha3El.get_shake_hash(res);
+    sha3El.update(input);
+    sha3El.retrieve_shake(res);
 }

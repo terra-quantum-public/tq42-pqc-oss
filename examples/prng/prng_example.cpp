@@ -5,12 +5,12 @@
 #include <pqc/aes.h>
 #include <pqc/random.h>
 
-void test_prng()
+void test_prng(CIPHER_HANDLE context)
 {
     std::cout << "individual random values: " << std::endl;
 
     uint64_t val;
-    PQC_random_bytes(&val, sizeof(val));
+    PQC_context_random_get_bytes(context, &val, sizeof(val));
 
     for (int i = 0; i < 8; ++i)
     {
@@ -34,7 +34,7 @@ void test_prng()
     for (int i = 0; i < count; ++i)
     {
         uint16_t random_val;
-        PQC_random_bytes(&random_val, sizeof(random_val));
+        PQC_context_random_get_bytes(context, &random_val, sizeof(random_val));
         random_val %= (max_num + 1);
 
         ++counts[random_val];
@@ -81,27 +81,25 @@ int main(void)
                                    '7', '8', '9', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2'};
     uint8_t iv[PQC_AES_IVLEN] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 
-    std::cout << "select operation: 1 - test PQ17, 0 - exit: ";
-
-    char mode = '\0';
-    std::cin >> mode;
-
-    switch (mode)
+    CIPHER_HANDLE context = PQC_context_init_randomsource();
+    if (context == PQC_BAD_CIPHER)
     {
-    case '0':
-        break;
-
-    case '1':
-        if (PQC_random_from_pq_17(key, PQC_AES_KEYLEN, iv, PQC_AES_IVLEN) == PQC_OK)
-        {
-            test_prng();
-        }
-        else
-        {
-            std::cout << "random generator initialization error\n";
-        }
-        break;
+        std::cout << "Unable to create context";
     }
+
+
+    if (PQC_context_random_set_pq_17(context, key, PQC_AES_KEYLEN, iv, PQC_AES_IVLEN) == PQC_OK)
+    {
+        test_prng(context);
+    }
+    else
+    {
+        std::cout << "random generator initialization error\n";
+        PQC_context_close(context);
+        return 1;
+    }
+
+    PQC_context_close(context);
 
     return 0;
 }

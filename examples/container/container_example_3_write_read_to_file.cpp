@@ -9,8 +9,12 @@ In this example, we will write the container to a file and extract the record fr
 
 int main()
 {
-
-    PQC_CONTAINER_HANDLE new_container = PQC_symmetric_container_create();
+    CIPHER_HANDLE context = PQC_context_init_randomsource();
+    if (context == PQC_BAD_CONTEXT)
+    {
+        std::cout << "Context intialization failed" << std::endl;
+    }
+    PQC_CONTAINER_HANDLE new_container = PQC_symmetric_container_create(context);
 
     if (new_container == PQC_FAILED_TO_CREATE_CONTAINER)
         std::cout << "\nFailed of container creation\n";
@@ -34,7 +38,7 @@ int main()
     */
 
     PQC_CONTAINER_HANDLE container_1_bis =
-        PQC_symmetric_container_open("some-unique-container-name-write-read.pqc", "password", "salt");
+        PQC_symmetric_container_open(context, "some-unique-container-name-write-read.pqc", "password", "salt");
     if (container_1_bis == PQC_FAILED_TO_CREATE_CONTAINER)
         std::cout << "\nFailed of container creation\n";
 
@@ -46,6 +50,6 @@ int main()
         std::cout << "\nERROR!!! Failed to get testKey1!\n";
 
     PQC_symmetric_container_close(container_1_bis);
-
+    PQC_context_close(context);
     return 0;
 }

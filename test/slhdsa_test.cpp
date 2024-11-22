@@ -10,661 +10,311 @@
 #include <pqc/sha3.h>
 #include <pqc/slh-dsa.h>
 
-#define SLH_DSA_PRIVATE_KEY(x) std::vector<uint8_t> x(sizeof(pqc_slh_dsa_private_key))
-#define SLH_DSA_PUBLIC_KEY(x) std::vector<uint8_t> x(sizeof(pqc_slh_dsa_public_key))
-#define SLH_DSA_SIGNATURE(x) std::vector<uint8_t> x(sizeof(pqc_slh_dsa_signature))
-
-TEST(SLH_DSA, CREATE_SECRET_CHECK_SIZES)
+struct Hex
 {
-    SLH_DSA_PRIVATE_KEY(priv_alice);
-    SLH_DSA_PUBLIC_KEY(pub_alice);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_SLH_DSA_SHAKE_256F, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "should check both key sizes";
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_SLH_DSA_SHAKE_256F, pub_alice.data(), pub_alice.size() - 1, priv_alice.data(), priv_alice.size()
-        ),
-        PQC_BAD_LEN
-    ) << "should check public key size";
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_SLH_DSA_SHAKE_256F, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size() - 1
-        ),
-        PQC_BAD_LEN
-    ) << "should check private key size";
-}
-
-TEST(SLH_DSA, INIT_CHECK_SIZE)
-{
-    SLH_DSA_PRIVATE_KEY(priv_alice);
-    SLH_DSA_PUBLIC_KEY(pub_alice);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_SLH_DSA_SHAKE_256F, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_SLH_DSA_SHAKE_256F, priv_alice.data(), priv_alice.size() - 1);
-    EXPECT_EQ(alice, PQC_BAD_CIPHER) << "context initialization should fail due to wrong key size";
-}
-
-
-TEST(SLH_DSA, SIGN_CHECK_SIGNATURE_SIZE)
-{
-    SLH_DSA_PRIVATE_KEY(priv_alice);
-    SLH_DSA_PUBLIC_KEY(pub_alice);
-    SLH_DSA_SIGNATURE(signature);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_SLH_DSA_SHAKE_256F, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_SLH_DSA_SHAKE_256F, priv_alice.data(), priv_alice.size());
-    EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-
-    char message[] = "The quick brown fox jumps over the lazy dog.";
-
-    EXPECT_EQ(
-        PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, signature.data(), signature.size() - 1), PQC_BAD_LEN
-    ) << "signing should fail due to bad signature size";
-}
-
-
-TEST(SLH_DSA, VERIFY_CHECK_SIGNATURE_SIZE)
-{
-    SLH_DSA_PRIVATE_KEY(priv_alice);
-    SLH_DSA_PUBLIC_KEY(pub_alice);
-    SLH_DSA_SIGNATURE(signature);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_SLH_DSA_SHAKE_256F, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_SLH_DSA_SHAKE_256F, priv_alice.data(), priv_alice.size());
-    EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-
-    char message[] = "The quick brown fox jumps over the lazy dog."
-                     "The quick brown fox jumps over the lazy dog?"
-                     "The quick brown fox jumps over the lazy dog!"
-                     "The quick brown fox jumps over the lazy dog...";
-
-    EXPECT_EQ(PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, signature.data(), signature.size()), PQC_OK)
-        << "signing should succeed";
-
-    EXPECT_EQ(
-        PQC_verify(
-            PQC_CIPHER_SLH_DSA_SHAKE_256F, pub_alice.data(), pub_alice.size(), (uint8_t *)message, strlen(message) + 1,
-            signature.data(), signature.size() - 1
-        ),
-        PQC_BAD_LEN
-    ) << "should fail due to bad signature size";
-}
-
-
-TEST(SLH_DSA, VERIFY_CHECK_KEY_SIZE)
-{
-    SLH_DSA_PRIVATE_KEY(priv_alice);
-    SLH_DSA_PUBLIC_KEY(pub_alice);
-    SLH_DSA_SIGNATURE(signature);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_SLH_DSA_SHAKE_256F, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_SLH_DSA_SHAKE_256F, priv_alice.data(), priv_alice.size());
-    EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-
-    char message[] = "The quick brown fox jumps over the lazy dog."
-                     "The quick brown fox jumps over the lazy dog?"
-                     "The quick brown fox jumps over the lazy dog!"
-                     "The quick brown fox jumps over the lazy dog...";
-
-    EXPECT_EQ(PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, signature.data(), signature.size()), PQC_OK)
-        << "signing should succeed";
-
-
-    EXPECT_EQ(
-        PQC_verify(
-            PQC_CIPHER_SLH_DSA_SHAKE_256F, priv_alice.data(), priv_alice.size() - 1, (uint8_t *)message,
-            strlen(message) + 1, signature.data(), signature.size()
-        ),
-        PQC_BAD_LEN
-    ) << "should fail due to bad public key size";
-}
-
-
-TEST(SLH_DSA, CHECK_SIGNATURE)
-{
-    SLH_DSA_PRIVATE_KEY(priv_alice);
-    SLH_DSA_PUBLIC_KEY(pub_alice);
-    SLH_DSA_SIGNATURE(signature);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_SLH_DSA_SHAKE_256F, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_SLH_DSA_SHAKE_256F, priv_alice.data(), priv_alice.size());
-    EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-
-    char message[] = "The quick brown fox jumps over the lazy dog."
-                     "The quick brown fox jumps over the lazy dog?"
-                     "The quick brown fox jumps over the lazy dog!"
-                     "The quick brown fox jumps over the lazy dog...";
-
-    EXPECT_EQ(PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, signature.data(), signature.size()), PQC_OK)
-        << "signing should succeed";
-
-    EXPECT_EQ(
-        PQC_verify(
-            PQC_CIPHER_SLH_DSA_SHAKE_256F, pub_alice.data(), pub_alice.size(), (uint8_t *)message, strlen(message) + 1,
-            signature.data(), signature.size()
-        ),
-        PQC_OK
-    ) << "signature should match";
-}
-
-
-TEST(SLH_DSA, BAD_SIGNATURE)
-{
-    SLH_DSA_PRIVATE_KEY(priv_alice);
-    SLH_DSA_PUBLIC_KEY(pub_alice);
-    SLH_DSA_SIGNATURE(signature);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_SLH_DSA_SHAKE_256F, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_SLH_DSA_SHAKE_256F, priv_alice.data(), priv_alice.size());
-    EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-
-
-    char message[] = "The quick brown fox jumps over the lazy dog."
-                     "The quick brown fox jumps over the lazy dog?"
-                     "The quick brown fox jumps over the lazy dog!"
-                     "The quick brown fox jumps over the lazy dog...";
-
-    EXPECT_EQ(PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, signature.data(), signature.size()), PQC_OK)
-        << "signing should succeed";
-
-    EXPECT_EQ(
-        PQC_verify(
-            PQC_CIPHER_SLH_DSA_SHAKE_256F, pub_alice.data(), pub_alice.size(), (uint8_t *)message, strlen(message) + 1,
-            signature.data(), signature.size()
-        ),
-        PQC_OK
-    ) << "signature should match";
-
-    for (size_t byte = 0; byte < signature.size(); byte += 1024)
+    static std::string to_string(uint8_t * data, size_t size)
     {
-        signature[byte] = ~signature[byte];
-
-        EXPECT_EQ(
-            PQC_verify(
-                PQC_CIPHER_SLH_DSA_SHAKE_256F, pub_alice.data(), pub_alice.size(), (uint8_t *)message,
-                strlen(message) + 1, signature.data(), signature.size()
-            ),
-            PQC_BAD_SIGNATURE
-        ) << "changed signature should NOT match";
-
-        signature[byte] = ~signature[byte];
+        std::ostringstream s;
+        s << std::hex << std::uppercase;
+        for (size_t i = 0; i < size; ++i)
+        {
+            s << std::setw(2) << std::setfill('0') << static_cast<unsigned int>(data[i]);
+        }
+        return s.str();
     }
-}
 
-
-TEST(SLH_DSA, BAD_MESSAGE)
-{
-    SLH_DSA_PRIVATE_KEY(priv_alice);
-    SLH_DSA_PUBLIC_KEY(pub_alice);
-    SLH_DSA_SIGNATURE(signature);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_SLH_DSA_SHAKE_256F, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_SLH_DSA_SHAKE_256F, priv_alice.data(), priv_alice.size());
-    EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-
-    char message[] = "The quick brown fox jumps over the lazy dog."
-                     "The quick brown fox jumps over the lazy dog?"
-                     "The quick brown fox jumps over the lazy dog!"
-                     "The quick brown fox jumps over the lazy dog...";
-
-    size_t message_len = strlen(message) + 1;
-
-    EXPECT_EQ(PQC_sign(alice, (uint8_t *)message, message_len, signature.data(), signature.size()), PQC_OK)
-        << "signing should succeed";
-
-    EXPECT_EQ(
-        PQC_verify(
-            PQC_CIPHER_SLH_DSA_SHAKE_256F, pub_alice.data(), pub_alice.size(), (uint8_t *)message, message_len,
-            signature.data(), signature.size()
-        ),
-        PQC_OK
-    ) << "signature should match";
-
-    for (size_t byte = 0; byte < message_len; ++byte)
+    static void to_uint_8_t(std::string line, const std::string & label, uint8_t * data, size_t size)
     {
-        message[byte] = ~message[byte];
-
-        EXPECT_EQ(
-            PQC_verify(
-                PQC_CIPHER_SLH_DSA_SHAKE_256F, pub_alice.data(), pub_alice.size(), (uint8_t *)message, message_len,
-                signature.data(), signature.size()
-            ),
-            PQC_BAD_SIGNATURE
-        ) << "changed message should NOT match";
-
-        message[byte] = ~message[byte];
+        auto values = line.substr(label.length());
+        std::istringstream s(values);
+        std::string ss;
+        for (size_t i = 0; i < size; ++i)
+        {
+            s >> std::hex >> std::uppercase >> std::setw(2) >> ss;
+            data[i] = static_cast<uint8_t>(std::stoi(ss, nullptr, 16));
+        }
     }
-}
 
-TEST(SLH_DSA, ACVP_KAT_FROM_JSON)
+    static unsigned long long to_ull(std::string line, const std::string & label)
+    {
+        auto values = line.substr(label.length());
+        return std::stoull(values);
+    }
+};
+
+class SLH_DSA_KAT_test_data
 {
+public:
+    SLH_DSA_KAT_test_data(uint32_t mode, const std::string & path, size_t n)
+        : cipher(mode), rsp_path(path), num_tests(n)
+    {
+    }
+    uint32_t cipher;
+    std::string rsp_path;
+    size_t num_tests;
+};
+
+void PrintTo(const SLH_DSA_KAT_test_data & data, std::ostream * os) { *os << data.rsp_path; }
+
+class SLH_DSA_KEYGEN_TEST : public testing::TestWithParam<SLH_DSA_KAT_test_data>
+{
+};
+
+TEST_P(SLH_DSA_KEYGEN_TEST, KAT)
+{
+    SLH_DSA_KAT_test_data params = GetParam();
+    const uint32_t cipher = params.cipher;
+
     static const std::filesystem::path current(__FILE__);
     static const auto base_path = current.parent_path() / "slhdsa";
-    static const auto keygen_responses_path = base_path / "slh-dsa-shake-256f-keygen-acvp.rsp";
-    static const auto siggen_responses_path = base_path / "slh-dsa-shake-256f-siggen-nondeterministic-acvp.rsp";
-    static const auto sigver_responses_path = base_path / "slh-dsa-shake-256f-sigver-acvp.rsp";
+    const auto responses_path = base_path / params.rsp_path;
 
-    struct Hex
-    {
-        static std::string to_string(uint8_t * data, size_t size)
-        {
-            std::ostringstream s;
-            s << std::hex << std::uppercase;
-            for (size_t i = 0; i < size; ++i)
-            {
-                s << std::setw(2) << std::setfill('0') << static_cast<unsigned int>(data[i]);
-            }
-            return s.str();
-        }
+    const size_t pk_len = PQC_cipher_get_length(cipher, PQC_LENGTH_PUBLIC);
+    const size_t sk_len = PQC_cipher_get_length(cipher, PQC_LENGTH_PRIVATE);
+    std::vector<uint8_t> pk(pk_len);
+    std::vector<uint8_t> sk(sk_len);
+    std::vector<uint8_t> kat_pk(pk_len);
+    std::vector<uint8_t> kat_sk(sk_len);
 
-        static void to_uint_8_t(std::string line, const std::string & label, uint8_t * data, size_t size)
-        {
-            auto values = line.substr(label.length());
-            std::istringstream s(values);
-            std::string ss;
-            for (size_t i = 0; i < size; ++i)
-            {
-                s >> std::hex >> std::uppercase >> std::setw(2) >> ss;
-                data[i] = static_cast<uint8_t>(std::stoi(ss, nullptr, 16));
-            }
-        }
-
-        static unsigned long long to_ull(std::string line, const std::string & label)
-        {
-            auto values = line.substr(label.length());
-            return std::stoull(values);
-        }
-    };
-
-    static std::vector<uint8_t> entropy(96);
+    const size_t n = pk_len / 2;
+    static std::vector<uint8_t> entropy;
     static size_t offset = 0;
+
+    offset = 0;
+    entropy.resize(n * 3, 0);
+
     struct EntropyEmulator
     {
-        static void get_entropy(uint8_t * buf, size_t size)
+        static size_t get_entropy(uint8_t * buf, size_t size)
         {
             std::copy_n(entropy.begin() + offset, size, buf);
             offset += size;
+            return PQC_OK;
         }
     };
-    PQC_random_from_external(EntropyEmulator::get_entropy);
-
-    SLH_DSA_PRIVATE_KEY(sk);
-    SLH_DSA_PUBLIC_KEY(pk);
-    SLH_DSA_PRIVATE_KEY(kat_sk);
-    SLH_DSA_PUBLIC_KEY(kat_pk);
-    SLH_DSA_SIGNATURE(sig);
-    SLH_DSA_SIGNATURE(kat_sig);
 
     std::string expected;
 
-    std::ifstream keygen_responses(keygen_responses_path);
+    std::ifstream responses(responses_path);
+    std::getline(responses, expected);
 
-    std::getline(keygen_responses, expected);
-    EXPECT_TRUE(expected == "# SLH-DSA-SHAKE-256f-FROM-JSON");
-
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < params.num_tests; ++i)
     {
         offset = 0;
 
-        std::getline(keygen_responses, expected);
+        std::getline(responses, expected);
         EXPECT_TRUE(expected == "");
 
-        std::getline(keygen_responses, expected);
+        std::getline(responses, expected);
         EXPECT_TRUE(expected == ("count = " + std::to_string(i)));
 
-        std::getline(keygen_responses, expected);
-        Hex::to_uint_8_t(expected, "skSeed = ", entropy.data(), 32);
+        std::getline(responses, expected);
+        Hex::to_uint_8_t(expected, "skSeed = ", entropy.data(), n);
 
-        std::getline(keygen_responses, expected);
-        Hex::to_uint_8_t(expected, "skPrf = ", entropy.data() + 32, 32);
+        std::getline(responses, expected);
+        Hex::to_uint_8_t(expected, "skPrf = ", entropy.data() + n, n);
 
-        std::getline(keygen_responses, expected);
-        Hex::to_uint_8_t(expected, "pkSeed = ", entropy.data() + 64, 32);
+        std::getline(responses, expected);
+        Hex::to_uint_8_t(expected, "pkSeed = ", entropy.data() + 2 * n, n);
 
-        std::getline(keygen_responses, expected);
+        std::getline(responses, expected);
         Hex::to_uint_8_t(expected, "sk = ", kat_sk.data(), kat_sk.size());
 
-        std::getline(keygen_responses, expected);
+        std::getline(responses, expected);
         Hex::to_uint_8_t(expected, "pk = ", kat_pk.data(), kat_pk.size());
 
-        EXPECT_EQ(
-            PQC_generate_key_pair(PQC_CIPHER_SLH_DSA_SHAKE_256F, pk.data(), pk.size(), sk.data(), sk.size()), PQC_OK
-        ) << "keys made";
+        CIPHER_HANDLE alice = PQC_context_init_asymmetric(cipher, nullptr, 0, kat_sk.data(), kat_sk.size());
+        EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
+        PQC_context_random_set_external(alice, EntropyEmulator::get_entropy);
+
+        EXPECT_EQ(PQC_context_keypair_generate(alice), PQC_OK) << "keys made";
+
+        EXPECT_EQ(PQC_context_get_keypair(alice, pk.data(), pk.size(), sk.data(), sk.size()), PQC_OK) << "keys get";
         EXPECT_TRUE(pk == kat_pk) << "public key equal";
         EXPECT_TRUE(sk == kat_sk) << "secure key equal";
-    }
 
-    std::ifstream siggen_responses(siggen_responses_path);
-
-    std::getline(siggen_responses, expected);
-    EXPECT_TRUE(expected == "# SLH-DSA-SHAKE-256f-FROM-JSON");
-
-    for (size_t i = 0; i < 10; ++i)
-    {
-        offset = 0;
-
-        std::getline(siggen_responses, expected);
-        EXPECT_TRUE(expected == "");
-
-        std::getline(siggen_responses, expected);
-        EXPECT_TRUE(expected == ("count = " + std::to_string(i)));
-
-        std::getline(siggen_responses, expected);
-        Hex::to_uint_8_t(expected, "sk = ", kat_sk.data(), kat_sk.size());
-
-        std::getline(siggen_responses, expected);
-        Hex::to_uint_8_t(expected, "seed = ", entropy.data(), 32);
-
-        std::getline(siggen_responses, expected);
-        unsigned long long smlen = Hex::to_ull(expected, "msglen = ");
-
-        std::getline(siggen_responses, expected);
-        std::vector<uint8_t> msg(smlen / 8);
-        Hex::to_uint_8_t(expected, "msg = ", msg.data(), msg.size());
-
-        std::getline(siggen_responses, expected);
-        Hex::to_uint_8_t(expected, "signature = ", kat_sig.data(), kat_sig.size());
-
-        CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_SLH_DSA_SHAKE_256F, kat_sk.data(), kat_sk.size());
-        EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-        EXPECT_EQ(PQC_sign(alice, msg.data(), msg.size(), sig.data(), sig.size()), PQC_OK) << "signing should succeed";
-        EXPECT_TRUE(sig == kat_sig) << "signature equal";
-    }
-
-    std::ifstream sigver_responses(sigver_responses_path);
-
-    std::getline(sigver_responses, expected);
-    EXPECT_TRUE(expected == "# SLH-DSA-SHAKE-256f-FROM-JSON");
-
-    CIPHER_HANDLE context = PQC_init_context(PQC_CIPHER_SLH_DSA_SHAKE_256F, kat_sk.data(), kat_sk.size());
-    EXPECT_NE(context, PQC_BAD_CIPHER);
-
-    for (size_t i = 0; i < 7; ++i)
-    {
-        std::getline(sigver_responses, expected);
-        EXPECT_TRUE(expected == "");
-
-        std::getline(sigver_responses, expected);
-        EXPECT_TRUE(expected == ("count = " + std::to_string(i)));
-
-        std::getline(sigver_responses, expected);
-        unsigned long long passed = Hex::to_ull(expected, "testPassed = ");
-
-        std::getline(sigver_responses, expected);
-        Hex::to_uint_8_t(expected, "pk = ", kat_pk.data(), kat_pk.size());
-
-        std::getline(sigver_responses, expected);
-        unsigned long long mlen = Hex::to_ull(expected, "msglen = ");
-
-        std::getline(sigver_responses, expected);
-        std::vector<uint8_t> msg(mlen / 8);
-        Hex::to_uint_8_t(expected, "message = ", msg.data(), msg.size());
-
-        std::getline(sigver_responses, expected);
-        Hex::to_uint_8_t(expected, "signature = ", kat_sig.data(), kat_sig.size());
-
-        if (passed)
-        {
-            EXPECT_EQ(
-                PQC_verify(
-                    PQC_CIPHER_SLH_DSA_SHAKE_256F, kat_pk.data(), kat_pk.size(), msg.data(), msg.size(), kat_sig.data(),
-                    kat_sig.size()
-                ),
-                PQC_OK
-            ) << "signature should match";
-        }
-        else
-        {
-            EXPECT_NE(
-                PQC_verify(
-                    PQC_CIPHER_SLH_DSA_SHAKE_256F, kat_pk.data(), kat_pk.size(), msg.data(), msg.size(), kat_sig.data(),
-                    kat_sig.size()
-                ),
-                PQC_OK
-            ) << "signature shouldn't match";
-        }
+        PQC_context_close(alice);
     }
 }
 
-TEST(SLH_DSA, ATSEC_KAT_FROM_JSON)
+INSTANTIATE_TEST_SUITE_P(
+    SLH_DSA_KEYGEN_KAT_TESTS, SLH_DSA_KEYGEN_TEST,
+    testing::Values(
+        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_192S, "shake-192s-keygen.rsp", 10),
+        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_256F, "shake-256f-keygen.rsp", 10),
+        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_256F, "shake-256f-keygen-atsec.rsp", 10)
+    )
+);
+
+class SLH_DSA_SIGGEN_TEST : public testing::TestWithParam<SLH_DSA_KAT_test_data>
 {
+};
+
+TEST_P(SLH_DSA_SIGGEN_TEST, KAT)
+{
+    SLH_DSA_KAT_test_data params = GetParam();
+    const uint32_t cipher = params.cipher;
+
     static const std::filesystem::path current(__FILE__);
     static const auto base_path = current.parent_path() / "slhdsa";
-    static const auto keygen_responses_path = base_path / "slh-dsa-shake-256f-keygen-atsec.rsp";
-    static const auto siggen_responses_path = base_path / "slh-dsa-shake-256f-siggen-nondeterministic-atsec.rsp";
-    static const auto sigver_responses_path = base_path / "slh-dsa-shake-256f-sigver-atsec.rsp";
+    const auto responses_path = base_path / params.rsp_path;
 
-    struct Hex
-    {
-        static std::string to_string(uint8_t * data, size_t size)
-        {
-            std::ostringstream s;
-            s << std::hex << std::uppercase;
-            for (size_t i = 0; i < size; ++i)
-            {
-                s << std::setw(2) << std::setfill('0') << static_cast<unsigned int>(data[i]);
-            }
-            return s.str();
-        }
+    const size_t sk_len = PQC_cipher_get_length(cipher, PQC_LENGTH_PRIVATE);
+    const size_t sig_len = PQC_cipher_get_length(cipher, PQC_LENGTH_SIGNATURE);
+    std::vector<uint8_t> sk(sk_len);
+    std::vector<uint8_t> sig(sig_len);
+    std::vector<uint8_t> kat_sig(sig_len);
 
-        static void to_uint_8_t(std::string line, const std::string & label, uint8_t * data, size_t size)
-        {
-            auto values = line.substr(label.length());
-            std::istringstream s(values);
-            std::string ss;
-            for (size_t i = 0; i < size; ++i)
-            {
-                s >> std::hex >> std::uppercase >> std::setw(2) >> ss;
-                data[i] = static_cast<uint8_t>(std::stoi(ss, nullptr, 16));
-            }
-        }
-
-        static unsigned long long to_ull(std::string line, const std::string & label)
-        {
-            auto values = line.substr(label.length());
-            return std::stoull(values);
-        }
-    };
-
-    static std::vector<uint8_t> entropy(96);
+    const size_t n = sk_len / 4;
+    static std::vector<uint8_t> entropy;
     static size_t offset = 0;
+    offset = 0;
+    entropy.resize(n * 3, 0);
     struct EntropyEmulator
     {
-        static void get_entropy(uint8_t * buf, size_t size)
+        static size_t get_entropy(uint8_t * buf, size_t size)
         {
             std::copy_n(entropy.begin() + offset, size, buf);
             offset += size;
+            return PQC_OK;
         }
     };
-    PQC_random_from_external(EntropyEmulator::get_entropy);
-
-    SLH_DSA_PRIVATE_KEY(sk);
-    SLH_DSA_PUBLIC_KEY(pk);
-    SLH_DSA_PRIVATE_KEY(kat_sk);
-    SLH_DSA_PUBLIC_KEY(kat_pk);
-    SLH_DSA_SIGNATURE(sig);
-    SLH_DSA_SIGNATURE(kat_sig);
 
     std::string expected;
 
-    std::ifstream keygen_responses(keygen_responses_path);
+    std::ifstream responses(responses_path);
+    std::getline(responses, expected);
 
-    std::getline(keygen_responses, expected);
-    EXPECT_TRUE(expected == "# SLH-DSA-SHAKE-256f-FROM-JSON");
-
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < params.num_tests; ++i)
     {
         offset = 0;
 
-        std::getline(keygen_responses, expected);
+        std::getline(responses, expected);
         EXPECT_TRUE(expected == "");
 
-        std::getline(keygen_responses, expected);
+        std::getline(responses, expected);
         EXPECT_TRUE(expected == ("count = " + std::to_string(i)));
 
-        std::getline(keygen_responses, expected);
-        Hex::to_uint_8_t(expected, "skSeed = ", entropy.data(), 32);
+        std::getline(responses, expected);
+        Hex::to_uint_8_t(expected, "sk = ", sk.data(), sk.size());
 
-        std::getline(keygen_responses, expected);
-        Hex::to_uint_8_t(expected, "skPrf = ", entropy.data() + 32, 32);
+        std::getline(responses, expected);
+        Hex::to_uint_8_t(expected, "seed = ", entropy.data(), n);
 
-        std::getline(keygen_responses, expected);
-        Hex::to_uint_8_t(expected, "pkSeed = ", entropy.data() + 64, 32);
-
-        std::getline(keygen_responses, expected);
-        Hex::to_uint_8_t(expected, "sk = ", kat_sk.data(), kat_sk.size());
-
-        std::getline(keygen_responses, expected);
-        Hex::to_uint_8_t(expected, "pk = ", kat_pk.data(), kat_pk.size());
-
-        EXPECT_EQ(
-            PQC_generate_key_pair(PQC_CIPHER_SLH_DSA_SHAKE_256F, pk.data(), pk.size(), sk.data(), sk.size()), PQC_OK
-        ) << "keys made";
-        EXPECT_TRUE(pk == kat_pk) << "public key equal";
-        EXPECT_TRUE(sk == kat_sk) << "secure key equal";
-    }
-
-    std::ifstream siggen_responses(siggen_responses_path);
-
-    std::getline(siggen_responses, expected);
-    EXPECT_TRUE(expected == "# SLH-DSA-SHAKE-256f-FROM-JSON");
-
-    for (size_t i = 0; i < 10; ++i)
-    {
-        offset = 0;
-
-        std::getline(siggen_responses, expected);
-        EXPECT_TRUE(expected == "");
-
-        std::getline(siggen_responses, expected);
-        EXPECT_TRUE(expected == ("count = " + std::to_string(i)));
-
-        std::getline(siggen_responses, expected);
-        Hex::to_uint_8_t(expected, "sk = ", kat_sk.data(), kat_sk.size());
-
-        std::getline(siggen_responses, expected);
-        Hex::to_uint_8_t(expected, "seed = ", entropy.data(), 32);
-
-        std::getline(siggen_responses, expected);
+        std::getline(responses, expected);
         unsigned long long smlen = Hex::to_ull(expected, "msglen = ");
 
-        std::getline(siggen_responses, expected);
+        std::getline(responses, expected);
         std::vector<uint8_t> msg(smlen / 8);
         Hex::to_uint_8_t(expected, "msg = ", msg.data(), msg.size());
 
-        std::getline(siggen_responses, expected);
+        std::getline(responses, expected);
         Hex::to_uint_8_t(expected, "signature = ", kat_sig.data(), kat_sig.size());
 
-        CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_SLH_DSA_SHAKE_256F, kat_sk.data(), kat_sk.size());
+        CIPHER_HANDLE alice = PQC_context_init_asymmetric(cipher, nullptr, 0, sk.data(), sk.size());
         EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-        EXPECT_EQ(PQC_sign(alice, msg.data(), msg.size(), sig.data(), sig.size()), PQC_OK) << "signing should succeed";
+        PQC_context_random_set_external(alice, EntropyEmulator::get_entropy);
+
+        EXPECT_EQ(PQC_signature_create(alice, msg.data(), msg.size(), sig.data(), sig.size()), PQC_OK)
+            << "signing should succeed";
+
         EXPECT_TRUE(sig == kat_sig) << "signature equal";
+
+        PQC_context_close(alice);
     }
+}
 
-    std::ifstream sigver_responses(sigver_responses_path);
+#ifndef NDEBUG
+INSTANTIATE_TEST_SUITE_P(
+    SLH_DSA_SIGGEN_KAT_TESTS, SLH_DSA_SIGGEN_TEST,
+    testing::Values(
+        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_128F, "shake-128f-siggen.rsp", 2),
+        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_192S, "shake-192s-siggen.rsp", 1),
+        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_256F, "shake-256f-siggen.rsp", 2),
+        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_256F, "shake-256f-siggen-atsec.rsp", 2)
+    )
+);
+#else
+INSTANTIATE_TEST_SUITE_P(
+    SLH_DSA_SIGGEN_KAT_TESTS, SLH_DSA_SIGGEN_TEST,
+    testing::Values(
+        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_128F, "shake-128f-siggen.rsp", 10),
+        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_192S, "shake-192s-siggen.rsp", 7),
+        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_256F, "shake-256f-siggen.rsp", 10),
+        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_256F, "shake-256f-siggen-atsec.rsp", 10)
+    )
+);
+#endif
 
-    std::getline(sigver_responses, expected);
-    EXPECT_TRUE(expected == "# SLH-DSA-SHAKE-256f-FROM-JSON");
+class SLH_DSA_SIGVER_TEST : public testing::TestWithParam<SLH_DSA_KAT_test_data>
+{
+};
 
-    CIPHER_HANDLE context = PQC_init_context(PQC_CIPHER_SLH_DSA_SHAKE_256F, kat_sk.data(), kat_sk.size());
-    EXPECT_NE(context, PQC_BAD_CIPHER);
+TEST_P(SLH_DSA_SIGVER_TEST, KAT)
+{
+    SLH_DSA_KAT_test_data params = GetParam();
+    const uint32_t cipher = params.cipher;
 
-    for (size_t i = 0; i < 9; ++i)
+    static const std::filesystem::path current(__FILE__);
+    static const auto base_path = current.parent_path() / "slhdsa";
+    const auto responses_path = base_path / params.rsp_path;
+
+    const size_t pk_len = PQC_cipher_get_length(cipher, PQC_LENGTH_PUBLIC);
+    std::vector<uint8_t> pk(pk_len);
+
+    std::string expected;
+    std::ifstream responses(responses_path);
+
+    std::getline(responses, expected);
+
+    for (size_t i = 0; i < params.num_tests; ++i)
     {
-        std::getline(sigver_responses, expected);
+        std::getline(responses, expected);
         EXPECT_TRUE(expected == "");
 
-        std::getline(sigver_responses, expected);
+        std::getline(responses, expected);
         EXPECT_TRUE(expected == ("count = " + std::to_string(i)));
 
-        std::getline(sigver_responses, expected);
+        std::getline(responses, expected);
         unsigned long long passed = Hex::to_ull(expected, "testPassed = ");
 
-        std::getline(sigver_responses, expected);
-        Hex::to_uint_8_t(expected, "pk = ", kat_pk.data(), kat_pk.size());
+        std::getline(responses, expected);
+        Hex::to_uint_8_t(expected, "pk = ", pk.data(), pk.size());
 
-        std::getline(sigver_responses, expected);
+        std::getline(responses, expected);
         unsigned long long mlen = Hex::to_ull(expected, "msglen = ");
 
-        std::getline(sigver_responses, expected);
+        std::getline(responses, expected);
         std::vector<uint8_t> msg(mlen / 8);
         Hex::to_uint_8_t(expected, "message = ", msg.data(), msg.size());
 
-        std::getline(sigver_responses, expected);
-        std::vector<uint8_t> m_sig((expected.substr(std::string("signature = ").length()).length()) / 2);
-        Hex::to_uint_8_t(expected, "signature = ", m_sig.data(), m_sig.size());
+        std::getline(responses, expected);
+        std::vector<uint8_t> sig((expected.substr(std::string("signature = ").length()).length()) / 2);
+        Hex::to_uint_8_t(expected, "signature = ", sig.data(), sig.size());
+
+        CIPHER_HANDLE context = PQC_context_init_asymmetric(cipher, pk.data(), pk.size(), nullptr, 0);
+        EXPECT_NE(context, PQC_BAD_CIPHER);
 
         if (passed)
         {
-            EXPECT_EQ(
-                PQC_verify(
-                    PQC_CIPHER_SLH_DSA_SHAKE_256F, kat_pk.data(), kat_pk.size(), msg.data(), msg.size(), m_sig.data(),
-                    m_sig.size()
-                ),
-                PQC_OK
-            ) << "signature should match";
+            EXPECT_EQ(PQC_signature_verify(context, msg.data(), msg.size(), sig.data(), sig.size()), PQC_OK)
+                << "signature should match";
         }
         else
         {
-            EXPECT_NE(
-                PQC_verify(
-                    PQC_CIPHER_SLH_DSA_SHAKE_256F, kat_pk.data(), kat_pk.size(), msg.data(), msg.size(), m_sig.data(),
-                    m_sig.size()
-                ),
-                PQC_OK
-            ) << "signature shouldn't match";
+            EXPECT_NE(PQC_signature_verify(context, msg.data(), msg.size(), sig.data(), sig.size()), PQC_OK)
+                << "signature shouldn't match";
         }
+        PQC_context_close(context);
     }
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    SLH_DSA_SIGVER_KAT_TESTS, SLH_DSA_SIGVER_TEST,
+    testing::Values(
+        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_128F, "shake-128f-sigver.rsp", 9),
+        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_192S, "shake-192s-sigver.rsp", 9),
+        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_256F, "shake-256f-sigver.rsp", 7),
+        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_256F, "shake-256f-sigver-atsec.rsp", 9)
+    )
+);

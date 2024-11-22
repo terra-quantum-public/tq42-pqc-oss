@@ -11,12 +11,23 @@ if(NOT benchmark_POPULATED)
 endif()
 
 add_executable(
-    pqc_benchmark
-    pqc_benchmark.cpp
+    benchmark_aes
+    benchmark_aes.cpp
 )
 
 target_link_libraries(
-    pqc_benchmark
+    benchmark_aes
+    benchmark::benchmark
+    pqc
+)
+
+add_executable(
+    benchmark_init
+    benchmark_init.cpp
+)
+
+target_link_libraries(
+    benchmark_init
     benchmark::benchmark
     pqc
 )

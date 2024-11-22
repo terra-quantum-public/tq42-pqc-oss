@@ -20,12 +20,12 @@ public:
     SHA3(int mode);
 
     // add some bytes to State. data_size is number of bytes to be added
-    virtual void add_data(const ConstBufferView & data) override;
-    virtual void get_hash(const BufferView & hash) override;
+    virtual void update(const ConstBufferView & data) override;
+    virtual void retrieve(const BufferView & hash) override;
 
 
-    uint8_t * get_hash();
-    void get_shake_hash(const BufferView & hash);
+    uint8_t * retrieve();
+    void retrieve_shake(const BufferView & hash);
     virtual size_t hash_size() const override { return hash_size_; }
     unsigned int get_mode() { return mode; }
 

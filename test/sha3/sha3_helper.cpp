@@ -83,17 +83,17 @@ std::pair<int, int> verify_sha_3(const std::string & filename)
         std::vector<uint8_t> message = hex_string_to_bytes(test.msg);
         std::vector<uint8_t> expected = hex_string_to_bytes(test.expected_hash);
 
-        CIPHER_HANDLE sha3 = PQC_init_context_hash(PQC_CIPHER_SHA3, L);
-        PQC_add_data(sha3, message.data(), message.size());
+        CIPHER_HANDLE sha3 = PQC_context_init_hash(PQC_CIPHER_SHA3, L);
+        PQC_hash_update(sha3, message.data(), message.size());
         std::vector<uint8_t> hash(PQC_hash_size(sha3));
-        PQC_get_hash(sha3, hash.data(), hash.size());
+        PQC_hash_retrieve(sha3, hash.data(), hash.size());
 
         if (hash == expected)
         {
             verifiedCount++;
         }
 
-        PQC_close_context(sha3);
+        PQC_context_close(sha3);
     }
 
     return {verifiedCount, totalCount};
@@ -172,19 +172,19 @@ std::pair<int, int> verify_shake(const std::string & filename)
         std::vector<uint8_t> message = hex_string_to_bytes(test.msg);
         std::vector<uint8_t> expected = hex_string_to_bytes(test.expected_hash);
 
-        CIPHER_HANDLE sha3 = PQC_init_context_hash(PQC_CIPHER_SHA3, hash_mode);
+        CIPHER_HANDLE sha3 = PQC_context_init_hash(PQC_CIPHER_SHA3, hash_mode);
 
-        PQC_add_data(sha3, message.data(), message.size());
+        PQC_hash_update(sha3, message.data(), message.size());
 
         std::vector<uint8_t> computed_hash(hash_size);
-        PQC_get_hash(sha3, computed_hash.data(), hash_size);
+        PQC_hash_retrieve(sha3, computed_hash.data(), hash_size);
 
         if (computed_hash == expected)
         {
             verified_count++;
         }
 
-        PQC_close_context(sha3);
+        PQC_context_close(sha3);
     }
 
     return {verified_count, total_count};

@@ -40,7 +40,7 @@ The objective of this protocol is to ensure the secure deletion of files from bo
 
 **Key Randomization Process**
 
-**Utilization of PQC\_random_bytes**: Deploy the cryptographic function `PQC_random_bytes(void*, size_t)` to infuse the key with a sequence of random values. The introduction of randomness is critical, significantly supporting the encryption key's resilience against both brute force attacks and decryption strategies.
+**Utilization of PQC\_random_bytes**: Deploy the cryptographic function `PQC_random_get_bytes(void*, size_t)` to infuse the key with a sequence of random values. The introduction of randomness is critical, significantly supporting the encryption key's resilience against both brute force attacks and decryption strategies.
 
 **File Encryption Procedure**
 
@@ -66,11 +66,11 @@ The `PQC_file_delete` function is designed to securely delete a file from a stor
 **Function signature:**
 
 ```cpp
-int PQC_file_delete(const char* filename);
+int PQC_file_delete(CIPHER_HANDLE handle, const char* filename);
 ```
 
 **Parameters:**
-
+* `handle`: The encryption context handle. This is used to provide random source for container creation. Use `PQC_container_create_randomsource` to create context for a sole purpose of generating random numbers.
 *   `filename`: This is the input parameter, which refers to the name of the file that needs to be deleted. It can be just the file name if the file is located in the current working directory of the application, or it can be a full path to the file if located elsewhere.
     
 
@@ -79,7 +79,8 @@ int PQC_file_delete(const char* filename);
 *   `PQC_OK`: This return value indicates that the operation was executed successfully. It implies that the file was found, the secure deletion process as prescribed was completed, and the file was deleted without encountering any issues.
     
 *   `PQC_IO_ERROR`: This return value suggests that an unexpected error occurred during the deletion process. It covers situations such as issues with disk access or insufficient permissions.
-    
+
+*	`PQC_RANDOM_FAILURE`: External random source returns error 
 
 Example
 ---------

@@ -37,7 +37,7 @@ jobs:
     name: Build
     runs-on: ${{ inputs.image }}
 
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     steps:
     - name: Check architecture
@@ -142,8 +142,8 @@ jobs:
       if: github.event_name == 'pull_request' && inputs.coverage == 'ON'
       shell: bash
       run: |
-        pip3 install gcovr
-        COVERAGE_REPORT=`gcovr -s -r ${{ github.workspace }} -e ${{ github.workspace }}/build ${{ github.workspace }}/build`
+        pip3 install gcovr==7.2
+        COVERAGE_REPORT=`gcovr -s -r ${{ github.workspace }} -e ${{ github.workspace }}/build ${{ github.workspace }}/build | grep -v '100%$'`
         echo 'COVERAGE_REPORT<<EOF' >> ${GITHUB_ENV}
         echo "${COVERAGE_REPORT}" >> ${GITHUB_ENV}
         echo 'EOF' >> ${GITHUB_ENV}

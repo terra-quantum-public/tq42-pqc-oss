@@ -1,6 +1,5 @@
 #pragma once
 
-#include "params.h"
 #include <stdint.h>
 
 #define MONT 2285  // 2^16 mod q

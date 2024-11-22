@@ -36,12 +36,12 @@ int main(void)
                           0xA1, 0xA4, 0xA8, 0x41, 0x6D, 0xF6, 0x54, 0x5A, 0x1C, 0xE8, 0xBA, 0x00};
 
 
-    CIPHER_HANDLE sha3 = PQC_init_context_hash(PQC_CIPHER_SHA3, sha_len);
+    CIPHER_HANDLE sha3 = PQC_context_init_hash(PQC_CIPHER_SHA3, sha_len);
 
 
     // Add message content to the hash function
-    size_t pqc_add_data_return = PQC_add_data(sha3, message, message_len);
-    if (pqc_add_data_return != PQC_OK)
+    size_t PQC_hash_update_return = PQC_hash_update(sha3, message, message_len);
+    if (PQC_hash_update_return != PQC_OK)
         std::cout << "\nERROR!!! Returned value must be PQC_OK if operation was done successfully";
 
     // check hash size
@@ -52,14 +52,14 @@ int main(void)
     // create memory space for hash result
     uint8_t * hash = new uint8_t[hash_size];
 
-    size_t pqc_get_hash_return = PQC_get_hash(
+    size_t pqc_hash_retrieve_return = PQC_hash_retrieve(
         sha3, hash, hash_size
-    ); // PQC_get_hash gets hash from message. pqc_get_hash_return should be equal to PQC_OK
-    if (pqc_get_hash_return != PQC_OK)
+    ); // PQC_hash_retrieve gets hash from message. pqc_hash_retrieve_return should be equal to PQC_OK
+    if (pqc_hash_retrieve_return != PQC_OK)
         std::cout << "\nERROR!!! Returned value must be PQC_OK if operation was done successfully";
 
     // close context
-    size_t pqClose = PQC_close_context(sha3);
+    size_t pqClose = PQC_context_close(sha3);
     if (pqClose != PQC_OK)
         std::cout << "\nERROR!!! Returned value must be PQC_OK if operation was done successfully" << std::endl;
 

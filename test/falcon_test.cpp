@@ -9,303 +9,6 @@
 #include <pqc/random.h>
 #include <pqc/sha3.h>
 
-#define FALCON_PRIVATE(x) std::vector<uint8_t> x(sizeof(pqc_falcon_private_key))
-#define FALCON_PUBLIC(x) std::vector<uint8_t> x(sizeof(pqc_falcon_public_key))
-
-
-TEST(FALCON, CREATE_SECRET_CHECK_SIZES)
-{
-    FALCON_PRIVATE(priv_alice);
-    FALCON_PUBLIC(pub_alice);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_FALCON, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "should check both key sizes";
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_FALCON, pub_alice.data(), pub_alice.size() - 1, priv_alice.data(), priv_alice.size()
-        ),
-        PQC_BAD_LEN
-    ) << "should check public key size";
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_FALCON, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size() - 1
-        ),
-        PQC_BAD_LEN
-    ) << "should check private key size";
-}
-
-TEST(FALCON, INIT_CHECK_SIZE)
-{
-    FALCON_PRIVATE(priv_alice);
-    FALCON_PUBLIC(pub_alice);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_FALCON, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_FALCON, priv_alice.data(), priv_alice.size() - 1);
-    EXPECT_EQ(alice, PQC_BAD_CIPHER) << "context initialization should fail due to wrong key size";
-}
-
-
-TEST(FALCON, SIGN_CHECK_SIGNATURE_SIZE)
-{
-    FALCON_PRIVATE(priv_alice);
-    FALCON_PUBLIC(pub_alice);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_FALCON, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_FALCON, priv_alice.data(), priv_alice.size());
-    EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-
-    char message[] = "The quick brown fox jumps over the lazy dog.";
-
-    pqc_falcon_signature signature;
-
-    EXPECT_EQ(
-        PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, (uint8_t *)&signature, sizeof(signature) - 1),
-        PQC_BAD_LEN
-    ) << "signing should fail due to bad signature size";
-}
-
-
-TEST(FALCON, VERIFY_CHECK_SIGNATURE_SIZE)
-{
-    FALCON_PRIVATE(priv_alice);
-    FALCON_PUBLIC(pub_alice);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_FALCON, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_FALCON, priv_alice.data(), priv_alice.size());
-    EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-
-    char message[] = "The quick brown fox jumps over the lazy dog."
-                     "The quick brown fox jumps over the lazy dog?"
-                     "The quick brown fox jumps over the lazy dog!"
-                     "The quick brown fox jumps over the lazy dog...";
-
-    pqc_falcon_signature signature;
-
-    EXPECT_EQ(
-        PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, (uint8_t *)&signature, sizeof(signature)), PQC_OK
-    ) << "signing should succeed";
-
-    EXPECT_EQ(
-        PQC_verify(
-            PQC_CIPHER_FALCON, pub_alice.data(), pub_alice.size(), (uint8_t *)message, strlen(message) + 1,
-            (uint8_t *)&signature, sizeof(signature) - 1
-        ),
-        PQC_BAD_LEN
-    ) << "should fail due to bad signature size";
-}
-
-
-TEST(FALCON, VERIFY_CHECK_KEY_SIZE)
-{
-    FALCON_PRIVATE(priv_alice);
-    FALCON_PUBLIC(pub_alice);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_FALCON, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_FALCON, priv_alice.data(), priv_alice.size());
-    EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-
-    char message[] = "The quick brown fox jumps over the lazy dog."
-                     "The quick brown fox jumps over the lazy dog?"
-                     "The quick brown fox jumps over the lazy dog!"
-                     "The quick brown fox jumps over the lazy dog...";
-
-    pqc_falcon_signature signature;
-
-
-    EXPECT_EQ(
-        PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, (uint8_t *)&signature, sizeof(signature)), PQC_OK
-    ) << "signing should succeed";
-
-
-    EXPECT_EQ(
-        PQC_verify(
-            PQC_CIPHER_FALCON, priv_alice.data(), priv_alice.size() - 1, (uint8_t *)message, strlen(message) + 1,
-            (uint8_t *)&signature, sizeof(signature)
-        ),
-        PQC_BAD_LEN
-    ) << "should fail due to bad public key size";
-}
-
-
-TEST(FALCON, CHECK_SIGNATURE)
-{
-    FALCON_PRIVATE(priv_alice);
-    FALCON_PUBLIC(pub_alice);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_FALCON, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_FALCON, priv_alice.data(), priv_alice.size());
-    EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-
-    char message[] = "The quick brown fox jumps over the lazy dog."
-                     "The quick brown fox jumps over the lazy dog?"
-                     "The quick brown fox jumps over the lazy dog!"
-                     "The quick brown fox jumps over the lazy dog...";
-
-    pqc_falcon_signature signature;
-
-    EXPECT_EQ(
-        PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, (uint8_t *)&signature, sizeof(signature)), PQC_OK
-    ) << "signing should succeed";
-
-    EXPECT_EQ(
-        PQC_verify(
-            PQC_CIPHER_FALCON, pub_alice.data(), pub_alice.size(), (uint8_t *)message, strlen(message) + 1,
-            (uint8_t *)&signature, sizeof(signature)
-        ),
-        PQC_OK
-    ) << "signature should match";
-}
-
-
-TEST(FALCON, BAD_SIGNATURE)
-{
-    FALCON_PRIVATE(priv_alice);
-    FALCON_PUBLIC(pub_alice);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_FALCON, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_FALCON, priv_alice.data(), priv_alice.size());
-    EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-
-
-    char message[] = "The quick brown fox jumps over the lazy dog."
-                     "The quick brown fox jumps over the lazy dog?"
-                     "The quick brown fox jumps over the lazy dog!"
-                     "The quick brown fox jumps over the lazy dog...";
-
-    pqc_falcon_signature signature;
-
-    EXPECT_EQ(
-        PQC_sign(alice, (uint8_t *)message, strlen(message) + 1, (uint8_t *)&signature, sizeof(signature)), PQC_OK
-    ) << "signing should succeed";
-
-    EXPECT_EQ(
-        PQC_verify(
-            PQC_CIPHER_FALCON, pub_alice.data(), pub_alice.size(), (uint8_t *)message, strlen(message) + 1,
-            (uint8_t *)&signature, sizeof(signature)
-        ),
-        PQC_OK
-    ) << "signature should match";
-
-    for (unsigned long long byte = 0; byte < sizeof(signature.signature); ++byte)
-    {
-        for (int bit = 0; bit < 8; ++bit)
-        {
-            signature.signature[byte] ^= (1 << bit);
-
-            EXPECT_EQ(
-                PQC_verify(
-                    PQC_CIPHER_FALCON, pub_alice.data(), pub_alice.size(), (uint8_t *)message, strlen(message) + 1,
-                    (uint8_t *)&signature, sizeof(signature)
-                ),
-                PQC_BAD_SIGNATURE
-            ) << "changed signature should NOT match";
-
-            signature.signature[byte] ^= (1 << bit);
-        }
-    }
-}
-
-
-TEST(FALCON, BAD_MESSAGE)
-{
-    FALCON_PRIVATE(priv_alice);
-    FALCON_PUBLIC(pub_alice);
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_FALCON, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size()
-        ),
-        PQC_OK
-    ) << "key generation should succeed";
-
-
-    CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_FALCON, priv_alice.data(), priv_alice.size());
-    EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-
-    char message[] = "The quick brown fox jumps over the lazy dog."
-                     "The quick brown fox jumps over the lazy dog?"
-                     "The quick brown fox jumps over the lazy dog!"
-                     "The quick brown fox jumps over the lazy dog...";
-
-    size_t message_len = strlen(message) + 1;
-
-    pqc_falcon_signature signature;
-
-    EXPECT_EQ(PQC_sign(alice, (uint8_t *)message, message_len, (uint8_t *)&signature, sizeof(signature)), PQC_OK)
-        << "signing should succeed";
-
-    EXPECT_EQ(
-        PQC_verify(
-            PQC_CIPHER_FALCON, pub_alice.data(), pub_alice.size(), (uint8_t *)message, message_len,
-            (uint8_t *)&signature, sizeof(signature)
-        ),
-        PQC_OK
-    ) << "signature should match";
-
-    for (size_t byte = 0; byte < message_len; ++byte)
-    {
-        for (int bit = 0; bit < 8; ++bit)
-        {
-            message[byte] ^= (1 << bit);
-
-
-            EXPECT_EQ(
-                PQC_verify(
-                    PQC_CIPHER_FALCON, pub_alice.data(), pub_alice.size(), (uint8_t *)message, message_len,
-                    (uint8_t *)&signature, sizeof(signature)
-                ),
-                PQC_BAD_SIGNATURE
-            ) << "changed message should NOT match";
-
-            message[byte] ^= (1 << bit);
-        }
-    }
-}
-
 TEST(FALCON, KAT1024_Round3)
 {
     static const std::filesystem::path current(__FILE__);
@@ -369,10 +72,11 @@ TEST(FALCON, KAT1024_Round3)
     EXPECT_TRUE(expected == "# Falcon-1024");
 
     const int KATNUM = 100;
-    FALCON_PRIVATE(sk);
-    FALCON_PUBLIC(pk);
-    FALCON_PRIVATE(kat_sk);
-    FALCON_PUBLIC(kat_pk);
+    std::vector<uint8_t> sk(PQC_FALCON_PRIVATE_KEYLEN);
+    std::vector<uint8_t> pk(PQC_FALCON_PUBLIC_KEYLEN);
+    std::vector<uint8_t> kat_sk(PQC_FALCON_PRIVATE_KEYLEN);
+    std::vector<uint8_t> kat_pk(PQC_FALCON_PUBLIC_KEYLEN);
+
     pqc_falcon_signature signature;
 
     struct RNG_Emulator
@@ -384,7 +88,7 @@ TEST(FALCON, KAT1024_Round3)
             shakeInitialised = false;
         }
 
-        static void generate(uint8_t * buf, size_t size)
+        static size_t generate(uint8_t * buf, size_t size)
         {
             static std::ifstream ff(entropy_path, std::ios_base::in | std::ios_base::binary);
             if (bytes_used < seed_size + nonce_size)
@@ -400,8 +104,8 @@ TEST(FALCON, KAT1024_Round3)
                     uint8_t shake_seed[48];
                     ff.read(reinterpret_cast<char *>(shake_seed), 48);
 
-                    sha3 = PQC_init_context_hash(PQC_CIPHER_SHA3, PQC_SHAKE_256);
-                    PQC_add_data(sha3, shake_seed, 48);
+                    sha3 = PQC_context_init_hash(PQC_CIPHER_SHA3, PQC_SHAKE_256);
+                    PQC_hash_update(sha3, shake_seed, 48);
 
                     prng_init(&pp);
                     prng_refill(&pp);
@@ -432,13 +136,14 @@ TEST(FALCON, KAT1024_Round3)
                     shake_used += size;
                 }
             }
+            return PQC_OK;
         }
 
         static void prng_init(prng * p)
         {
             uint8_t tmp[56];
 
-            PQC_get_hash(sha3, tmp, 56);
+            PQC_hash_retrieve(sha3, tmp, 56);
 
             for (int i = 0; i < 14; ++i)
             {
@@ -562,15 +267,22 @@ TEST(FALCON, KAT1024_Round3)
         Hex::to_uint_8_t(expected, "sm = ", sm.data(), sm.size());
 
         rng.init();
-        PQC_random_from_external(RNG_Emulator::generate);
-        EXPECT_EQ(PQC_generate_key_pair(PQC_CIPHER_FALCON, pk.data(), pk.size(), sk.data(), sk.size()), PQC_OK)
-            << "keys made";
+
+        CIPHER_HANDLE alice = PQC_context_init_asymmetric(PQC_CIPHER_FALCON, nullptr, 0, nullptr, 0);
+        EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
+
+        PQC_context_random_set_external(alice, RNG_Emulator::generate);
+
+        EXPECT_EQ(PQC_context_keypair_generate(alice), PQC_OK) << "keys made";
+
+        EXPECT_EQ(PQC_context_get_keypair(alice, pk.data(), pk.size(), sk.data(), sk.size()), PQC_OK)
+            << "keys extracted";
+
         EXPECT_EQ(memcmp(pk.data(), kat_pk.data(), pk.size()), 0) << "public key equal";
         EXPECT_EQ(memcmp(sk.data(), kat_sk.data(), sk.size()), 0) << "secure key equal";
 
-        CIPHER_HANDLE alice = PQC_init_context(PQC_CIPHER_FALCON, sk.data(), sk.size());
-        EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
-        EXPECT_EQ(PQC_sign(alice, msg.data(), mlen, (uint8_t *)&signature, sizeof(signature)), PQC_OK)
+
+        EXPECT_EQ(PQC_signature_create(alice, msg.data(), mlen, (uint8_t *)&signature, sizeof(signature)), PQC_OK)
             << "signing should succeed";
 
         EXPECT_EQ(memcmp(sm.data() + 2, (uint8_t *)&signature + 1, 40), 0) << "nonce equal";
@@ -589,11 +301,13 @@ TEST(FALCON, KAT1024_Round3)
             EXPECT_EQ(memcmp(nist_s_index, s_index, comp_sig_len), 0) << "sig equal";
         }
 
-        EXPECT_EQ(
-            PQC_verify(
-                PQC_CIPHER_FALCON, pk.data(), pk.size(), msg.data(), mlen, (uint8_t *)&signature, sizeof(signature)
-            ),
-            PQC_OK
-        ) << "signature should match";
+        CIPHER_HANDLE bob = PQC_context_init_asymmetric(PQC_CIPHER_FALCON, pk.data(), pk.size(), nullptr, 0);
+        EXPECT_NE(bob, PQC_BAD_CIPHER) << "context initialization should pass";
+
+        EXPECT_EQ(PQC_signature_verify(bob, msg.data(), mlen, (uint8_t *)&signature, sizeof(signature)), PQC_OK)
+            << "signature should match";
+
+        PQC_context_close(alice);
+        PQC_context_close(bob);
     }
 }

@@ -1,4 +1,5 @@
 #include <array>
+#include <buffer.h>
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
@@ -17,7 +18,7 @@ TEST(AES, AES_init_badSize)
                                                '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2',
                                                '3', '4', '5', '6', '7', '8', '9', '0', '1', '2'};
 
-    context = PQC_init_context(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN - 1);
+    context = PQC_context_init(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN - 1);
 
     EXPECT_EQ(context, PQC_BAD_CIPHER) << "Initialization should fail due to bad key size";
 }
@@ -33,14 +34,14 @@ TEST(AES, AES_ECB_badSize)
     constexpr int data_len = PQC_AES_BLOCKLEN * 3;
     std::array<uint8_t, data_len> data = {0};
 
-    context = PQC_init_context(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
+    context = PQC_context_init(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
 
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_ECB, data.data(), data.size()), PQC_BAD_LEN)
+    EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_ECB, data.data(), data.size()), PQC_BAD_LEN)
         << "ECB mode accept only data blocks of size == PQC_AES_BLOCKLEN, so we should return PG_BAD_LEN";
 
-    EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass";
+    EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass";
 }
 
 TEST(AES, AES_ECB_encodeDecode)
@@ -56,20 +57,22 @@ TEST(AES, AES_ECB_encodeDecode)
     std::array<uint8_t, data_len> data_copy(data);
 
     /// Encode
-    context = PQC_init_context(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
+    context = PQC_context_init(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_ECB, data.data(), data.size()), PQC_OK) << "Encryption should pass";
+    EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_ECB, data.data(), data.size()), PQC_OK)
+        << "Encryption should pass";
 
     EXPECT_NE(data, data_copy) << "Data should change after encryption";
 
     /// Decode
 
-    EXPECT_EQ(PQC_decrypt(context, PQC_AES_M_ECB, data.data(), data.size()), PQC_OK) << "Decryption should pass";
+    EXPECT_EQ(PQC_symmetric_decrypt(context, PQC_AES_M_ECB, data.data(), data.size()), PQC_OK)
+        << "Decryption should pass";
 
     EXPECT_EQ(data, data_copy) << "Data should match original after decryption";
 
-    EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass";
+    EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass";
 }
 
 TEST(AES, AES_CBC_badSize)
@@ -85,14 +88,14 @@ TEST(AES, AES_CBC_badSize)
 
     std::array<uint8_t, PQC_AES_IVLEN> iv = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 
-    context = PQC_init_context_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv.data(), PQC_AES_IVLEN);
+    context = PQC_context_init_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv.data(), PQC_AES_IVLEN);
 
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_CBC, data.data(), data.size()), PQC_BAD_LEN)
+    EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_CBC, data.data(), data.size()), PQC_BAD_LEN)
         << "ECB mode accept only data blocks of size == PQC_AES_BLOCKLEN, so we should return PG_BAD_LEN";
 
-    EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass";
+    EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass";
 }
 
 TEST(AES, AES_CBC_encodeDecode)
@@ -112,25 +115,27 @@ TEST(AES, AES_CBC_encodeDecode)
 
     /// Encoding
 
-    context = PQC_init_context_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
+    context = PQC_context_init_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_CBC, data.data(), data.size()), PQC_OK) << "Encryption should pass";
+    EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_CBC, data.data(), data.size()), PQC_OK)
+        << "Encryption should pass";
 
     EXPECT_NE(data, data_copy) << "Data should change after encryption";
 
-    EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass";
+    EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass";
 
     /// Decoding
 
-    context = PQC_init_context_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
+    context = PQC_context_init_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_decrypt(context, PQC_AES_M_CBC, data.data(), data.size()), PQC_OK) << "Decryption should pass";
+    EXPECT_EQ(PQC_symmetric_decrypt(context, PQC_AES_M_CBC, data.data(), data.size()), PQC_OK)
+        << "Decryption should pass";
 
     EXPECT_EQ(data, data_copy) << "Data should match original after decryption";
 
-    EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass";
+    EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass";
 }
 
 TEST(AES, AES_CBC_encodeDecode_parallel_context)
@@ -151,26 +156,28 @@ TEST(AES, AES_CBC_encodeDecode_parallel_context)
 
     /// Encoding
 
-    context = PQC_init_context_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
+    context = PQC_context_init_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_CBC, data.data(), data.size()), PQC_OK) << "Encryption should pass";
+    EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_CBC, data.data(), data.size()), PQC_OK)
+        << "Encryption should pass";
 
     EXPECT_NE(data, data_copy) << "Data should change after encryption";
 
 
     /// Decoding
 
-    context2 = PQC_init_context_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
+    context2 = PQC_context_init_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
     EXPECT_NE(context2, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_decrypt(context2, PQC_AES_M_CBC, data.data(), data.size()), PQC_OK) << "Decryption should pass";
+    EXPECT_EQ(PQC_symmetric_decrypt(context2, PQC_AES_M_CBC, data.data(), data.size()), PQC_OK)
+        << "Decryption should pass";
 
     EXPECT_EQ(data, data_copy) << "Data should match original after decryption";
 
-    EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass";
+    EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass";
 
-    EXPECT_EQ(PQC_close_context(context2), PQC_OK) << "Deinitialization should pass";
+    EXPECT_EQ(PQC_context_close(context2), PQC_OK) << "Deinitialization should pass";
 }
 
 
@@ -188,18 +195,18 @@ TEST(AES, AES_CBC_require_iv)
 
     /// Encoding
 
-    context = PQC_init_context(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
+    context = PQC_context_init(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_CBC, data.data(), data.size()), PQC_NO_IV)
+    EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_CBC, data.data(), data.size()), PQC_NO_IV)
         << "Encryption should fail, IV not set";
 
     /// Decoding
 
-    context = PQC_init_context(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
+    context = PQC_context_init(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_decrypt(context, PQC_AES_M_CBC, data.data(), data.size()), PQC_NO_IV)
+    EXPECT_EQ(PQC_symmetric_decrypt(context, PQC_AES_M_CBC, data.data(), data.size()), PQC_NO_IV)
         << "Decryption should fail, IV not set";
 }
 
@@ -216,18 +223,18 @@ TEST(AES, AES_OFB_require_iv)
 
     /// Encoding
 
-    context = PQC_init_context(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
+    context = PQC_context_init(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
 
-    EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_OFB, data.data(), data.size()), PQC_NO_IV)
+    EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_OFB, data.data(), data.size()), PQC_NO_IV)
         << "Encryption should fail, IV not set";
 
     /// Decoding
-    context = PQC_init_context(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
+    context = PQC_context_init(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_decrypt(context, PQC_AES_M_OFB, data.data(), data.size()), PQC_NO_IV)
+    EXPECT_EQ(PQC_symmetric_decrypt(context, PQC_AES_M_OFB, data.data(), data.size()), PQC_NO_IV)
         << "Decryption should fail, IV not set";
 }
 
@@ -248,25 +255,27 @@ TEST(AES, AES_OFB_encodeDecode)
 
     /// Encoding
 
-    context = PQC_init_context_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
+    context = PQC_context_init_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_OFB, data.data(), data.size()), PQC_OK) << "Encryption should pass";
+    EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_OFB, data.data(), data.size()), PQC_OK)
+        << "Encryption should pass";
 
     EXPECT_NE(data, data_copy) << "Data should change after encryption";
 
-    EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass";
+    EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass";
 
     /// Decoding
 
-    context = PQC_init_context_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
+    context = PQC_context_init_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_decrypt(context, PQC_AES_M_OFB, data.data(), data.size()), PQC_OK) << "Decryption should pass";
+    EXPECT_EQ(PQC_symmetric_decrypt(context, PQC_AES_M_OFB, data.data(), data.size()), PQC_OK)
+        << "Decryption should pass";
 
     EXPECT_EQ(data, data_copy) << "Data should match original after decryption";
 
-    EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass";
+    EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass";
 }
 
 TEST(AES, AES_OFB2_encodeDecode)
@@ -283,21 +292,73 @@ TEST(AES, AES_OFB2_encodeDecode)
 
     /// Encode
     uint8_t iv[PQC_AES_IVLEN] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-    context = PQC_init_context_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
+    context = PQC_context_init_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
 
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_OFB, data.data(), data.size()), PQC_OK) << "Encryption should pass";
+    EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_OFB, data.data(), data.size()), PQC_OK)
+        << "Encryption should pass";
+
+    EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass";
 
     EXPECT_NE(data, data_copy) << "Data should change after encryption";
 
     /// Decode
+    context = PQC_context_init_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
 
-    EXPECT_EQ(PQC_decrypt(context, PQC_AES_M_OFB, data.data(), data.size()), PQC_OK) << "Decryption should pass";
+    EXPECT_EQ(PQC_symmetric_decrypt(context, PQC_AES_M_OFB, data.data(), data.size()), PQC_OK)
+        << "Decryption should pass";
 
     EXPECT_EQ(data, data_copy) << "Data should be all zeros again after decryption";
 
-    EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass";
+    EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass";
+}
+
+TEST(AES, AES_OFB_encode_partial)
+{
+    CIPHER_HANDLE context;
+
+    std::array<uint8_t, PQC_AES_KEYLEN> key = {1,   2,   3,   4,   5,   6,   7,   8,   9,   10, '1',
+                                               '2', '3', '4', '5', '6', '7', '8', '9', '0', 21, 22,
+                                               23,  24,  25,  26,  27,  28,  29,  30,  'A', 'B'};
+
+    const int data_len = PQC_AES_BLOCKLEN * 2 + 3;
+    std::array<uint8_t, data_len> data = {89, 234, 87, 91, 40, 83, 179, 255, 80, 66, 19, 45, 89, 0, 64, 78, 1};
+    std::array<uint8_t, data_len> data_copy(data);
+
+    /// Encode single pass
+    uint8_t iv[PQC_AES_IVLEN] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    context = PQC_context_init_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
+
+    EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
+
+    EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_OFB, data.data(), data.size()), PQC_OK)
+        << "Encryption should pass";
+
+    EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass";
+
+
+    /// Encode by small steps
+    for (int step = 1; step < (int)data_copy.size() - 3; ++step)
+    {
+        const int first_step = 3;
+        std::array<uint8_t, data_len> data_partial(data_copy);
+
+        context = PQC_context_init_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
+
+        EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_OFB, data_partial.data(), first_step), PQC_OK)
+            << "Encryption part 1 should pass";
+
+        for (int i = first_step; i < data_len; i += step)
+        {
+            size_t len = std::min(step, data_len - i);
+            EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_OFB, data_partial.data() + i, len), PQC_OK)
+                << "Encryption should pass";
+        }
+        EXPECT_EQ(data, data_partial) << "Encrypted data should match";
+
+        EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass";
+    }
 }
 
 TEST(AES, AES_CTR_require_iv)
@@ -314,18 +375,18 @@ TEST(AES, AES_CTR_require_iv)
 
     /// Encoding
 
-    context = PQC_init_context(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
+    context = PQC_context_init(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
 
-    EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_CTR, data.data(), data.size()), PQC_NO_IV)
+    EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_CTR, data.data(), data.size()), PQC_NO_IV)
         << "Encryption should fail, IV not set";
 
     /// Decoding
-    context = PQC_init_context(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
+    context = PQC_context_init(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_decrypt(context, PQC_AES_M_CTR, data.data(), data.size()), PQC_NO_IV)
+    EXPECT_EQ(PQC_symmetric_decrypt(context, PQC_AES_M_CTR, data.data(), data.size()), PQC_NO_IV)
         << "Decryption should fail, IV not set";
 }
 
@@ -345,25 +406,27 @@ TEST(AES, AES_CTR_encodeDecode)
     std::array<uint8_t, data_len> data_copy(data);
 
     /// Encode
-    context = PQC_init_context_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
+    context = PQC_context_init_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_CTR, data.data(), data.size()), PQC_OK) << "Encryption should pass";
+    EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_CTR, data.data(), data.size()), PQC_OK)
+        << "Encryption should pass";
 
     EXPECT_NE(data, data_copy) << "Data should change after encryption";
 
-    PQC_close_context(context);
+    PQC_context_close(context);
 
     /// Decode
 
-    context = PQC_init_context_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
+    context = PQC_context_init_iv(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_decrypt(context, PQC_AES_M_CTR, data.data(), data.size()), PQC_OK) << "Decryption should pass";
+    EXPECT_EQ(PQC_symmetric_decrypt(context, PQC_AES_M_CTR, data.data(), data.size()), PQC_OK)
+        << "Decryption should pass";
 
     EXPECT_EQ(data, data_copy) << "Data should match original after decryption";
 
-    EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass";
+    EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass";
 }
 
 TEST(AES, AES_CTR_counterOverflow)
@@ -388,27 +451,28 @@ TEST(AES, AES_CTR_counterOverflow)
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-    context = PQC_init_context(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
+    context = PQC_context_init(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
     // Now we encrypt counters using ECB to get expected data.
-    EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_ECB, expected.data(), PQC_AES_BLOCKLEN), PQC_OK)
+    EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_ECB, expected.data(), PQC_AES_BLOCKLEN), PQC_OK)
         << "Encryption should pass";
-    EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_ECB, expected.data() + PQC_AES_BLOCKLEN, PQC_AES_BLOCKLEN), PQC_OK)
-        << "Encryption should pass";
+    EXPECT_EQ(
+        PQC_symmetric_encrypt(context, PQC_AES_M_ECB, expected.data() + PQC_AES_BLOCKLEN, PQC_AES_BLOCKLEN), PQC_OK
+    ) << "Encryption should pass";
 
-    PQC_close_context(context);
+    PQC_context_close(context);
 
     /// Now we test operation of CTR
-    context = PQC_init_context_iv(PQC_CIPHER_AES, key.data(), key.size(), iv.data(), iv.size());
+    context = PQC_context_init_iv(PQC_CIPHER_AES, key.data(), key.size(), iv.data(), iv.size());
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_CTR, data.data(), PQC_AES_BLOCKLEN * 2), PQC_OK)
+    EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_CTR, data.data(), PQC_AES_BLOCKLEN * 2), PQC_OK)
         << "Encryption should pass";
 
     EXPECT_EQ(data, expected) << "Ciphertext should match expectation";
 
-    PQC_close_context(context);
+    PQC_context_close(context);
 }
 
 
@@ -439,17 +503,18 @@ TEST(AES, AES_CTR_encode_partial)
             0x30, 0xC8, 0x1C, 0x46, 0xA3, 0x5C, 0xE4, 0x11, 0xE5, 0xFB, 0xC1, 0x19, 0x1A, 0x0A, 0x52, 0xEF,
             0xF6, 0x9F, 0x24, 0x45, 0xDF, 0x4F, 0x9B, 0x17, 0xAD, 0x2B, 0x41, 0x7B, 0xE6, 0x6C, 0x37, 0x10};
 
-        context = PQC_init_context_iv(PQC_CIPHER_AES, key, PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
+        context = PQC_context_init_iv(PQC_CIPHER_AES, key, PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
         EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
         for (int i = 0; i < data_len; i += step)
         {
             size_t len = std::min(step, data_len - i);
-            EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_CTR, data.data() + i, len), PQC_OK) << "Encryption should pass";
+            EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_CTR, data.data() + i, len), PQC_OK)
+                << "Encryption should pass";
         }
 
         EXPECT_EQ(data, ciphertext) << "Ciphertext should match";
-        PQC_close_context(context);
+        PQC_context_close(context);
     }
 }
 
@@ -484,22 +549,22 @@ TEST_P(AESVectorTestSuite, test_encrypt)
     CIPHER_HANDLE context;
     if (param._iv.size() == 0)
     {
-        context = PQC_init_context(PQC_CIPHER_AES, param._key.data(), PQC_AES_KEYLEN);
+        context = PQC_context_init(PQC_CIPHER_AES, param._key.data(), PQC_AES_KEYLEN);
     }
     else
     {
         context =
-            PQC_init_context_iv(PQC_CIPHER_AES, param._key.data(), PQC_AES_KEYLEN, param._iv.data(), param._iv.size());
+            PQC_context_init_iv(PQC_CIPHER_AES, param._key.data(), PQC_AES_KEYLEN, param._iv.data(), param._iv.size());
     }
 
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_encrypt(context, param._mode, param._plaintext.data(), param._plaintext.size()), PQC_OK)
+    EXPECT_EQ(PQC_symmetric_encrypt(context, param._mode, param._plaintext.data(), param._plaintext.size()), PQC_OK)
         << "Encryption should pass";
 
     EXPECT_EQ(param._plaintext, param._ciphertext) << "Encrypted data should match expected vector";
 
-    PQC_close_context(context);
+    PQC_context_close(context);
 }
 
 TEST_P(AESVectorTestSuite, test_decrypt)
@@ -509,21 +574,21 @@ TEST_P(AESVectorTestSuite, test_decrypt)
     CIPHER_HANDLE context;
     if (param._iv.size() == 0)
     {
-        context = PQC_init_context(PQC_CIPHER_AES, param._key.data(), PQC_AES_KEYLEN);
+        context = PQC_context_init(PQC_CIPHER_AES, param._key.data(), PQC_AES_KEYLEN);
     }
     else
     {
         context =
-            PQC_init_context_iv(PQC_CIPHER_AES, param._key.data(), PQC_AES_KEYLEN, param._iv.data(), param._iv.size());
+            PQC_context_init_iv(PQC_CIPHER_AES, param._key.data(), PQC_AES_KEYLEN, param._iv.data(), param._iv.size());
     }
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
-    EXPECT_EQ(PQC_decrypt(context, param._mode, param._ciphertext.data(), param._ciphertext.size()), PQC_OK)
+    EXPECT_EQ(PQC_symmetric_decrypt(context, param._mode, param._ciphertext.data(), param._ciphertext.size()), PQC_OK)
         << "Encryption should pass";
 
     EXPECT_EQ(param._ciphertext, param._plaintext) << "Encrypted data should match expected vector";
 
-    PQC_close_context(context);
+    PQC_context_close(context);
 }
 
 
@@ -632,17 +697,20 @@ TEST(AES, AES_CBC_KAT)
         {
             CIPHER_HANDLE context;
 
-            context = PQC_init_context_iv(
+            context = PQC_context_init_iv(
                 PQC_CIPHER_AES, record.key_.data(), record.key_.size(), record.iv_.data(), record.iv_.size()
             );
             EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass, file " << filename;
 
-            EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_CBC, record.plaintext_.data(), record.plaintext_.size()), PQC_OK)
-                << "Encryption should pass, file " << filename;
+            EXPECT_EQ(
+                PQC_symmetric_encrypt(context, PQC_AES_M_CBC, record.plaintext_.data(), record.plaintext_.size()),
+                PQC_OK
+            ) << "Encryption should pass, file "
+              << filename;
 
             EXPECT_EQ(record.plaintext_, record.ciphertext_) << "Encryption result should match, file " << filename;
 
-            EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass, file " << filename;
+            EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass, file " << filename;
         }
 
         /// Decoding
@@ -651,17 +719,20 @@ TEST(AES, AES_CBC_KAT)
         {
             CIPHER_HANDLE context;
 
-            context = PQC_init_context_iv(
+            context = PQC_context_init_iv(
                 PQC_CIPHER_AES, record.key_.data(), record.key_.size(), record.iv_.data(), record.iv_.size()
             );
             EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass, file " << filename;
 
-            EXPECT_EQ(PQC_decrypt(context, PQC_AES_M_CBC, record.ciphertext_.data(), record.ciphertext_.size()), PQC_OK)
-                << "Decryption should pass, file " << filename;
+            EXPECT_EQ(
+                PQC_symmetric_decrypt(context, PQC_AES_M_CBC, record.ciphertext_.data(), record.ciphertext_.size()),
+                PQC_OK
+            ) << "Decryption should pass, file "
+              << filename;
 
             EXPECT_EQ(record.plaintext_, record.ciphertext_) << "Decryption result should match, file " << filename;
 
-            EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass, file " << filename;
+            EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass, file " << filename;
         }
     }
 }
@@ -689,18 +760,52 @@ TEST(AES, AES_OFB_KAT)
         for (AESRSPRecord record : dataset.encrypt_)
         {
             CIPHER_HANDLE context;
+            std::vector<uint8_t> data = record.plaintext_;
 
-            context = PQC_init_context_iv(
+            // Full block encryption
+
+            context = PQC_context_init_iv(
                 PQC_CIPHER_AES, record.key_.data(), record.key_.size(), record.iv_.data(), record.iv_.size()
             );
             EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass, file " << filename;
 
-            EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_OFB, record.plaintext_.data(), record.plaintext_.size()), PQC_OK)
+            EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_OFB, data.data(), data.size()), PQC_OK)
                 << "Encryption should pass, file " << filename;
 
-            EXPECT_EQ(record.plaintext_, record.ciphertext_) << "Encryption result should match, file " << filename;
+            EXPECT_EQ(data, record.ciphertext_) << "Encryption result should match, file " << filename;
 
-            EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass, file " << filename;
+            EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass, file " << filename;
+
+            // step-by step encryption
+
+            for (int step = 1; step < (int)record.plaintext_.size(); ++step)
+            {
+                data = record.plaintext_;
+
+                context = PQC_context_init_iv(
+                    PQC_CIPHER_AES, record.key_.data(), record.key_.size(), record.iv_.data(), record.iv_.size()
+                );
+                EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass, file " << filename;
+
+                auto blocks = iterate_blocks(BufferView(data), step);
+
+                for (BufferView part : blocks)
+                {
+                    EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_OFB, part.data(), part.size()), PQC_OK)
+                        << "Encryption should pass, file " << filename;
+                }
+
+                if (blocks.has_extra())
+                {
+                    BufferView last_part = blocks.extra();
+                    EXPECT_EQ(PQC_symmetric_encrypt(context, PQC_AES_M_OFB, last_part.data(), last_part.size()), PQC_OK)
+                        << "Encryption should pass, file " << filename;
+                }
+
+                EXPECT_EQ(data, record.ciphertext_) << "Encryption result should match, file " << filename;
+
+                EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass, file " << filename;
+            }
         }
 
         /// Decoding
@@ -709,17 +814,20 @@ TEST(AES, AES_OFB_KAT)
         {
             CIPHER_HANDLE context;
 
-            context = PQC_init_context_iv(
+            context = PQC_context_init_iv(
                 PQC_CIPHER_AES, record.key_.data(), record.key_.size(), record.iv_.data(), record.iv_.size()
             );
             EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass, file " << filename;
 
-            EXPECT_EQ(PQC_decrypt(context, PQC_AES_M_OFB, record.ciphertext_.data(), record.ciphertext_.size()), PQC_OK)
-                << "Decryption should pass, file " << filename;
+            EXPECT_EQ(
+                PQC_symmetric_decrypt(context, PQC_AES_M_OFB, record.ciphertext_.data(), record.ciphertext_.size()),
+                PQC_OK
+            ) << "Decryption should pass, file "
+              << filename;
 
             EXPECT_EQ(record.plaintext_, record.ciphertext_) << "Decryption result should match, file " << filename;
 
-            EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass, file " << filename;
+            EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass, file " << filename;
         }
     }
 }
@@ -748,15 +856,18 @@ TEST(AES, AES_ECB_KAT)
         {
             CIPHER_HANDLE context;
 
-            context = PQC_init_context(PQC_CIPHER_AES, record.key_.data(), record.key_.size());
+            context = PQC_context_init(PQC_CIPHER_AES, record.key_.data(), record.key_.size());
             EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass, file " << filename;
 
-            EXPECT_EQ(PQC_encrypt(context, PQC_AES_M_ECB, record.plaintext_.data(), record.plaintext_.size()), PQC_OK)
-                << "Encryption should pass, file " << filename;
+            EXPECT_EQ(
+                PQC_symmetric_encrypt(context, PQC_AES_M_ECB, record.plaintext_.data(), record.plaintext_.size()),
+                PQC_OK
+            ) << "Encryption should pass, file "
+              << filename;
 
             EXPECT_EQ(record.plaintext_, record.ciphertext_) << "Encryption result should match, file " << filename;
 
-            EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass, file " << filename;
+            EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass, file " << filename;
         }
 
         /// Decoding
@@ -765,15 +876,18 @@ TEST(AES, AES_ECB_KAT)
         {
             CIPHER_HANDLE context;
 
-            context = PQC_init_context(PQC_CIPHER_AES, record.key_.data(), record.key_.size());
+            context = PQC_context_init(PQC_CIPHER_AES, record.key_.data(), record.key_.size());
             EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass, file " << filename;
 
-            EXPECT_EQ(PQC_decrypt(context, PQC_AES_M_ECB, record.ciphertext_.data(), record.ciphertext_.size()), PQC_OK)
-                << "Decryption should pass, file " << filename;
+            EXPECT_EQ(
+                PQC_symmetric_decrypt(context, PQC_AES_M_ECB, record.ciphertext_.data(), record.ciphertext_.size()),
+                PQC_OK
+            ) << "Decryption should pass, file "
+              << filename;
 
             EXPECT_EQ(record.plaintext_, record.ciphertext_) << "Decryption result should match, file " << filename;
 
-            EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass, file " << filename;
+            EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass, file " << filename;
         }
     }
 }
@@ -800,7 +914,7 @@ TEST(AES, AES_GCM_ENCODE_DECODE)
 
     /// Encoding
 
-    context = PQC_init_context_iv(PQC_CIPHER_AES, key, PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
+    context = PQC_context_init_iv(PQC_CIPHER_AES, key, PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
     size_t r2 =
@@ -810,11 +924,11 @@ TEST(AES, AES_GCM_ENCODE_DECODE)
 
     EXPECT_NE(data, data_copy) << "Data should change after encryption";
 
-    EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass";
+    EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass";
 
     /// Decoding
 
-    context = PQC_init_context_iv(PQC_CIPHER_AES, key, PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
+    context = PQC_context_init_iv(PQC_CIPHER_AES, key, PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
 
     size_t ix = PQC_aead_check(context, PQC_AES_M_GCM, data.data(), data.size(), AddD, AddD_len, AutTag, PQC_AES_IVLEN);
     EXPECT_EQ(ix, PQC_OK) << "Invalid Aut Tag";
@@ -828,7 +942,7 @@ TEST(AES, AES_GCM_ENCODE_DECODE)
 
     EXPECT_EQ(data, data_copy) << "Data should match original after decryption";
 
-    EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass";
+    EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass";
 }
 
 TEST(AES, AES_GCM_TEST_VECTOR_16)
@@ -843,7 +957,7 @@ TEST(AES, AES_GCM_TEST_VECTOR_16)
 
     CIPHER_HANDLE context;
 
-    context = PQC_init_context_iv(PQC_CIPHER_AES, key.data(), key.size(), iv.data(), iv.size());
+    context = PQC_context_init_iv(PQC_CIPHER_AES, key.data(), key.size(), iv.data(), iv.size());
     EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
     EXPECT_EQ(
@@ -857,7 +971,7 @@ TEST(AES, AES_GCM_TEST_VECTOR_16)
     ) << "Encryption result should match";
     EXPECT_EQ(tag, RSPParser::string2binary("76fc6ece0f4e1768cddf8853bb2d551b")) << "Tag should match";
 
-    EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass";
+    EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass";
 }
 
 TEST(AES, AES_GCM_ENCODE_KAT)
@@ -890,7 +1004,7 @@ TEST(AES, AES_GCM_ENCODE_KAT)
             iv[i] = record.iv_[i];
         iv[iv.size() - 1] = 1;
 
-        context = PQC_init_context_iv(PQC_CIPHER_AES, record.key_.data(), record.key_.size(), iv.data(), iv.size());
+        context = PQC_context_init_iv(PQC_CIPHER_AES, record.key_.data(), record.key_.size(), iv.data(), iv.size());
         EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
         EXPECT_EQ(
@@ -904,7 +1018,7 @@ TEST(AES, AES_GCM_ENCODE_KAT)
         EXPECT_EQ(record.plaintext_, record.ciphertext_) << "Encryption result should match";
         EXPECT_EQ(record.tag_, tag) << "Tag should match";
 
-        EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass";
+        EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass";
 
 
         ++test_count;
@@ -944,7 +1058,7 @@ TEST(AES, AES_GCM_DECODE_KAT)
             iv[i] = record.iv_[i];
         iv[iv.size() - 1] = 1;
 
-        context = PQC_init_context_iv(PQC_CIPHER_AES, record.key_.data(), record.key_.size(), iv.data(), iv.size());
+        context = PQC_context_init_iv(PQC_CIPHER_AES, record.key_.data(), record.key_.size(), iv.data(), iv.size());
         EXPECT_NE(context, PQC_BAD_CIPHER) << "Initialization should pass";
 
         size_t check_result = PQC_aead_check(
@@ -976,7 +1090,7 @@ TEST(AES, AES_GCM_DECODE_KAT)
             EXPECT_EQ(decode_result, PQC_AUTHENTICATION_FAILURE) << "Encryption should fail";
         }
 
-        EXPECT_EQ(PQC_close_context(context), PQC_OK) << "Deinitialization should pass";
+        EXPECT_EQ(PQC_context_close(context), PQC_OK) << "Deinitialization should pass";
 
         ++test_count;
     }

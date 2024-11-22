@@ -16,7 +16,7 @@ void gcm_encrypt(
 {
     CIPHER_HANDLE context;
 
-    context = PQC_init_context(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
+    context = PQC_context_init(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
     PQC_aead_encrypt(
         context, PQC_AES_M_CTR, data.data(), data.size(), aad.data(), aad.size(), tag.data(), PQC_AES_IVLEN
     );
@@ -32,12 +32,12 @@ void gcm_decrypt(
 {
     CIPHER_HANDLE context;
 
-    context = PQC_init_context(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
+    context = PQC_context_init(PQC_CIPHER_AES, key.data(), PQC_AES_KEYLEN);
     PQC_aead_decrypt(
         context, PQC_AES_M_CTR, data.data(), data.size(), aad.data(), aad.size(), tag.data(), PQC_AES_IVLEN
     );
 
-    PQC_close_context(context);
+    PQC_context_close(context);
 }
 
 

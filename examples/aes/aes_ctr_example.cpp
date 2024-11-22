@@ -16,8 +16,8 @@ void ctr_encrypt(uint8_t key[], uint8_t data[], const int data_len)
 {
     CIPHER_HANDLE context;
 
-    context = PQC_init_context(PQC_CIPHER_AES, key, PQC_AES_KEYLEN);
-    PQC_encrypt(context, PQC_AES_M_CTR, data, data_len);
+    context = PQC_context_init(PQC_CIPHER_AES, key, PQC_AES_KEYLEN);
+    PQC_symmetric_encrypt(context, PQC_AES_M_CTR, data, data_len);
 }
 
 
@@ -27,10 +27,10 @@ void ctr_decrypt(uint8_t key[], uint8_t data[], const int data_len)
 {
     CIPHER_HANDLE context;
 
-    context = PQC_init_context(PQC_CIPHER_AES, key, PQC_AES_KEYLEN);
-    PQC_decrypt(context, PQC_AES_M_CTR, data, data_len);
+    context = PQC_context_init(PQC_CIPHER_AES, key, PQC_AES_KEYLEN);
+    PQC_symmetric_decrypt(context, PQC_AES_M_CTR, data, data_len);
 
-    PQC_close_context(context);
+    PQC_context_close(context);
 }
 
 

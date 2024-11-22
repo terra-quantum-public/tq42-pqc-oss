@@ -8,7 +8,9 @@ TEST(CONTAINER, CONTAINER_WORKFLOW)
     uint8_t creation_key[PQC_AES_KEYLEN] = {1, 2, 3};
     uint8_t creation_iv[PQC_AES_IVLEN] = {3, 5, 6};
 
-    PQC_CONTAINER_HANDLE new_container = PQC_symmetric_container_create();
+    CIPHER_HANDLE context = PQC_context_init_randomsource();
+    EXPECT_NE(context, PQC_BAD_CONTEXT) << "Context intialization should pass";
+    PQC_CONTAINER_HANDLE new_container = PQC_symmetric_container_create(context);
 
     EXPECT_NE(new_container, PQC_FAILED_TO_CREATE_CONTAINER);
 
@@ -30,7 +32,7 @@ TEST(CONTAINER, CONTAINER_WORKFLOW)
 
     {
         PQC_CONTAINER_HANDLE container_a = PQC_symmetric_container_from_data(
-            container_data.get(), size, creation_key, sizeof(creation_key), creation_iv, sizeof(creation_iv)
+            context, container_data.get(), size, creation_key, sizeof(creation_key), creation_iv, sizeof(creation_iv)
         );
 
         EXPECT_NE(container_a, PQC_FAILED_TO_CREATE_CONTAINER);
@@ -46,11 +48,11 @@ TEST(CONTAINER, CONTAINER_WORKFLOW)
     }
 
     PQC_CONTAINER_HANDLE container_a_bis =
-        PQC_symmetric_container_open("CONTAINER.CONTAINER_WORKFLOW-client-device1.pqc", "password", "salt");
+        PQC_symmetric_container_open(context, "CONTAINER.CONTAINER_WORKFLOW-client-device1.pqc", "password", "salt");
     EXPECT_NE(container_a_bis, PQC_FAILED_TO_CREATE_CONTAINER);
 
     PQC_CONTAINER_HANDLE container_b = PQC_symmetric_container_from_data(
-        container_data.get(), size, creation_key, sizeof(creation_key), creation_iv, sizeof(creation_iv)
+        context, container_data.get(), size, creation_key, sizeof(creation_key), creation_iv, sizeof(creation_iv)
     );
     EXPECT_NE(container_b, PQC_FAILED_TO_CREATE_CONTAINER);
 
@@ -72,6 +74,8 @@ TEST(CONTAINER, CONTAINER_WORKFLOW)
 
     EXPECT_EQ(PQC_symmetric_container_close(container_a_bis), PQC_OK);
     EXPECT_EQ(PQC_symmetric_container_close(container_b), PQC_OK);
+
+    PQC_context_close(context);
 }
 
 TEST(CONTAINER, CONTAINER_WORKFLOW_2)
@@ -79,7 +83,10 @@ TEST(CONTAINER, CONTAINER_WORKFLOW_2)
     uint8_t creation_key[PQC_AES_KEYLEN] = {1, 2, 3};
     uint8_t creation_iv[PQC_AES_IVLEN] = {4, 5};
 
-    PQC_CONTAINER_HANDLE new_container = PQC_symmetric_container_create();
+    CIPHER_HANDLE context = PQC_context_init_randomsource();
+    EXPECT_NE(context, PQC_BAD_CONTEXT) << "Context intialization should pass";
+
+    PQC_CONTAINER_HANDLE new_container = PQC_symmetric_container_create(context);
 
     EXPECT_NE(new_container, PQC_FAILED_TO_CREATE_CONTAINER);
 
@@ -100,7 +107,7 @@ TEST(CONTAINER, CONTAINER_WORKFLOW_2)
     EXPECT_EQ(PQC_symmetric_container_close(new_container), PQC_OK);
 
     PQC_CONTAINER_HANDLE container_a = PQC_symmetric_container_from_data(
-        container_data.get(), size, creation_key, sizeof(creation_key), creation_iv, sizeof(creation_iv)
+        context, container_data.get(), size, creation_key, sizeof(creation_key), creation_iv, sizeof(creation_iv)
     );
 
     EXPECT_NE(container_a, PQC_FAILED_TO_CREATE_CONTAINER);
@@ -113,7 +120,7 @@ TEST(CONTAINER, CONTAINER_WORKFLOW_2)
     );
 
     PQC_CONTAINER_HANDLE container_b = PQC_symmetric_container_from_data(
-        container_data.get(), size, creation_key, sizeof(creation_key), creation_iv, sizeof(creation_iv)
+        context, container_data.get(), size, creation_key, sizeof(creation_key), creation_iv, sizeof(creation_iv)
     );
     EXPECT_NE(container_b, PQC_FAILED_TO_CREATE_CONTAINER);
 
@@ -135,23 +142,30 @@ TEST(CONTAINER, CONTAINER_WORKFLOW_2)
 
     EXPECT_EQ(PQC_symmetric_container_close(container_a), PQC_OK);
     EXPECT_EQ(PQC_symmetric_container_close(container_b), PQC_OK);
+
+    PQC_context_close(context);
 }
 
 TEST(CONTAINER, Special)
 {
-    PQC_CONTAINER_HANDLE container1 = PQC_symmetric_container_create();
+    CIPHER_HANDLE context = PQC_context_init_randomsource();
+    EXPECT_NE(context, PQC_BAD_CONTEXT) << "Context intialization should pass";
+
+    PQC_CONTAINER_HANDLE container1 = PQC_symmetric_container_create(context);
     EXPECT_EQ(PQC_symmetric_container_get_version(container1), 1);
     uint64_t creation_ts = PQC_symmetric_container_get_creation_time(container1);
     uint64_t expiration_ts = PQC_symmetric_container_get_expiration_time(container1);
     EXPECT_EQ(creation_ts + 365 * 24 * 3600, expiration_ts);
     EXPECT_EQ(PQC_symmetric_container_close(container1), PQC_OK);
 
-    PQC_CONTAINER_HANDLE container2 = PQC_symmetric_container_create();
+    PQC_CONTAINER_HANDLE container2 = PQC_symmetric_container_create(context);
     EXPECT_EQ(PQC_symmetric_container_get_version(container2), 1);
     EXPECT_EQ(PQC_symmetric_container_close(container2), PQC_OK);
 
-    PQC_CONTAINER_HANDLE containerCl0 = PQC_symmetric_container_create();
-    PQC_CONTAINER_HANDLE containerCl1 = PQC_symmetric_container_create();
+    PQC_CONTAINER_HANDLE containerCl0 = PQC_symmetric_container_create(context);
+    PQC_CONTAINER_HANDLE containerCl1 = PQC_symmetric_container_create(context);
     EXPECT_EQ(PQC_symmetric_container_close(containerCl0), PQC_OK);
     EXPECT_EQ(PQC_symmetric_container_close(containerCl1), PQC_OK);
+
+    PQC_context_close(context);
 }

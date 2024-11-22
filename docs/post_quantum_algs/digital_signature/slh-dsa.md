@@ -25,19 +25,28 @@ nav_order: 2
 
 ## FIPS 205 SLH-DSA
 
-FIPS 205 is the Stateless Hash-Based Digital Signature Algorithm (SLH-DSA), which was developed by the National Institute of Standards and Technology (NIST) to provide a quantum-resistant digital signature mechanism. FIPS 205 defines a method for digital signature generation that can be used for the protection of binary data (commonly called a message) and for the verification and validation of those digital signatures  
-- [FIPS 205](https://csrc.nist.gov/pubs/fips/205/ipd) 
-- [Nist post quantum cryptography](https://www.infosecurity-magazine.com/news/nist-post-quantum-cryptography/)
+FIPS 205 is the Stateless Hash-Based Digital Signature Algorithm (SLH-DSA), developed by the National Institute of Standards and Technology (NIST) to offer a quantum-resistant digital signature mechanism. This standard outlines a method for generating digital signatures to protect binary data (commonly called a message) and to verify and validate these digital signatures effectively.
 
-As part of the NIST standardisation process for post-squantum cryptography, SPHINCS+ has been under consideration and is the basis for Stateless Hash-Based Digital Signature Algorithm (SLH-DSA).
-- [SPHINCS+](https://sphincs.org/data/sphincs+-paper.pdf) 
+SLH-DSA is based on SPHINCS+, considered during the NIST standardization process for post-quantum cryptography. This algorithm utilizes the assumed difficulty of finding pre-images for hash functions, as well as several related properties, to ensure its security. Unlike algorithms specified in FIPS 186-5, SLH-DSA is designed to resist attacks from large-scale quantum computers.
 
-The security of SLH-DSA relies on the presumed diffculty of finding preimages for hash functions as well as several related properties of the same hash functions. Unlike the algorithms specifed in FIPS 186-5, SLH-DSA is expected to provide resistance to attacks from a large-scale quantum computer.
-    
-The standard specifes the mathematical steps that need to be performed for key generation, signature generation, and signature verifcation.
+The standard specifies the mathematical procedures required for key generation, signature creation, and signature verification, ensuring robust security across various applications.
 
-FIPS 205 was initially published as a draft on August 24, 2023, with a public comment period that concluded on November 22, 2023. Following the public comment period, necessary revisions were made to address feedback, and NIST aims to finalize and publish the standard for use in 2024.
-    
+FIPS 205 was released as a draft on August 24, 2023, and opened for public comment until November 22, 2023. NIST officially standardized SLH-DSA on August 13, 2024, establishing a crucial step in securing data against future quantum threats.
+- [FIPS 205 Initial Public Draft](https://csrc.nist.gov/pubs/fips/205/final)
+- [FIPS 205 Publication](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.205.pdf)
+
+## SLH-DSA CAVP Validation
+
+The TQ42 Cryptography v0.2.2 implementations of SLH-DSA are fully compliant with the latest NIST standard, FIPS 205. The algorithm has undergone validation through the NIST Cryptographic Algorithm Validation Program (CAVP). For additional information, please visit the For further details, please visit the NIST CAVP [webpage](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/details?product=18351).
+
+The validation process spans multiple operating systems and hardware configurations, including:
+
+- Red Hat 9.4 
+- Ubuntu 24.04 
+- Windows 11 
+- Windows 2022 
+- IOS 17.5.1
+- Android 14
 
 ### Applications:
 
@@ -61,10 +70,14 @@ Stateless Hash-Based Digital Signature Algorithm (SLH-DSA), such as those based 
 
 ## SLH-DSA - Parameter set summary
 
-- SLH-DSA-SHAKE-256f -  security category **5**
-- Public key size - **64** bytes
-- Private key size - **128** bytes 
-- Signature size - **49 856** bytes
+|                    | Public key size | Private key size | Signature size | Security category |
+|:------------------:|:---------------:|:----------------:|:--------------:|:-----------------:|
+| SLH-DSA-SHAKE-128s | 32 bytes        | 64 bytes         | 7856 bytes     | 1                 |
+| SLH-DSA-SHAKE-128f | 32 bytes        | 64 bytes         | 17088 bytes    | 1                 |
+| SLH-DSA-SHAKE-192s | 48 bytes        | 96 bytes         | 16224 bytes    | 3                 |
+| SLH-DSA-SHAKE-192f | 48 bytes        | 96 bytes         | 35664 bytes    | 3                 |
+| SLH-DSA-SHAKE-256s | 64 bytes        | 128 bytes        | 29792 bytes    | 5                 |
+| SLH-DSA-SHAKE-256f | 64 bytes        | 128 bytes        | 49856 bytes    | 5                 |
 
 ## NIST's Known Answer Tests (KAT)
 
@@ -79,7 +92,7 @@ The customization of the SLH-DSA algorithm within TQ42 Cryptography is designed 
 
 To include the necessary library, please refer to the  [Getting Started Guide](../../getting_started.html).
 After following the guide, include the `pqc/slh-dsa.h` header in your code.
-All Signature Schemes algorithms have a unified API. For SLH-DSA, you can set the algorithm to work using the constant **PQC_CIPHER_SLH_DSA_SHAKE_256F_DRAFT**.
+All Signature Schemes algorithms have a unified API. For SLH-DSA you can set the algorithm to work using one of the constants: **PQC_CIPHER_SLH_DSA_SHAKE_128S**, **PQC_CIPHER_SLH_DSA_SHAKE_128F**, **PQC_CIPHER_SLH_DSA_SHAKE_192S**, **PQC_CIPHER_SLH_DSA_SHAKE_192F**, **PQC_CIPHER_SLH_DSA_SHAKE_256S**, **PQC_CIPHER_SLH_DSA_SHAKE_256F**.
 To learn about all the available methods for signature algorithms, visit the [Signature Schemes Generic API Overview page](api.html).
 
 
@@ -87,4 +100,4 @@ To learn about all the available methods for signature algorithms, visit the [Si
 
 **Code**
 ```cpp 
-{% include examples/signature/example_slhdsa.cpp %}```
+{% include examples/signature/example_signature.cpp %}```

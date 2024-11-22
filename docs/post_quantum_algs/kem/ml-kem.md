@@ -28,11 +28,24 @@ or [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0.html)
 
 FIPS 203 is the Module-Lattice-Based Key-Encapsulation Mechanism Standard, developed by the National Institute of Standards and Technology (NIST). It specifies the ML-KEM algorithms, derived from the CRYSTALS-KYBER submission, which are designed for key generation, encapsulation, and decapsulation. These algorithms are part of a broader effort to create cryptographic systems that can resist attacks by quantum computers.
 
-The primary focus of FIPS 203 is to provide secure, quantum-resistant methods for establishing shared secret keys between two parties communicating over a public channel. This is achieved through the use of ML-KEM, which is based on the computational difficulty of the Module Learning with Errors problem. The standard specifies three parameter sets for ML-KEM: ML-KEM-512, ML-KEM-768, and ML-KEM-1024, each offering different levels of security and performance  
-- [FIPS-203 Initial Public Draft](https://csrc.nist.gov/pubs/fips/203/ipd)  
-- [Comments Requested on Three Draft FIPS for Post-Quantum Cryptography](https://csrc.nist.gov/News/2023/three-draft-fips-for-post-quantum-cryptography)  
+The primary focus of FIPS 203 is to provide secure, quantum-resistant methods for establishing shared secret keys between two parties communicating over a public channel. This is achieved through the use of ML-KEM, which is based on the computational difficulty of the Module Learning with Errors problem. The standard specifies three parameter sets for ML-KEM: ML-KEM-512, ML-KEM-768, and ML-KEM-1024, each offering different levels of security and performance
 
-FIPS 203 aims to provide sufficient information for implementing ML-KEM in a manner that can pass validation through the Cryptographic Module Validation Program (CMVP). This ensures that implementations of ML-KEM adhere to rigorous security standards and are suitable for use in protecting sensitive information across various applications
+On August 13, 2024, NIST officially standardized the ML-KEM encryption algorithm.
+- [FIPS 203 Initial Public Draft](https://csrc.nist.gov/pubs/fips/203/final)
+- [FIPS 203 Publication](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.203.pdf)
+
+## ML-KEM CAVP Validation
+
+The TQ42 Cryptography v0.2.2 implementations of ML-KEM are fully compliant with the latest NIST standard, FIPS 203. The algorithm has undergone validation through the NIST Cryptographic Algorithm Validation Program (CAVP). For additional information, please visit the For further details, please visit the NIST CAVP [webpage](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/details?product=18351).
+
+The validation process spans multiple operating systems and hardware configurations, including:
+
+- Red Hat 9.4 
+- Ubuntu 24.04 
+- Windows 11 
+- Windows 2022 
+- IOS 17.5.1
+- Android 14
 
 ## ML-KEM advantages over classical KEM
 - ML-KEMs are designed to be quantum-secure, meaning they offer protection against potential attacks by quantum computers, which pose significant threats to traditional cryptographic systems  In contrast, classical KEMs such as those based on RSA or ECC are vulnerable to quantum attacks, as quantum algorithms like Shor's algorithm can efficiently break them.
@@ -57,18 +70,16 @@ The customization of the ML-KEM algorithm within TQ42 Cryptography is designed t
 
 ## ML-KEM - Parameter set summary
 
-- ML-KEM-1024 - security category **5**.
-- Encapsulation key -  **1568** bytes
-- Decapsulation key - **3168** bytes
-- Ciphertext - **1568** bytes
-- Shared secret key - **32** bytes
-
-
+|             | Encapsulation key size | Decapsulation key size | Ciphertext size | Shared secret size | Security category |
+|:-----------:|:----------------------:|:----------------------:|:---------------:|:------------------:|:-----------------:|
+| ML-KEM-512  | 800 bytes              | 1632 bytes             | 768 bytes       | 32 bytes           | 1                 |
+| ML-KEM-768  | 1184 bytes             | 2400 bytes             | 1088 bytes      | 32 bytes           | 3                 |
+| ML-KEM-1024 | 1568 bytes             | 3168 bytes             | 1568 bytes      | 32 bytes           | 5                 |
 
 ## API overview
 
 To include the necessary library, please refer to the [Getting Started Guide](../../getting_started.html).
-After following the guide, include the ``pqc/ml-kem.h`` header in your code. All Key Exchange Mechanism algorithms have a unified API. For ML-KEM, you can set the algorithm to work using the constant **PQC_CIPHER_ML_KEM**. To learn about all the available methods for Key Exchange Mechanism APIs, visit the [KEM API Overview page](api.html).
+After following the guide, include the ``pqc/ml-kem.h`` header in your code. All Key Exchange Mechanism algorithms have a unified API. For ML-KEM, you can set the algorithm to work using one of the constants **PQC_CIPHER_ML_KEM_512**, **PQC_CIPHER_ML_KEM_768**, **PQC_CIPHER_ML_KEM_1024**. To learn about all the available methods for Key Exchange Mechanism APIs, visit the [KEM API Overview page](api.html).
 
 
 ## Example
@@ -76,5 +87,5 @@ After following the guide, include the ``pqc/ml-kem.h`` header in your code. All
 **Code**
 
 ```cpp
-{% include examples/key_exchange/example_mlkem.cpp %}```
+{% include examples/key_exchange/example_kem.cpp %}```
 

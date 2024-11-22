@@ -45,7 +45,7 @@ void base_2b(int * output, const size_t out_len, const ConstBufferView & buf, in
     const uint8_t * x = buf.const_data();
     int i = 0;
     int bits = 0;
-    int total = 0;
+    uint32_t total = 0;
     const int base = (1L << b) - 1;
 
     for (size_t j = 0; j < out_len; ++j)

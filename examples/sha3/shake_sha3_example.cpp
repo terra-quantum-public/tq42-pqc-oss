@@ -51,49 +51,49 @@ int main(void)
     uint8_t out[hash_size];
 
     // Init context of sha3 SHAKE hash function using library API
-    CIPHER_HANDLE sha3 = PQC_init_context_hash(PQC_CIPHER_SHA3, PQC_SHAKE_256);
+    CIPHER_HANDLE sha3 = PQC_context_init_hash(PQC_CIPHER_SHA3, PQC_SHAKE_256);
 
     /*
-    In detail. There is a function PQC_add_data(). It allows you to add data to the buffer from which the hash is taken.
-    It is important to understand that this function can be applied to one hash function object many times. That is, if
-    you need to take a hash from data of this type "1234567890", then you can add "1234" first, and then additionally
-    add "567890" and take the hash. And it won't be any different from taking the hash from "1234567890". Moreover, you
-    can first add "1234", take the hash from this data, and then add "567890" and again take the hash from the added
-    data. And the resulting hash will be equivalent to the hash from "1234567890".
+    In detail. There is a function PQC_hash_update(). It allows you to add data to the buffer from which the hash is
+    taken. It is important to understand that this function can be applied to one hash function object many times. That
+    is, if you need to take a hash from data of this type "1234567890", then you can add "1234" first, and then
+    additionally add "567890" and take the hash. And it won't be any different from taking the hash from "1234567890".
+    Moreover, you can first add "1234", take the hash from this data, and then add "567890" and again take the hash from
+    the added data. And the resulting hash will be equivalent to the hash from "1234567890".
 
     In the example, we will first add "1234", then we will take a hash from this data, show that it is NOT equal to our
     default message. Then add "567890", take the hash again. And show that it is equal to our default message. After
     that, we will create a new hash function object and take the hash from "1234567890". And let's show that it is also
     equal to our default message.
     */
-    PQC_add_data(sha3, (uint8_t *)"1234", 4);
-    PQC_get_hash(sha3, out, hash_size);
+    PQC_hash_update(sha3, (uint8_t *)"1234", 4);
+    PQC_hash_retrieve(sha3, out, hash_size);
 
     // So, now in out is hash of SHAKE256 fron "1234" data
 
     if (memcmp(out, defaultHash, hash_size) == 0)
         std::cout << "ERROR!!! The shouldn't be equal!!!";
 
-    PQC_add_data(sha3, (uint8_t *)"567890", 6);
-    PQC_get_hash(sha3, out, hash_size);
+    PQC_hash_update(sha3, (uint8_t *)"567890", 6);
+    PQC_hash_retrieve(sha3, out, hash_size);
     if (memcmp(out, defaultHash, hash_size) != 0)
         std::cout << "ERROR!!! The should be equal!!!";
 
     // So, now in out is hash of SHAKE256 fron "1234567890" data
 
-    PQC_close_context(sha3);
+    PQC_context_close(sha3);
 
 
     // Let's create new context
-    CIPHER_HANDLE sha3_new = PQC_init_context_hash(PQC_CIPHER_SHA3, PQC_SHAKE_256);
-    PQC_add_data(sha3_new, (uint8_t *)"1234567890", 10);
-    PQC_get_hash(sha3_new, out, hash_size);
+    CIPHER_HANDLE sha3_new = PQC_context_init_hash(PQC_CIPHER_SHA3, PQC_SHAKE_256);
+    PQC_hash_update(sha3_new, (uint8_t *)"1234567890", 10);
+    PQC_hash_retrieve(sha3_new, out, hash_size);
     if (memcmp(out, defaultHash, hash_size) != 0)
         std::cout << "ERROR!!! The should be equal!!!";
 
     // So, now in out is hash of SHAKE256 fron "1234567890" data
 
-    PQC_close_context(sha3_new);
+    PQC_context_close(sha3_new);
 
     std::cout << "end of shake example";
 

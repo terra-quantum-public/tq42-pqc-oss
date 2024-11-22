@@ -189,7 +189,7 @@ void SHA3::mix_r_block_of_data_into_state(const void * data, unsigned int r_)
 }
 
 // add some bytes to State. data_size is number of bytes to be added
-void SHA3::add_data(const ConstBufferView & data)
+void SHA3::update(const ConstBufferView & data)
 {
     for (unsigned long long int cursor = 0; cursor < data.size(); ++cursor)
     {
@@ -234,7 +234,7 @@ void SHA3::shake_padding(int withCopy)
     // add last byte
     data_buffer[data_buffer_size - 1] |= 0x80;
     data_buffer_size = 0;
-    add_data(ConstBufferView(data_buffer, r));
+    update(ConstBufferView(data_buffer, r));
 }
 
 
@@ -268,7 +268,7 @@ void SHA3::padding(int withCopy)
     // add last byte
     data_buffer[data_buffer_size - 1] |= 0x80;
     data_buffer_size = 0;
-    add_data(ConstBufferView(data_buffer, r));
+    update(ConstBufferView(data_buffer, r));
 }
 
 
@@ -366,14 +366,14 @@ void SHA3::squeezing(int withCopy)
     }
 }
 
-uint8_t * SHA3::get_hash()
+uint8_t * SHA3::retrieve()
 {
     padding(1);
     squeezing(1);
     return hash;
 }
 
-void SHA3::get_shake_hash(const BufferView & hash_)
+void SHA3::retrieve_shake(const BufferView & hash_)
 {
     shake_padding(1);
     shake_squeezing(hash_, 1);
@@ -401,7 +401,7 @@ void SHA3::do_force_squeeze(const BufferView & HASH)
     }
 }
 
-void SHA3::get_hash(const BufferView & hash_)
+void SHA3::retrieve(const BufferView & hash_)
 {
     if (hash_.size() != hash_size())
     {
@@ -413,9 +413,9 @@ void SHA3::get_hash(const BufferView & hash_)
     }
     if (get_mode() != PQC_SHAKE_128)
         if (get_mode() != PQC_SHAKE_256)
-            memcpy(hash_.data(), get_hash(), hash_.size());
+            memcpy(hash_.data(), retrieve(), hash_.size());
     if (get_mode() == PQC_SHAKE_128 || get_mode() == PQC_SHAKE_256)
-        get_shake_hash(hash_);
+        retrieve_shake(hash_);
 }
 
 std::unique_ptr<PQC_Context> SHA3Factory::create_context_hash(uint32_t mode) const

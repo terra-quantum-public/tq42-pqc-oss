@@ -9,7 +9,6 @@
 #include <aes.h>
 #include <asymmetric_container.h>
 #include <buffer.h>
-#include <rng/rng.h>
 #include <sha3.h>
 
 
@@ -25,7 +24,8 @@ AsymmetricContainer::AsymmetricContainer(uint32_t algType)
 
     data.creation_ts = std::time(nullptr);
 
-    size_t length = PQC_get_length(algType, PQC_LENGTH_PUBLIC) + PQC_get_length(algType, PQC_LENGTH_PRIVATE);
+    size_t length =
+        PQC_cipher_get_length(algType, PQC_LENGTH_PUBLIC) + PQC_cipher_get_length(algType, PQC_LENGTH_PRIVATE);
 
     data.KeyBytes.resize(length);
 }
@@ -34,7 +34,8 @@ AsymmetricContainer::AsymmetricContainer(
     uint32_t algType, uint8_t * container_data, const pqc_aes_key * key, const pqc_aes_iv * iv
 )
 {
-    size_t length = PQC_get_length(algType, PQC_LENGTH_PUBLIC) + PQC_get_length(algType, PQC_LENGTH_PRIVATE);
+    size_t length =
+        PQC_cipher_get_length(algType, PQC_LENGTH_PUBLIC) + PQC_cipher_get_length(algType, PQC_LENGTH_PRIVATE);
 
     data.KeyBytes.resize(length);
     data.AlgType = algType;
@@ -97,8 +98,8 @@ void AsymmetricContainer::get_data(uint8_t * destinationData, const pqc_aes_key 
 size_t
 AsymmetricContainer::put_keys_inside(uint8_t * pk, uint8_t * sk, size_t pkLength, size_t skLength, uint32_t algtype)
 {
-    size_t publicLength = PQC_get_length(algtype, PQC_LENGTH_PUBLIC);
-    size_t secretLength = PQC_get_length(algtype, PQC_LENGTH_PRIVATE);
+    size_t publicLength = PQC_cipher_get_length(algtype, PQC_LENGTH_PUBLIC);
+    size_t secretLength = PQC_cipher_get_length(algtype, PQC_LENGTH_PRIVATE);
 
     if (pkLength + skLength != data.KeyBytes.size() || publicLength != pkLength || secretLength != skLength)
     {
@@ -119,8 +120,8 @@ AsymmetricContainer::put_keys_inside(uint8_t * pk, uint8_t * sk, size_t pkLength
 
 size_t AsymmetricContainer::get_keys(uint8_t * pk, uint8_t * sk, size_t pkLength, size_t skLength, uint32_t algtype)
 {
-    size_t publicLength = PQC_get_length(algtype, PQC_LENGTH_PUBLIC);
-    size_t secretLength = PQC_get_length(algtype, PQC_LENGTH_PRIVATE);
+    size_t publicLength = PQC_cipher_get_length(algtype, PQC_LENGTH_PUBLIC);
+    size_t secretLength = PQC_cipher_get_length(algtype, PQC_LENGTH_PRIVATE);
 
     if (pkLength + skLength != data.KeyBytes.size() || publicLength != pkLength || secretLength != skLength)
     {

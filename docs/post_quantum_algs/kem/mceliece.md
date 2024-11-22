@@ -98,6 +98,6 @@ To learn about all the available methods for Key Exchange Mechanism APIs, visit 
 **Code**
 
 ```cpp
-{% include examples/key_exchange/kem_mceliece.cpp %}
+{% include examples/key_exchange/example_kem.cpp %}
 ```
 

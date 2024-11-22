@@ -7,7 +7,7 @@ extern "C"
 {
 #endif
 
-    size_t PQC_API PQC_file_delete(const char * filename);
+    size_t PQC_API PQC_file_delete(CIPHER_HANDLE handle, const char * filename);
 
 #ifdef __cplusplus
 }

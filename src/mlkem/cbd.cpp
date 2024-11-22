@@ -33,7 +33,6 @@ static uint32_t load32_littleendian(const uint8_t x[4])
  *
  * Returns 32-bit unsigned integer loaded from x (most significant byte is zero)
  **************************************************/
-#if KYBER_ETA1 == 3
 static uint32_t load24_littleendian(const uint8_t x[3])
 {
     uint32_t r;
@@ -42,7 +41,6 @@ static uint32_t load24_littleendian(const uint8_t x[3])
     r |= (uint32_t)x[2] << 16;
     return r;
 }
-#endif
 
 
 /*************************************************
@@ -55,13 +53,13 @@ static uint32_t load24_littleendian(const uint8_t x[3])
  * Arguments:   - poly *r:            pointer to output polynomial
  *              - const uint8_t *buf: pointer to input byte array
  **************************************************/
-static void cbd2(poly * r, const uint8_t buf[2 * KYBER_N / 4])
+static void cbd2(poly * r, const uint8_t buf[2 * ML_N / 4])
 {
     unsigned int i, j;
     uint32_t t, d;
     int16_t a, b;
 
-    for (i = 0; i < KYBER_N / 8; i++)
+    for (i = 0; i < ML_N / 8; i++)
     {
         t = load32_littleendian(buf + 4 * i);
         d = t & 0x55555555;
@@ -87,14 +85,13 @@ static void cbd2(poly * r, const uint8_t buf[2 * KYBER_N / 4])
  * Arguments:   - poly *r:            pointer to output polynomial
  *              - const uint8_t *buf: pointer to input byte array
  **************************************************/
-#if KYBER_ETA1 == 3
-static void cbd3(poly * r, const uint8_t buf[3 * KYBER_N / 4])
+static void cbd3(poly * r, const uint8_t buf[3 * ML_N / 4])
 {
     unsigned int i, j;
     uint32_t t, d;
     int16_t a, b;
 
-    for (i = 0; i < KYBER_N / 4; i++)
+    for (i = 0; i < ML_N / 4; i++)
     {
         t = load24_littleendian(buf + 3 * i);
         d = t & 0x00249249;
@@ -109,24 +106,13 @@ static void cbd3(poly * r, const uint8_t buf[3 * KYBER_N / 4])
         }
     }
 }
-#endif
 
-void cbd_eta1(poly * r, const uint8_t buf[KYBER_ETA1 * KYBER_N / 4])
+void cbd_eta1(poly * r, const uint8_t * buf, size_t eta1)
 {
-#if KYBER_ETA1 == 2
-    cbd2(r, buf);
-#elif KYBER_ETA1 == 3
-    cbd3(r, buf);
-#else
-#error "This implementation requires eta1 in {2,3}"
-#endif
+    if (eta1 == 2)
+        cbd2(r, buf);
+    else if (eta1 == 3)
+        cbd3(r, buf);
 }
 
-void cbd_eta2(poly * r, const uint8_t buf[KYBER_ETA1 * KYBER_N / 4])
-{
-#if KYBER_ETA2 != 2
-#error "This implementation requires eta2 = 2"
-#else
-    cbd2(r, buf);
-#endif
-}
+void cbd_eta2(poly * r, const uint8_t buf[ML_ETA2 * ML_N / 4]) { cbd2(r, buf); }

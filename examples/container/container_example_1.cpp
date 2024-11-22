@@ -17,7 +17,15 @@ int main()
     keys, not suitable for asymmetric keys
     */
     uint8_t testKey1[PQC_AES_KEYLEN] = {0};
-    PQC_CONTAINER_HANDLE new_container = PQC_symmetric_container_create();
+
+    CIPHER_HANDLE context = PQC_context_init_randomsource();
+    if (context == PQC_BAD_CONTEXT)
+    {
+        std::cout << "Context intialization failed" << std::endl;
+    }
+    PQC_CONTAINER_HANDLE new_container = PQC_symmetric_container_create(context);
+
+    PQC_context_close(context);
 
     if (new_container == PQC_FAILED_TO_CREATE_CONTAINER)
         std::cout << "\nERROR!!! Failed of container creation!\n";

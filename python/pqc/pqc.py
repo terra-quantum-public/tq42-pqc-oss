@@ -24,6 +24,7 @@ PQC_CONTAINER_DEPLETED = 7
 PQC_IO_ERROR = 8
 PQC_BAD_CIPHER = 0xFFFFFFFFFFFFFFFF
 PQC_AUTHENTICATION_FAILURE = 9
+PQC_KEY_NOT_SET = 10
 PQC_CONTAINER_EXPIRED = 11
 
 
@@ -108,7 +109,7 @@ def _check_return_code(retcode):
         raise PQContainerExpired()
     if retcode == PQC_IO_ERROR:
         raise PQIOError()
-    if retcode == PQC_BAD_CIPHER:
+    if retcode == PQC_BAD_CIPHER or retcode == -1:
         raise PQBadCipher()
     if retcode == PQC_AUTHENTICATION_FAILURE:
         raise PQAuthenticationFailure()
@@ -120,10 +121,21 @@ PQC_CIPHER_SHA3 = 4
 PQC_CIPHER_FALCON = 5
 PQC_CIPHER_DILITHIUM = 6
 PQC_CIPHER_MCELIECE = 10
-PQC_CIPHER_KYBER = 7
-PQC_CIPHER_ML_KEM = 17
+PQC_CIPHER_KYBER_512 = 51971
+PQC_CIPHER_KYBER_768 = 51972
+PQC_CIPHER_KYBER_1024 = 51973
+PQC_CIPHER_ML_KEM_512 = 51968
+PQC_CIPHER_ML_KEM_768 = 51969
+PQC_CIPHER_ML_KEM_1024 = 51970
 PQC_CIPHER_RAINBOW = 11
-PQC_CIPHER_ML_DSA = 16
+PQC_CIPHER_ML_DSA_87 = 1687
+PQC_CIPHER_ML_DSA_65 = 1665
+PQC_CIPHER_ML_DSA_44 = 1644
+PQC_CIPHER_SLH_DSA_SHAKE_128S = 52482
+PQC_CIPHER_SLH_DSA_SHAKE_128F = 52484
+PQC_CIPHER_SLH_DSA_SHAKE_192S = 52486
+PQC_CIPHER_SLH_DSA_SHAKE_192F = 52488
+PQC_CIPHER_SLH_DSA_SHAKE_256S = 52490
 PQC_CIPHER_SLH_DSA_SHAKE_256F = 52492
 
 # Constants for the length types
@@ -170,98 +182,169 @@ PQC_CONTAINER_HANDLE = ctypes.c_size_t
 
 # Python wrappers for the C functions
 
-pqc_lib.PQC_generate_key_pair.argtypes = [
+pqc_lib.PQC_keypair_generate.argtypes = [
     ctypes.c_uint32,
     ctypes.POINTER(ctypes.c_uint8),
     ctypes.c_size_t,
     ctypes.POINTER(ctypes.c_uint8),
     ctypes.c_size_t,
 ]
-pqc_lib.PQC_generate_key_pair.restype = ctypes.c_int
+pqc_lib.PQC_keypair_generate.restype = ctypes.c_int
 
 
-def PQC_generate_key_pair(cipher):
-    private_key_length = pqc_lib.PQC_get_length(cipher, PQC_LENGTH_PRIVATE)
-    public_key_length = pqc_lib.PQC_get_length(cipher, PQC_LENGTH_PUBLIC)
+def PQC_keypair_generate(cipher):
+    private_key_length = pqc_lib.PQC_cipher_get_length(cipher, PQC_LENGTH_PRIVATE)
+    public_key_length = pqc_lib.PQC_cipher_get_length(cipher, PQC_LENGTH_PUBLIC)
     private_key = (ctypes.c_uint8 * private_key_length)()
     public_key = (ctypes.c_uint8 * public_key_length)()
-    result = pqc_lib.PQC_generate_key_pair(cipher, public_key, public_key_length, private_key, private_key_length)
+    result = pqc_lib.PQC_keypair_generate(cipher, public_key, public_key_length, private_key, private_key_length)
     _check_return_code(result)
     return bytes(public_key), bytes(private_key)
 
 
-pqc_lib.PQC_init_context.argtypes = [ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
-pqc_lib.PQC_init_context.restype = CIPHER_HANDLE
+pqc_lib.PQC_context_keypair_generate.argtypes = [CIPHER_HANDLE]
+pqc_lib.PQC_keypair_generate.restype = ctypes.c_int
 
 
-def PQC_init_context(cipher, key):
+def PQC_context_keypair_generate(ctx):
+    result = pqc_lib.PQC_context_keypair_generate(ctx)
+    _check_return_code(result)    
+
+pqc_lib.PQC_context_init.argtypes = [ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
+pqc_lib.PQC_context_init.restype = CIPHER_HANDLE
+
+
+pqc_lib.PQC_context_get_keypair.argtypes = [
+    CIPHER_HANDLE,
+    ctypes.POINTER(ctypes.c_uint8),
+    ctypes.c_size_t,
+    ctypes.POINTER(ctypes.c_uint8),
+    ctypes.c_size_t,
+]
+pqc_lib.PQC_context_get_keypair.restype = ctypes.c_int
+
+
+def PQC_context_get_keypair(ctx):
+    private_key_length = pqc_lib.PQC_context_get_length(ctx, PQC_LENGTH_PRIVATE)
+    public_key_length = pqc_lib.PQC_context_get_length(ctx, PQC_LENGTH_PUBLIC)
+    private_key = (ctypes.c_uint8 * private_key_length)()
+    public_key = (ctypes.c_uint8 * public_key_length)()
+    result = pqc_lib.PQC_context_get_keypair(ctx, public_key, public_key_length, private_key, private_key_length)
+    _check_return_code(result)
+    return bytes(public_key), bytes(private_key)
+
+
+pqc_lib.PQC_context_get_public_key.argtypes = [
+    CIPHER_HANDLE,
+    ctypes.POINTER(ctypes.c_uint8),
+    ctypes.c_size_t
+]
+pqc_lib.PQC_context_get_public_key.restype = ctypes.c_int
+
+def PQC_context_get_public_key(ctx):
+    public_key_length = pqc_lib.PQC_context_get_length(ctx, PQC_LENGTH_PUBLIC)
+    public_key = (ctypes.c_uint8 * public_key_length)()
+    result = pqc_lib.PQC_context_get_public_key(ctx, public_key, public_key_length)
+    _check_return_code(result)
+    return bytes(public_key)
+    
+def PQC_context_init(cipher, key):
     key_length = len(key)
     key_ptr = (ctypes.c_uint8 * key_length)(*key)
-    handle = pqc_lib.PQC_init_context(cipher, key_ptr, key_length)
+    handle = pqc_lib.PQC_context_init(cipher, key_ptr, key_length)
     if handle == PQC_BAD_CIPHER:
         raise PQBadCipher()
     return handle
 
 
-pqc_lib.PQC_init_context_iv.argtypes = [
+pqc_lib.PQC_context_init_iv.argtypes = [
     ctypes.c_uint32,
     ctypes.POINTER(ctypes.c_uint8),
     ctypes.c_size_t,
     ctypes.POINTER(ctypes.c_uint8),
     ctypes.c_size_t,
 ]
-pqc_lib.PQC_init_context_iv.restype = CIPHER_HANDLE
+pqc_lib.PQC_context_init_iv.restype = CIPHER_HANDLE
 
 
-def PQC_init_context_iv(cipher, key, iv):
+def PQC_context_init_iv(cipher, key, iv):
     key_length = len(key)
     iv_length = len(iv)
     key_ptr = (ctypes.c_uint8 * key_length)(*key)
     iv_ptr = (ctypes.c_uint8 * iv_length)(*iv)
-    handle = pqc_lib.PQC_init_context_iv(cipher, key_ptr, key_length, iv_ptr, iv_length)
+    handle = pqc_lib.PQC_context_init_iv(cipher, key_ptr, key_length, iv_ptr, iv_length)
     if handle == PQC_BAD_CIPHER:
         raise PQBadCipher()
     return handle
 
 
-pqc_lib.PQC_init_context_hash.argtypes = [ctypes.c_uint32, ctypes.c_uint32]
-pqc_lib.PQC_init_context_hash.restype = CIPHER_HANDLE
+pqc_lib.PQC_context_init_hash.argtypes = [ctypes.c_uint32, ctypes.c_uint32]
+pqc_lib.PQC_context_init_hash.restype = CIPHER_HANDLE
 
 
-def PQC_init_context_hash(algorithm, mode):
-    handle = pqc_lib.PQC_init_context_hash(algorithm, mode)
+def PQC_context_init_hash(algorithm, mode):
+    handle = pqc_lib.PQC_context_init_hash(algorithm, mode)
     if handle == PQC_BAD_CIPHER:
         raise PQBadCipher()
     return handle
 
 
-pqc_lib.PQC_set_iv.argtypes = [CIPHER_HANDLE, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
-pqc_lib.PQC_set_iv.restype = ctypes.c_int
+pqc_lib.PQC_context_init_asymmetric.argtypes = [ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
+pqc_lib.PQC_context_init_asymmetric.restype = CIPHER_HANDLE
 
 
-def PQC_set_iv(ctx, iv):
+def PQC_context_init_asymmetric(cipher, public_key, private_key):
+
+    public_key_length = len(public_key) if public_key else 0 
+    public_key_ptr = (ctypes.c_uint8 * public_key_length)(*public_key) if public_key else ctypes.POINTER(ctypes.c_uint8)()
+
+    private_key_length = len(private_key) if private_key else 0 
+    private_key_ptr = (ctypes.c_uint8 * private_key_length)(*private_key) if private_key else ctypes.POINTER(ctypes.c_uint8)()
+
+
+    handle = pqc_lib.PQC_context_init_asymmetric(cipher, public_key_ptr, public_key_length, private_key_ptr, private_key_length)
+    if handle == PQC_BAD_CIPHER:
+        raise PQBadCipher()
+    return handle
+    
+pqc_lib.PQC_context_init_randomsource.argtypes = []
+pqc_lib.PQC_context_init_randomsource.restype = CIPHER_HANDLE
+
+
+def PQC_context_init_randomsource():
+    handle = pqc_lib.PQC_context_init_randomsource()
+    if handle == PQC_BAD_CIPHER:
+        raise PQBadCipher()
+    return handle
+
+
+pqc_lib.PQC_context_set_iv.argtypes = [CIPHER_HANDLE, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
+pqc_lib.PQC_context_set_iv.restype = ctypes.c_int
+
+
+def PQC_context_set_iv(ctx, iv):
     iv_length = len(iv)
     iv_ptr = (ctypes.c_uint8 * iv_length)(*iv)
-    result = pqc_lib.PQC_set_iv(ctx, iv_ptr, iv_length)
+    result = pqc_lib.PQC_context_set_iv(ctx, iv_ptr, iv_length)
     _check_return_code(result)
 
 
-pqc_lib.PQC_encrypt.argtypes = [CIPHER_HANDLE, ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
-pqc_lib.PQC_encrypt.restype = ctypes.c_int
+pqc_lib.PQC_symmetric_encrypt.argtypes = [CIPHER_HANDLE, ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
+pqc_lib.PQC_symmetric_encrypt.restype = ctypes.c_int
 
 
-def PQC_encrypt(ctx, mode, buffer):
+def PQC_symmetric_encrypt(ctx, mode, buffer):
     length = len(buffer)
     buffer_ptr = (ctypes.c_uint8 * length)(*buffer)
-    result = pqc_lib.PQC_encrypt(ctx, mode, buffer_ptr, length)
+    result = pqc_lib.PQC_symmetric_encrypt(ctx, mode, buffer_ptr, length)
     _check_return_code(result)
     return bytes(buffer_ptr)
 
 
-def PQC_decrypt(ctx, mode, buffer):
+def PQC_symmetric_decrypt(ctx, mode, buffer):
     length = len(buffer)
     buffer_ptr = (ctypes.c_uint8 * length)(*buffer)
-    result = pqc_lib.PQC_decrypt(ctx, mode, buffer_ptr, length)
+    result = pqc_lib.PQC_symmetric_decrypt(ctx, mode, buffer_ptr, length)
     _check_return_code(result)
     return bytes(buffer_ptr)
 
@@ -349,59 +432,52 @@ def PQC_aead_check(ctx, mode, buffer, aad, tag):
     _check_return_code(result)
     return True    
  
-    
-pqc_lib.PQC_kem_encode_secret.argtypes = [
-    ctypes.c_uint32,
-    ctypes.POINTER(ctypes.c_uint8),
-    ctypes.c_size_t,
-    ctypes.POINTER(ctypes.c_uint8),
-    ctypes.c_size_t,
-    ctypes.POINTER(ctypes.c_uint8),
-    ctypes.c_size_t,
-]
-pqc_lib.PQC_kem_encode_secret.restype = ctypes.c_int
-
-
-def PQC_kem_encode_secret(cipher, message, public_key, shared_secret):
-    message_length = len(message)
-    shared_secret_length = len(shared_secret)
-    key_length = len(public_key)
-
-    message_ptr = (ctypes.c_uint8 * message_length)(*message)
-    shared_secret_ptr = (ctypes.c_uint8 * shared_secret_length)(*shared_secret)
-    public_key_ptr = (ctypes.c_uint8 * key_length)(*public_key)
-
-    result = pqc_lib.PQC_kem_encode_secret(
-        cipher, message_ptr, message_length, public_key_ptr, key_length, shared_secret_ptr, shared_secret_length
-    )
-    _check_return_code(result)
-
-
-pqc_lib.PQC_kem_decode_secret.argtypes = [
+pqc_lib.PQC_kem_encapsulate_secret.argtypes = [
     CIPHER_HANDLE,
     ctypes.POINTER(ctypes.c_uint8),
     ctypes.c_size_t,
     ctypes.POINTER(ctypes.c_uint8),
     ctypes.c_size_t,
 ]
-pqc_lib.PQC_kem_decode_secret.restype = ctypes.c_int
+pqc_lib.PQC_kem_encapsulate_secret.restype = ctypes.c_int
 
 
-def PQC_kem_decode_secret(ctx, message, shared_secret):
+def PQC_kem_encapsulate_secret(ctx, message, shared_secret):
     message_length = len(message)
     shared_secret_length = len(shared_secret)
 
     message_ptr = (ctypes.c_uint8 * message_length)(*message)
     shared_secret_ptr = (ctypes.c_uint8 * shared_secret_length)(*shared_secret)
 
-    result = pqc_lib.PQC_kem_decode_secret(ctx, message_ptr, message_length, shared_secret_ptr, shared_secret_length)
+    result = pqc_lib.PQC_kem_encapsulate_secret(
+        cipher, message_ptr, message_length, shared_secret_ptr, shared_secret_length
+    )
     _check_return_code(result)
 
 
-pqc_lib.PQC_kem_encode.argtypes = [
-    ctypes.c_uint32,
+pqc_lib.PQC_kem_decapsulate_secret.argtypes = [
+    CIPHER_HANDLE,
     ctypes.POINTER(ctypes.c_uint8),
     ctypes.c_size_t,
+    ctypes.POINTER(ctypes.c_uint8),
+    ctypes.c_size_t,
+]
+pqc_lib.PQC_kem_decapsulate_secret.restype = ctypes.c_int
+
+
+def PQC_kem_decapsulate_secret(ctx, message, shared_secret):
+    message_length = len(message)
+    shared_secret_length = len(shared_secret)
+
+    message_ptr = (ctypes.c_uint8 * message_length)(*message)
+    shared_secret_ptr = (ctypes.c_uint8 * shared_secret_length)(*shared_secret)
+
+    result = pqc_lib.PQC_kem_decapsulate_secret(ctx, message_ptr, message_length, shared_secret_ptr, shared_secret_length)
+    _check_return_code(result)
+
+
+pqc_lib.PQC_kem_encapsulate.argtypes = [
+    CIPHER_HANDLE,
     ctypes.POINTER(ctypes.c_uint8),
     ctypes.c_size_t,
     ctypes.POINTER(ctypes.c_uint8),
@@ -409,28 +485,24 @@ pqc_lib.PQC_kem_encode.argtypes = [
     ctypes.POINTER(ctypes.c_uint8),
     ctypes.c_size_t,
 ]
-pqc_lib.PQC_kem_encode.restype = ctypes.c_int
+pqc_lib.PQC_kem_encapsulate.restype = ctypes.c_int
 
 
-def PQC_kem_encode(cipher, party_a_info, public_key):
-    message_length = pqc_lib.PQC_get_length(cipher, PQC_LENGTH_MESSAGE)
+def PQC_kem_encapsulate(ctx, party_a_info):
+    message_length = pqc_lib.PQC_context_get_length(ctx, PQC_LENGTH_MESSAGE)
     info_length = len(party_a_info)
-    shared_key_length = pqc_lib.PQC_get_length(cipher, PQC_LENGTH_SHARED)
-    key_length = len(public_key)
+    shared_key_length = pqc_lib.PQC_context_get_length(ctx, PQC_LENGTH_SHARED)
 
     message_ptr = (ctypes.c_uint8 * message_length)()
     party_a_info_ptr = (ctypes.c_uint8 * info_length)(*party_a_info)
     shared_key_ptr = (ctypes.c_uint8 * shared_key_length)()
-    public_key_ptr = (ctypes.c_uint8 * key_length)(*public_key)
 
-    result = pqc_lib.PQC_kem_encode(
-        cipher,
+    result = pqc_lib.PQC_kem_encapsulate(
+        ctx,
         message_ptr,
         message_length,
         party_a_info_ptr,
         info_length,
-        public_key_ptr,
-        key_length,
         shared_key_ptr,
         shared_key_length,
     )
@@ -438,7 +510,7 @@ def PQC_kem_encode(cipher, party_a_info, public_key):
     return bytes(shared_key_ptr), bytes(message_ptr)
 
 
-pqc_lib.PQC_kem_decode.argtypes = [
+pqc_lib.PQC_kem_decapsulate.argtypes = [
     CIPHER_HANDLE,
     ctypes.POINTER(ctypes.c_uint8),
     ctypes.c_size_t,
@@ -447,10 +519,10 @@ pqc_lib.PQC_kem_decode.argtypes = [
     ctypes.POINTER(ctypes.c_uint8),
     ctypes.c_size_t,
 ]
-pqc_lib.PQC_kem_decode.restype = ctypes.c_int
+pqc_lib.PQC_kem_decapsulate.restype = ctypes.c_int
 
 
-def PQC_kem_decode(ctx, message, party_a_info):
+def PQC_kem_decapsulate(ctx, message, party_a_info):
     message_length = len(message)
     info_length = len(party_a_info)
     shared_key_length = pqc_lib.PQC_context_get_length(ctx, PQC_LENGTH_SHARED)
@@ -459,7 +531,7 @@ def PQC_kem_decode(ctx, message, party_a_info):
     party_a_info_ptr = (ctypes.c_uint8 * info_length)(*party_a_info)
     shared_key_ptr = (ctypes.c_uint8 * shared_key_length)()
 
-    result = pqc_lib.PQC_kem_decode(
+    result = pqc_lib.PQC_kem_decapsulate(
         ctx, message_ptr, message_length, party_a_info_ptr, info_length, shared_key_ptr, shared_key_length
     )
     _check_return_code(result)
@@ -491,65 +563,60 @@ def PQC_kdf(party_a_info, shared_secret, key_length):
     return bytes(key)
 
 
-pqc_lib.PQC_sign.argtypes = [
+pqc_lib.PQC_signature_create.argtypes = [
     CIPHER_HANDLE,
     ctypes.POINTER(ctypes.c_uint8),
     ctypes.c_size_t,
     ctypes.POINTER(ctypes.c_uint8),
     ctypes.c_size_t,
 ]
-pqc_lib.PQC_sign.restype = ctypes.c_int
+pqc_lib.PQC_signature_create.restype = ctypes.c_int
 
 
-def PQC_sign(ctx, buffer, signature_len):
+def PQC_signature_create(ctx, buffer, signature_len):
     length = len(buffer)
     signature = (ctypes.c_uint8 * signature_len)()
 
     buffer_ptr = (ctypes.c_uint8 * length)(*buffer)
 
-    result = pqc_lib.PQC_sign(ctx, buffer_ptr, length, signature, signature_len)
+    result = pqc_lib.PQC_signature_create(ctx, buffer_ptr, length, signature, signature_len)
     _check_return_code(result)
 
     return bytes(signature)
 
 
-pqc_lib.PQC_verify.argtypes = [
-    ctypes.c_uint32,
-    ctypes.POINTER(ctypes.c_uint8),
-    ctypes.c_size_t,
+pqc_lib.PQC_signature_verify.argtypes = [
+    CIPHER_HANDLE,
     ctypes.POINTER(ctypes.c_uint8),
     ctypes.c_size_t,
     ctypes.POINTER(ctypes.c_uint8),
     ctypes.c_size_t,
 ]
-pqc_lib.PQC_verify.restype = ctypes.c_int
+pqc_lib.PQC_signature_verify.restype = ctypes.c_int
 
 
-def PQC_verify(cipher, public_key, buffer, signature):
-    public_keylen = len(public_key)
+def PQC_signature_verify(ctx, buffer, signature):
     length = len(buffer)
-
     buffer_ptr = (ctypes.c_uint8 * length)(*buffer)
-    public_key_ptr = (ctypes.c_uint8 * public_keylen)(*public_key)
     signature_ptr = (ctypes.c_uint8 * len(signature))(*signature)
 
-    result = pqc_lib.PQC_verify(
-        cipher, public_key_ptr, public_keylen, buffer_ptr, length, signature_ptr, len(signature)
+    result = pqc_lib.PQC_signature_verify(
+        ctx, buffer_ptr, length, signature_ptr, len(signature)
     )
     _check_return_code(result)
 
     return True  # Verification successful
 
 
-pqc_lib.PQC_add_data.argtypes = [CIPHER_HANDLE, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
-pqc_lib.PQC_add_data.restype = ctypes.c_int
+pqc_lib.PQC_hash_update.argtypes = [CIPHER_HANDLE, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
+pqc_lib.PQC_hash_update.restype = ctypes.c_int
 
 
-def PQC_add_data(ctx, data):
+def PQC_hash_update(ctx, data):
     length = len(data)
     data_ptr = (ctypes.c_uint8 * length)(*data)
 
-    result = pqc_lib.PQC_add_data(ctx, data_ptr, length)
+    result = pqc_lib.PQC_hash_update(ctx, data_ptr, length)
     _check_return_code(result)
 
 
@@ -561,63 +628,64 @@ def PQC_hash_size(ctx):
     return pqc_lib.PQC_hash_size(ctx)
 
 
-pqc_lib.PQC_get_hash.argtypes = [CIPHER_HANDLE, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
-pqc_lib.PQC_get_hash.restype = ctypes.c_int
+pqc_lib.PQC_hash_retrieve.argtypes = [CIPHER_HANDLE, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
+pqc_lib.PQC_hash_retrieve.restype = ctypes.c_int
 
 
-def PQC_get_hash(ctx, hash_size):
+def PQC_hash_retrieve(ctx, hash_size):
     hash_buffer = (ctypes.c_uint8 * hash_size)()
 
-    result = pqc_lib.PQC_get_hash(ctx, hash_buffer, hash_size)
+    result = pqc_lib.PQC_hash_retrieve(ctx, hash_buffer, hash_size)
     _check_return_code(result)
 
     return bytes(hash_buffer)
 
 
-pqc_lib.PQC_close_context.argtypes = [CIPHER_HANDLE]
-pqc_lib.PQC_close_context.restype = ctypes.c_int
+pqc_lib.PQC_context_close.argtypes = [CIPHER_HANDLE]
+pqc_lib.PQC_context_close.restype = ctypes.c_int
 
 
-def PQC_close_context(ctx):
-    result = pqc_lib.PQC_close_context(ctx)
+def PQC_context_close(ctx):
+    result = pqc_lib.PQC_context_close(ctx)
     _check_return_code(result)
 
 
-pqc_lib.PQC_random_from_pq_17.argtypes = [
+pqc_lib.PQC_context_random_set_pq_17.argtypes = [
+    CIPHER_HANDLE,
     ctypes.POINTER(ctypes.c_uint8),
     ctypes.c_size_t,
     ctypes.POINTER(ctypes.c_uint8),
     ctypes.c_size_t,
 ]
-pqc_lib.PQC_random_from_pq_17.restype = ctypes.c_int
+pqc_lib.PQC_context_random_set_pq_17.restype = ctypes.c_int
 
 
-def PQC_random_from_pq_17(key, iv):
+def PQC_context_random_set_pq_17(ctx, key, iv):
     key_len = len(key)
     iv_len = len(iv)
     key_ptr = (ctypes.c_uint8 * key_len)(*key)
     iv_ptr = (ctypes.c_uint8 * iv_len)(*iv)
 
-    result = pqc_lib.PQC_random_from_pq_17(key_ptr, key_len, iv_ptr, iv_len)
+    result = pqc_lib.PQC_context_random_set_pq_17(ctx, key_ptr, key_len, iv_ptr, iv_len)
     _check_return_code(result)
 
 
-pqc_lib.PQC_random_bytes.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
-pqc_lib.PQC_random_bytes.restype = None
+pqc_lib.PQC_context_random_get_bytes.argtypes = [CIPHER_HANDLE, ctypes.c_void_p, ctypes.c_size_t]
+pqc_lib.PQC_context_random_get_bytes.restype = None
 
 
-def PQC_random_bytes(length):
+def PQC_context_random_get_bytes(ctx, length):
     buffer = (ctypes.c_uint8 * length)()
-    pqc_lib.PQC_random_bytes(buffer, length)
+    pqc_lib.PQC_context_random_get_bytes(ctx, buffer, length)
     return bytes(buffer)
 
 
-pqc_lib.PQC_symmetric_container_create.argtypes = []
+pqc_lib.PQC_symmetric_container_create.argtypes = [CIPHER_HANDLE]
 pqc_lib.PQC_symmetric_container_create.restype = PQC_CONTAINER_HANDLE
 
 
-def PQC_symmetric_container_create():
-    return pqc_lib.PQC_symmetric_container_create()
+def PQC_symmetric_container_create(ctx):
+    return pqc_lib.PQC_symmetric_container_create(ctx)
 
 
 pqc_lib.PQC_symmetric_container_get_data.argtypes = [
@@ -649,6 +717,7 @@ def PQC_symmetric_container_get_data(container, key, iv):
 
 
 pqc_lib.PQC_symmetric_container_from_data.argtypes = [
+    CIPHER_HANDLE,
     ctypes.POINTER(ctypes.c_uint8),
     ctypes.c_size_t,
     ctypes.POINTER(ctypes.c_uint8),
@@ -660,7 +729,7 @@ pqc_lib.PQC_symmetric_container_from_data.argtypes = [
 pqc_lib.PQC_symmetric_container_from_data.restype = PQC_CONTAINER_HANDLE
 
 
-def PQC_symmetric_container_from_data(container_data, key, iv):
+def PQC_symmetric_container_from_data(ctx, container_data, key, iv):
     data_length = len(container_data)
     key_length = len(key)
     iv_length = len(iv)
@@ -669,7 +738,7 @@ def PQC_symmetric_container_from_data(container_data, key, iv):
     iv_ptr = (ctypes.c_uint8 * iv_length)(*iv)
 
     container_handle = pqc_lib.PQC_symmetric_container_from_data(
-        container_data_ptr, data_length, key_ptr, key_length, iv_ptr, iv_length
+        ctx, container_data_ptr, data_length, key_ptr, key_length, iv_ptr, iv_length
     )
 
     if container_handle == PQC_BAD_CIPHER:
@@ -758,6 +827,7 @@ def PQC_symmetric_container_get_expiration_time(container):
 
 
 pqc_lib.PQC_symmetric_container_open.argtypes = [
+    CIPHER_HANDLE,
     ctypes.c_char_p,
     ctypes.c_char_p,
     ctypes.c_char_p,
@@ -765,8 +835,9 @@ pqc_lib.PQC_symmetric_container_open.argtypes = [
 pqc_lib.PQC_symmetric_container_open.restype = PQC_CONTAINER_HANDLE
 
 
-def PQC_symmetric_container_open(filename, password, salt):
+def PQC_symmetric_container_open(ctx, filename, password, salt):
     container_handle = pqc_lib.PQC_symmetric_container_open(
+        ctx,
         filename.encode('utf-8'),
         password.encode('utf-8'),
         salt.encode('utf-8'),
@@ -931,9 +1002,9 @@ pqc_lib.PQC_asymmetric_container_get_keys.restype = ctypes.c_int
 
 
 def PQC_asymmetric_container_get_keys(cipher, container_handle):
-    pk_length = pqc_lib.PQC_get_length(cipher, PQC_LENGTH_PUBLIC)
+    pk_length = pqc_lib.PQC_cipher_get_length(cipher, PQC_LENGTH_PUBLIC)
     pk = (ctypes.c_uint8 * pk_length)()
-    sk_length = pqc_lib.PQC_get_length(cipher, PQC_LENGTH_PRIVATE)
+    sk_length = pqc_lib.PQC_cipher_get_length(cipher, PQC_LENGTH_PRIVATE)
     sk = (ctypes.c_uint8 * sk_length)()
 
     result = pqc_lib.PQC_asymmetric_container_get_keys(cipher, container_handle, pk, pk_length, sk, sk_length)
@@ -987,12 +1058,12 @@ def PQC_asymmetric_container_close(container_handle):
     _check_return_code(result)
 
 
-pqc_lib.PQC_get_length.argtypes = [ctypes.c_uint32, ctypes.c_uint32]
-pqc_lib.PQC_get_length.restype = ctypes.c_size_t
+pqc_lib.PQC_cipher_get_length.argtypes = [ctypes.c_uint32, ctypes.c_uint32]
+pqc_lib.PQC_cipher_get_length.restype = ctypes.c_size_t
 
 
-def PQC_get_length(cipher, length_type):
-    length = pqc_lib.PQC_get_length(cipher, length_type)
+def PQC_cipher_get_length(cipher, length_type):
+    length = pqc_lib.PQC_cipher_get_length(cipher, length_type)
     if length == 0:
         raise PQBadArguments()
     return length
@@ -1018,20 +1089,20 @@ def PQC_file_delete(filename):
     _check_return_code(result)
 
 
-pqc_lib.PQC_symmetric_container_delete.argtypes = [ctypes.c_char_p]
+pqc_lib.PQC_symmetric_container_delete.argtypes = [CIPHER_HANDLE, ctypes.c_char_p]
 pqc_lib.PQC_symmetric_container_delete.restype = ctypes.c_int
 
 
-def PQC_symmetric_container_delete(filename):
-    _check_return_code(pqc_lib.PQC_symmetric_container_delete(filename.encode('utf-8')))
+def PQC_symmetric_container_delete(ctx, filename):
+    _check_return_code(pqc_lib.PQC_symmetric_container_delete(ctx, filename.encode('utf-8')))
 
 
-pqc_lib.PQC_asymmetric_container_delete.argtypes = [ctypes.c_char_p]
+pqc_lib.PQC_asymmetric_container_delete.argtypes = [CIPHER_HANDLE, ctypes.c_char_p]
 pqc_lib.PQC_asymmetric_container_delete.restype = ctypes.c_int
 
 
-def PQC_asymmetric_container_delete(filename):
-    _check_return_code(pqc_lib.PQC_asymmetric_container_delete(filename.encode('utf-8')))
+def PQC_asymmetric_container_delete(ctx, filename):
+    _check_return_code(pqc_lib.PQC_asymmetric_container_delete(ctx, filename.encode('utf-8')))
 
 
 pqc_lib.PQC_pbkdf_2.argtypes = [

@@ -409,6 +409,10 @@ public:
         : BufferViewCore<std::vector<uint8_t>, BufferView>(make_vector(data))
     {
     }
+    HeapBuffer(const ConstBufferView & data) : BufferViewCore<std::vector<uint8_t>, BufferView>(std::vector<uint8_t>(N))
+    {
+        store(data);
+    }
 
 private:
     static std::vector<uint8_t> make_vector(std::initializer_list<uint8_t> data)

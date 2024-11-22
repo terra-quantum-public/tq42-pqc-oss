@@ -8,20 +8,20 @@ void cb_cencrypt(uint8_t key[], uint8_t data[], size_t data_len, uint8_t iv[])
 {
     CIPHER_HANDLE context;
 
-    context = PQC_init_context_iv(PQC_CIPHER_AES, key, PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
+    context = PQC_context_init_iv(PQC_CIPHER_AES, key, PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
 
-    PQC_encrypt(context, PQC_AES_M_CBC, data, data_len);
+    PQC_symmetric_encrypt(context, PQC_AES_M_CBC, data, data_len);
 
-    PQC_close_context(context);
+    PQC_context_close(context);
 }
 
-int secure_delete(const char * filename)
+int secure_delete(const char * filename, IRandomGenerator * rng)
 {
-    std::unique_ptr<uint8_t[]> key = std::make_unique<uint8_t[]>(32);
+    StackBuffer<PQC_AES_KEYLEN> key;
 
-    uint8_t iv[PQC_AES_IVLEN] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    uint8_t iv[PQC_AES_IVLEN] = {238, 74, 52, 31, 248, 209, 168, 30, 54, 160, 230, 66, 86, 116, 215, 141};
 
-    PQC_random_bytes(static_cast<void *>(key.get()), static_cast<size_t>(32));
+    rng->random_bytes(key);
 
     std::fstream inp(filename, std::ios::ate | std::ios::binary | std::ios::out | std::ios::in);
     size_t file_size = inp.tellg();
@@ -40,7 +40,7 @@ int secure_delete(const char * filename)
         }
 
         memset(readWriteUse.data() + size, 0, freadPeriod - size); // pad from size to freadPeriod
-        cb_cencrypt(key.get(), reinterpret_cast<uint8_t *>(readWriteUse.data()), readWriteUse.size(), iv);
+        cb_cencrypt(key.data(), reinterpret_cast<uint8_t *>(readWriteUse.data()), readWriteUse.size(), iv);
 
         inp.seekg(i);                      // seek i
         inp.write(&readWriteUse[0], size); // write size bytes, we will end up on pos=i
@@ -56,11 +56,11 @@ int secure_delete(const char * filename)
     return 1;
 }
 
-int file_delete(const char * filename)
+int file_delete(const char * filename, IRandomGenerator * rng)
 {
     if (std::filesystem::is_regular_file(filename))
     {
-        return secure_delete(filename);
+        return secure_delete(filename, rng);
     }
     else
     {

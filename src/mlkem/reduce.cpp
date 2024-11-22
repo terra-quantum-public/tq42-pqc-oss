@@ -17,7 +17,7 @@
 int16_t montgomery_reduce(int32_t a)
 {
     int16_t u = static_cast<int16_t>(a * QINV);
-    int32_t t = (int32_t)u * KYBER_Q;
+    int32_t t = (int32_t)u * ML_Q;
     t = a - t;
     t >>= 16;
     return static_cast<int16_t>(t);
@@ -36,10 +36,10 @@ int16_t montgomery_reduce(int32_t a)
 int16_t barrett_reduce(int16_t a)
 {
     int16_t t;
-    const int16_t v = ((1U << 26) + KYBER_Q / 2) / KYBER_Q;
+    const int16_t v = ((1U << 26) + ML_Q / 2) / ML_Q;
 
     t = (int32_t)v * a >> 26;
-    t *= KYBER_Q;
+    t *= ML_Q;
     return a - t;
 }
 
@@ -54,7 +54,7 @@ int16_t barrett_reduce(int16_t a)
  **************************************************/
 int16_t csubq(int16_t a)
 {
-    a -= KYBER_Q;
-    a += (a >> 15) & KYBER_Q;
+    a -= ML_Q;
+    a += (a >> 15) & ML_Q;
     return a;
 }

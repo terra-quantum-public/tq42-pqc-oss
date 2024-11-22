@@ -148,6 +148,13 @@ void poly_pointwise_montgomery(poly * c, const poly * a, const poly * b)
     for (i = 0; i < N; ++i)
         c->coeffs[i] = montgomery_reduce((int64_t)a->coeffs[i] * b->coeffs[i]);
 }
+void poly_pointwise_montgomeryNewInput(poly * c, const poly a, const poly b)
+{
+    unsigned int i;
+
+    for (i = 0; i < N; ++i)
+        c->coeffs[i] = montgomery_reduce((int64_t)a.coeffs[i] * b.coeffs[i]);
+}
 
 /*************************************************
  * Name:        poly_power2round
@@ -182,11 +189,24 @@ void poly_power2round(poly * a1, poly * a0, const poly * a)
  *              - poly *a0: pointer to output polynomial with coefficients c0
  *              - const poly *a: pointer to input polynomial
  **************************************************/
-void poly_decompose(poly * a1, poly * a0, const poly * a)
+void poly_decompose(poly * a1, poly * a0, const poly * a, uint8_t modeK)
 {
     unsigned int i;
-    for (i = 0; i < N; ++i)
-        a1->coeffs[i] = decompose(&a0->coeffs[i], a->coeffs[i]);
+    if (modeK == K_87)
+    {
+        for (i = 0; i < N; ++i)
+            a1->coeffs[i] = decompose_87(&a0->coeffs[i], a->coeffs[i]);
+    }
+    else if (modeK == K_65)
+    {
+        for (i = 0; i < N; ++i)
+            a1->coeffs[i] = decompose_65(&a0->coeffs[i], a->coeffs[i]);
+    }
+    else
+    {
+        for (i = 0; i < N; ++i)
+            a1->coeffs[i] = decompose_44(&a0->coeffs[i], a->coeffs[i]);
+    }
 }
 
 /*************************************************
@@ -202,13 +222,13 @@ void poly_decompose(poly * a1, poly * a0, const poly * a)
  *
  * Returns number of 1 bits.
  **************************************************/
-unsigned int poly_make_hint(poly * h, const poly * a0, const poly * a1)
+unsigned int poly_make_hint(poly * h, const poly * a0, const poly * a1, uint8_t modeK)
 {
     unsigned int i, s = 0;
 
     for (i = 0; i < N; ++i)
     {
-        h->coeffs[i] = make_hint(a0->coeffs[i], a1->coeffs[i]);
+        h->coeffs[i] = make_hint(a0->coeffs[i], a1->coeffs[i], modeK);
         s += h->coeffs[i];
     }
     return s;
@@ -223,12 +243,25 @@ unsigned int poly_make_hint(poly * h, const poly * a0, const poly * a1)
  *              - const poly *a: pointer to input polynomial
  *              - const poly *h: pointer to input hint polynomial
  **************************************************/
-void poly_use_hint(poly * b, const poly * a, const poly * h)
+void poly_use_hint(poly * b, const poly * a, const poly * h, uint8_t modeK)
 {
     unsigned int i;
 
-    for (i = 0; i < N; ++i)
-        b->coeffs[i] = use_hint(a->coeffs[i], h->coeffs[i]);
+    if (modeK == K_87)
+    {
+        for (i = 0; i < N; ++i)
+            b->coeffs[i] = use_hint_87(a->coeffs[i], h->coeffs[i]);
+    }
+    else if (modeK == K_65)
+    {
+        for (i = 0; i < N; ++i)
+            b->coeffs[i] = use_hint_65(a->coeffs[i], h->coeffs[i]);
+    }
+    else
+    {
+        for (i = 0; i < N; ++i)
+            b->coeffs[i] = use_hint_44(a->coeffs[i], h->coeffs[i]);
+    }
 }
 
 /*************************************************
@@ -352,7 +385,7 @@ void poly_uniform(poly * a, const uint8_t seed[SEEDBYTES], uint16_t nonce)
  * Returns number of sampled coefficients. Can be smaller than len if not enough
  * random bytes were given.
  **************************************************/
-static unsigned int rej_eta(int32_t * a, unsigned int len, const uint8_t * buf, unsigned int buflen)
+static unsigned int rej_eta_44(int32_t * a, unsigned int len, const uint8_t * buf, unsigned int buflen)
 {
     unsigned int ctr, pos;
     uint32_t t0, t1;
@@ -363,7 +396,6 @@ static unsigned int rej_eta(int32_t * a, unsigned int len, const uint8_t * buf, 
         t0 = buf[pos] & 0x0F;
         t1 = buf[pos++] >> 4;
 
-#if ETA == 2
         if (t0 < 15)
         {
             t0 = t0 - (205 * t0 >> 10) * 5;
@@ -374,124 +406,53 @@ static unsigned int rej_eta(int32_t * a, unsigned int len, const uint8_t * buf, 
             t1 = t1 - (205 * t1 >> 10) * 5;
             a[ctr++] = 2 - t1;
         }
-#elif ETA == 4
-        if (t0 < 9)
-            a[ctr++] = 4 - t0;
-        if (t1 < 9 && ctr < len)
-            a[ctr++] = 4 - t1;
-#endif
     }
 
     return ctr;
 }
-
-/*************************************************
- * Name:        poly_uniform_eta
- *
- * Description: Sample polynomial with uniformly random coefficients
- *              in [-ETA,ETA] by performing rejection sampling on the
- *              output stream from SHAKE256(seed|nonce) or AES256CTR(seed,nonce).
- *
- * Arguments:   - poly *a: pointer to output polynomial
- *              - const uint8_t seed[]: byte array with seed of length SEEDBYTES
- *              - uint16_t nonce: 2-byte nonce
- **************************************************/
-#if ETA == 2
-#define POLY_UNIFORM_ETA_NBLOCKS ((136 + STREAM128_BLOCKBYTES - 1) / STREAM128_BLOCKBYTES)
-#elif ETA == 4
-#define POLY_UNIFORM_ETA_NBLOCKS ((227 + STREAM128_BLOCKBYTES - 1) / STREAM128_BLOCKBYTES)
-#endif
-void poly_uniform_eta(poly * a, const uint8_t seed[SEEDBYTES], uint16_t nonce)
+static unsigned int rej_eta_65(int32_t * a, unsigned int len, const uint8_t * buf, unsigned int buflen)
 {
-    unsigned int ctr;
-    unsigned int buflen = POLY_UNIFORM_ETA_NBLOCKS * STREAM128_BLOCKBYTES;
-    uint8_t buf[POLY_UNIFORM_ETA_NBLOCKS * STREAM128_BLOCKBYTES];
-    stream128_state state;
+    unsigned int ctr, pos;
+    uint32_t t0, t1;
 
-    stream128_init(&state, seed, nonce);
-    stream128_squeezeblocks(buf, POLY_UNIFORM_ETA_NBLOCKS, &state);
-
-    ctr = rej_eta(a->coeffs, N, buf, buflen);
-
-    while (ctr < N)
+    ctr = pos = 0;
+    while (ctr < len && pos < buflen)
     {
-        stream128_squeezeblocks(buf, 1, &state);
-        ctr += rej_eta(a->coeffs + ctr, N - ctr, buf, STREAM128_BLOCKBYTES);
+        t0 = buf[pos] & 0x0F;
+        t1 = buf[pos++] >> 4;
+
+        if (t0 < 9)
+            a[ctr++] = 4 - t0;
+        if (t1 < 9 && ctr < len)
+            a[ctr++] = 4 - t1;
     }
+
+    return ctr;
 }
-
-/*************************************************
- * Name:        poly_uniform_gamma1m1
- *
- * Description: Sample polynomial with uniformly random coefficients
- *              in [-(GAMMA1 - 1), GAMMA1] by unpacking output stream
- *              of SHAKE256(seed|nonce) or AES256CTR(seed,nonce).
- *
- * Arguments:   - poly *a: pointer to output polynomial
- *              - const uint8_t seed[]: byte array with seed of length CRHBYTES
- *              - uint16_t nonce: 16-bit nonce
- **************************************************/
-#if GAMMA1 == (1 << 17)
-#define POLY_UNIFORM_GAMMA1_NBLOCKS ((576 + STREAM256_BLOCKBYTES - 1) / STREAM256_BLOCKBYTES)
-#elif GAMMA1 == (1 << 19)
-#define POLY_UNIFORM_GAMMA1_NBLOCKS ((640 + STREAM256_BLOCKBYTES - 1) / STREAM256_BLOCKBYTES)
-#endif
-void poly_uniform_gamma1(poly * a, const uint8_t seed[CRHBYTES], uint16_t nonce)
+static unsigned int rej_eta_87(int32_t * a, unsigned int len, const uint8_t * buf, unsigned int buflen)
 {
-    uint8_t buf[POLY_UNIFORM_GAMMA1_NBLOCKS * STREAM256_BLOCKBYTES];
-    stream256_state state;
+    unsigned int ctr, pos;
+    uint32_t t0, t1;
 
-    stream256_init(&state, seed, nonce);
-    stream256_squeezeblocks(buf, POLY_UNIFORM_GAMMA1_NBLOCKS, &state);
-    polyz_unpack(a, buf);
-}
-
-/*************************************************
- * Name:        challenge
- *
- * Description: Implementation of H. Samples polynomial with TAU nonzero
- *              coefficients in {-1,1} using the output stream of
- *              SHAKE256(seed).
- *
- * Arguments:   - poly *c: pointer to output polynomial
- *              - const uint8_t mu[]: byte array containing seed of length SEEDBYTES
- **************************************************/
-void poly_challenge(poly * c, const uint8_t seed[SEEDBYTES])
-{
-    unsigned int i, b, pos;
-    uint64_t signs;
-    uint8_t buf[SHAKE256_RATE];
-    keccak_state state;
-
-    shake256_init(&state);
-    shake256_absorb(&state, seed, SEEDBYTES);
-    shake256_finalize(&state);
-    shake256_squeezeblocks(buf, 1, &state);
-
-    signs = 0;
-    for (i = 0; i < 8; ++i)
-        signs |= (uint64_t)buf[i] << 8 * i;
-    pos = 8;
-
-    for (i = 0; i < N; ++i)
-        c->coeffs[i] = 0;
-    for (i = N - TAU; i < N; ++i)
+    ctr = pos = 0;
+    while (ctr < len && pos < buflen)
     {
-        do
+        t0 = buf[pos] & 0x0F;
+        t1 = buf[pos++] >> 4;
+
+        if (t0 < 15)
         {
-            if (pos >= SHAKE256_RATE)
-            {
-                shake256_squeezeblocks(buf, 1, &state);
-                pos = 0;
-            }
-
-            b = buf[pos++];
-        } while (b > i);
-
-        c->coeffs[i] = c->coeffs[b];
-        c->coeffs[b] = 1 - 2 * (signs & 1);
-        signs >>= 1;
+            t0 = t0 - (205 * t0 >> 10) * 5;
+            a[ctr++] = 2 - t0;
+        }
+        if (t1 < 15 && ctr < len)
+        {
+            t1 = t1 - (205 * t1 >> 10) * 5;
+            a[ctr++] = 2 - t1;
+        }
     }
+
+    return ctr;
 }
 
 /*************************************************
@@ -503,35 +464,59 @@ void poly_challenge(poly * c, const uint8_t seed[SEEDBYTES])
  *                            POLYETA_PACKEDBYTES bytes
  *              - const poly *a: pointer to input polynomial
  **************************************************/
-void polyeta_pack(uint8_t * r, const poly * a)
+void polyeta_pack_44(uint8_t * r, const poly * a)
 {
     unsigned int i;
     uint8_t t[8];
 
-#if ETA == 2
     for (i = 0; i < N / 8; ++i)
     {
-        t[0] = static_cast<uint8_t>(ETA - a->coeffs[8 * i + 0]);
-        t[1] = static_cast<uint8_t>(ETA - a->coeffs[8 * i + 1]);
-        t[2] = static_cast<uint8_t>(ETA - a->coeffs[8 * i + 2]);
-        t[3] = static_cast<uint8_t>(ETA - a->coeffs[8 * i + 3]);
-        t[4] = static_cast<uint8_t>(ETA - a->coeffs[8 * i + 4]);
-        t[5] = static_cast<uint8_t>(ETA - a->coeffs[8 * i + 5]);
-        t[6] = static_cast<uint8_t>(ETA - a->coeffs[8 * i + 6]);
-        t[7] = static_cast<uint8_t>(ETA - a->coeffs[8 * i + 7]);
+        t[0] = static_cast<uint8_t>(ETA_44 - a->coeffs[8 * i + 0]);
+        t[1] = static_cast<uint8_t>(ETA_44 - a->coeffs[8 * i + 1]);
+        t[2] = static_cast<uint8_t>(ETA_44 - a->coeffs[8 * i + 2]);
+        t[3] = static_cast<uint8_t>(ETA_44 - a->coeffs[8 * i + 3]);
+        t[4] = static_cast<uint8_t>(ETA_44 - a->coeffs[8 * i + 4]);
+        t[5] = static_cast<uint8_t>(ETA_44 - a->coeffs[8 * i + 5]);
+        t[6] = static_cast<uint8_t>(ETA_44 - a->coeffs[8 * i + 6]);
+        t[7] = static_cast<uint8_t>(ETA_44 - a->coeffs[8 * i + 7]);
 
         r[3 * i + 0] = (t[0] >> 0) | (t[1] << 3) | (t[2] << 6);
         r[3 * i + 1] = (t[2] >> 2) | (t[3] << 1) | (t[4] << 4) | (t[5] << 7);
         r[3 * i + 2] = (t[5] >> 1) | (t[6] << 2) | (t[7] << 5);
     }
-#elif ETA == 4
+}
+void polyeta_pack_65(uint8_t * r, const poly * a)
+{
+    unsigned int i;
+    uint8_t t[8];
+
     for (i = 0; i < N / 2; ++i)
     {
-        t[0] = ETA - a->coeffs[2 * i + 0];
-        t[1] = ETA - a->coeffs[2 * i + 1];
+        t[0] = static_cast<uint8_t>(ETA_65 - a->coeffs[2 * i + 0]);
+        t[1] = static_cast<uint8_t>(ETA_65 - a->coeffs[2 * i + 1]);
         r[i] = t[0] | (t[1] << 4);
     }
-#endif
+}
+void polyeta_pack_87(uint8_t * r, const poly * a)
+{
+    unsigned int i;
+    uint8_t t[8];
+
+    for (i = 0; i < N / 8; ++i)
+    {
+        t[0] = static_cast<uint8_t>(ETA_87 - a->coeffs[8 * i + 0]);
+        t[1] = static_cast<uint8_t>(ETA_87 - a->coeffs[8 * i + 1]);
+        t[2] = static_cast<uint8_t>(ETA_87 - a->coeffs[8 * i + 2]);
+        t[3] = static_cast<uint8_t>(ETA_87 - a->coeffs[8 * i + 3]);
+        t[4] = static_cast<uint8_t>(ETA_87 - a->coeffs[8 * i + 4]);
+        t[5] = static_cast<uint8_t>(ETA_87 - a->coeffs[8 * i + 5]);
+        t[6] = static_cast<uint8_t>(ETA_87 - a->coeffs[8 * i + 6]);
+        t[7] = static_cast<uint8_t>(ETA_87 - a->coeffs[8 * i + 7]);
+
+        r[3 * i + 0] = (t[0] >> 0) | (t[1] << 3) | (t[2] << 6);
+        r[3 * i + 1] = (t[2] >> 2) | (t[3] << 1) | (t[4] << 4) | (t[5] << 7);
+        r[3 * i + 2] = (t[5] >> 1) | (t[6] << 2) | (t[7] << 5);
+    }
 }
 
 /*************************************************
@@ -542,11 +527,10 @@ void polyeta_pack(uint8_t * r, const poly * a)
  * Arguments:   - poly *r: pointer to output polynomial
  *              - const uint8_t *a: byte array with bit-packed polynomial
  **************************************************/
-void polyeta_unpack(poly * r, const uint8_t * a)
+void polyeta_unpack_44(poly * r, const uint8_t * a)
 {
     unsigned int i;
 
-#if ETA == 2
     for (i = 0; i < N / 8; ++i)
     {
         r->coeffs[8 * i + 0] = (a[3 * i + 0] >> 0) & 7;
@@ -558,24 +542,53 @@ void polyeta_unpack(poly * r, const uint8_t * a)
         r->coeffs[8 * i + 6] = (a[3 * i + 2] >> 2) & 7;
         r->coeffs[8 * i + 7] = (a[3 * i + 2] >> 5) & 7;
 
-        r->coeffs[8 * i + 0] = ETA - r->coeffs[8 * i + 0];
-        r->coeffs[8 * i + 1] = ETA - r->coeffs[8 * i + 1];
-        r->coeffs[8 * i + 2] = ETA - r->coeffs[8 * i + 2];
-        r->coeffs[8 * i + 3] = ETA - r->coeffs[8 * i + 3];
-        r->coeffs[8 * i + 4] = ETA - r->coeffs[8 * i + 4];
-        r->coeffs[8 * i + 5] = ETA - r->coeffs[8 * i + 5];
-        r->coeffs[8 * i + 6] = ETA - r->coeffs[8 * i + 6];
-        r->coeffs[8 * i + 7] = ETA - r->coeffs[8 * i + 7];
+        r->coeffs[8 * i + 0] = ETA_44 - r->coeffs[8 * i + 0];
+        r->coeffs[8 * i + 1] = ETA_44 - r->coeffs[8 * i + 1];
+        r->coeffs[8 * i + 2] = ETA_44 - r->coeffs[8 * i + 2];
+        r->coeffs[8 * i + 3] = ETA_44 - r->coeffs[8 * i + 3];
+        r->coeffs[8 * i + 4] = ETA_44 - r->coeffs[8 * i + 4];
+        r->coeffs[8 * i + 5] = ETA_44 - r->coeffs[8 * i + 5];
+        r->coeffs[8 * i + 6] = ETA_44 - r->coeffs[8 * i + 6];
+        r->coeffs[8 * i + 7] = ETA_44 - r->coeffs[8 * i + 7];
     }
-#elif ETA == 4
+}
+void polyeta_unpack_65(poly * r, const uint8_t * a)
+{
+    unsigned int i;
+
+
     for (i = 0; i < N / 2; ++i)
     {
         r->coeffs[2 * i + 0] = a[i] & 0x0F;
         r->coeffs[2 * i + 1] = a[i] >> 4;
-        r->coeffs[2 * i + 0] = ETA - r->coeffs[2 * i + 0];
-        r->coeffs[2 * i + 1] = ETA - r->coeffs[2 * i + 1];
+        r->coeffs[2 * i + 0] = ETA_65 - r->coeffs[2 * i + 0];
+        r->coeffs[2 * i + 1] = ETA_65 - r->coeffs[2 * i + 1];
     }
-#endif
+}
+void polyeta_unpack_87(poly * r, const uint8_t * a)
+{
+    unsigned int i;
+
+    for (i = 0; i < N / 8; ++i)
+    {
+        r->coeffs[8 * i + 0] = (a[3 * i + 0] >> 0) & 7;
+        r->coeffs[8 * i + 1] = (a[3 * i + 0] >> 3) & 7;
+        r->coeffs[8 * i + 2] = ((a[3 * i + 0] >> 6) | (a[3 * i + 1] << 2)) & 7;
+        r->coeffs[8 * i + 3] = (a[3 * i + 1] >> 1) & 7;
+        r->coeffs[8 * i + 4] = (a[3 * i + 1] >> 4) & 7;
+        r->coeffs[8 * i + 5] = ((a[3 * i + 1] >> 7) | (a[3 * i + 2] << 1)) & 7;
+        r->coeffs[8 * i + 6] = (a[3 * i + 2] >> 2) & 7;
+        r->coeffs[8 * i + 7] = (a[3 * i + 2] >> 5) & 7;
+
+        r->coeffs[8 * i + 0] = ETA_87 - r->coeffs[8 * i + 0];
+        r->coeffs[8 * i + 1] = ETA_87 - r->coeffs[8 * i + 1];
+        r->coeffs[8 * i + 2] = ETA_87 - r->coeffs[8 * i + 2];
+        r->coeffs[8 * i + 3] = ETA_87 - r->coeffs[8 * i + 3];
+        r->coeffs[8 * i + 4] = ETA_87 - r->coeffs[8 * i + 4];
+        r->coeffs[8 * i + 5] = ETA_87 - r->coeffs[8 * i + 5];
+        r->coeffs[8 * i + 6] = ETA_87 - r->coeffs[8 * i + 6];
+        r->coeffs[8 * i + 7] = ETA_87 - r->coeffs[8 * i + 7];
+    }
 }
 
 /*************************************************
@@ -743,37 +756,41 @@ void polyt0_unpack(poly * r, const uint8_t * a)
  *                            POLYZ_PACKEDBYTES bytes
  *              - const poly *a: pointer to input polynomial
  **************************************************/
-void polyz_pack(uint8_t * r, const poly * a)
+void polyz_pack_44(uint8_t * r, const poly * a)
 {
     unsigned int i;
     uint32_t t[4];
 
-#if GAMMA1 == (1 << 17)
     for (i = 0; i < N / 4; ++i)
     {
-        t[0] = GAMMA1 - a->coeffs[4 * i + 0];
-        t[1] = GAMMA1 - a->coeffs[4 * i + 1];
-        t[2] = GAMMA1 - a->coeffs[4 * i + 2];
-        t[3] = GAMMA1 - a->coeffs[4 * i + 3];
+        t[0] = GAMMA1_44 - a->coeffs[4 * i + 0];
+        t[1] = GAMMA1_44 - a->coeffs[4 * i + 1];
+        t[2] = GAMMA1_44 - a->coeffs[4 * i + 2];
+        t[3] = GAMMA1_44 - a->coeffs[4 * i + 3];
 
-        r[9 * i + 0] = t[0];
-        r[9 * i + 1] = t[0] >> 8;
-        r[9 * i + 2] = t[0] >> 16;
-        r[9 * i + 2] |= t[1] << 2;
-        r[9 * i + 3] = t[1] >> 6;
-        r[9 * i + 4] = t[1] >> 14;
-        r[9 * i + 4] |= t[2] << 4;
-        r[9 * i + 5] = t[2] >> 4;
-        r[9 * i + 6] = t[2] >> 12;
-        r[9 * i + 6] |= t[3] << 6;
-        r[9 * i + 7] = t[3] >> 2;
-        r[9 * i + 8] = t[3] >> 10;
+        r[9 * i + 0] = static_cast<uint8_t>(t[0]);
+        r[9 * i + 1] = static_cast<uint8_t>(t[0] >> 8);
+        r[9 * i + 2] = static_cast<uint8_t>(t[0] >> 16);
+        r[9 * i + 2] |= static_cast<uint8_t>(t[1] << 2);
+        r[9 * i + 3] = static_cast<uint8_t>(t[1] >> 6);
+        r[9 * i + 4] = static_cast<uint8_t>(t[1] >> 14);
+        r[9 * i + 4] |= static_cast<uint8_t>(t[2] << 4);
+        r[9 * i + 5] = static_cast<uint8_t>(t[2] >> 4);
+        r[9 * i + 6] = static_cast<uint8_t>(t[2] >> 12);
+        r[9 * i + 6] |= static_cast<uint8_t>(t[3] << 6);
+        r[9 * i + 7] = static_cast<uint8_t>(t[3] >> 2);
+        r[9 * i + 8] = static_cast<uint8_t>(t[3] >> 10);
     }
-#elif GAMMA1 == (1 << 19)
+}
+void polyz_pack_65(uint8_t * r, const poly * a)
+{
+    unsigned int i;
+    uint32_t t[4];
+
     for (i = 0; i < N / 2; ++i)
     {
-        t[0] = GAMMA1 - a->coeffs[2 * i + 0];
-        t[1] = GAMMA1 - a->coeffs[2 * i + 1];
+        t[0] = GAMMA1_65 - a->coeffs[2 * i + 0];
+        t[1] = GAMMA1_65 - a->coeffs[2 * i + 1];
 
         r[5 * i + 0] = static_cast<uint8_t>(t[0]);
         r[5 * i + 1] = static_cast<uint8_t>(t[0] >> 8);
@@ -782,7 +799,24 @@ void polyz_pack(uint8_t * r, const poly * a)
         r[5 * i + 3] = static_cast<uint8_t>(t[1] >> 4);
         r[5 * i + 4] = static_cast<uint8_t>(t[1] >> 12);
     }
-#endif
+}
+void polyz_pack_87(uint8_t * r, const poly * a)
+{
+    unsigned int i;
+    uint32_t t[4];
+
+    for (i = 0; i < N / 2; ++i)
+    {
+        t[0] = GAMMA1_87 - a->coeffs[2 * i + 0];
+        t[1] = GAMMA1_87 - a->coeffs[2 * i + 1];
+
+        r[5 * i + 0] = static_cast<uint8_t>(t[0]);
+        r[5 * i + 1] = static_cast<uint8_t>(t[0] >> 8);
+        r[5 * i + 2] = static_cast<uint8_t>(t[0] >> 16);
+        r[5 * i + 2] |= t[1] << 4;
+        r[5 * i + 3] = static_cast<uint8_t>(t[1] >> 4);
+        r[5 * i + 4] = static_cast<uint8_t>(t[1] >> 12);
+    }
 }
 
 /*************************************************
@@ -794,11 +828,10 @@ void polyz_pack(uint8_t * r, const poly * a)
  * Arguments:   - poly *r: pointer to output polynomial
  *              - const uint8_t *a: byte array with bit-packed polynomial
  **************************************************/
-void polyz_unpack(poly * r, const uint8_t * a)
+void polyz_unpack_44(poly * r, const uint8_t * a)
 {
     unsigned int i;
 
-#if GAMMA1 == (1 << 17)
     for (i = 0; i < N / 4; ++i)
     {
         r->coeffs[4 * i + 0] = a[9 * i + 0];
@@ -821,12 +854,16 @@ void polyz_unpack(poly * r, const uint8_t * a)
         r->coeffs[4 * i + 3] |= (uint32_t)a[9 * i + 8] << 10;
         r->coeffs[4 * i + 3] &= 0x3FFFF;
 
-        r->coeffs[4 * i + 0] = GAMMA1 - r->coeffs[4 * i + 0];
-        r->coeffs[4 * i + 1] = GAMMA1 - r->coeffs[4 * i + 1];
-        r->coeffs[4 * i + 2] = GAMMA1 - r->coeffs[4 * i + 2];
-        r->coeffs[4 * i + 3] = GAMMA1 - r->coeffs[4 * i + 3];
+        r->coeffs[4 * i + 0] = GAMMA1_44 - r->coeffs[4 * i + 0];
+        r->coeffs[4 * i + 1] = GAMMA1_44 - r->coeffs[4 * i + 1];
+        r->coeffs[4 * i + 2] = GAMMA1_44 - r->coeffs[4 * i + 2];
+        r->coeffs[4 * i + 3] = GAMMA1_44 - r->coeffs[4 * i + 3];
     }
-#elif GAMMA1 == (1 << 19)
+}
+
+void polyz_unpack_65(poly * r, const uint8_t * a)
+{
+    unsigned int i;
     for (i = 0; i < N / 2; ++i)
     {
         r->coeffs[2 * i + 0] = a[5 * i + 0];
@@ -839,10 +876,29 @@ void polyz_unpack(poly * r, const uint8_t * a)
         r->coeffs[2 * i + 1] |= (uint32_t)a[5 * i + 4] << 12;
         r->coeffs[2 * i + 0] &= 0xFFFFF;
 
-        r->coeffs[2 * i + 0] = GAMMA1 - r->coeffs[2 * i + 0];
-        r->coeffs[2 * i + 1] = GAMMA1 - r->coeffs[2 * i + 1];
+        r->coeffs[2 * i + 0] = GAMMA1_65 - r->coeffs[2 * i + 0];
+        r->coeffs[2 * i + 1] = GAMMA1_65 - r->coeffs[2 * i + 1];
     }
-#endif
+}
+
+void polyz_unpack_87(poly * r, const uint8_t * a)
+{
+    unsigned int i;
+    for (i = 0; i < N / 2; ++i)
+    {
+        r->coeffs[2 * i + 0] = a[5 * i + 0];
+        r->coeffs[2 * i + 0] |= (uint32_t)a[5 * i + 1] << 8;
+        r->coeffs[2 * i + 0] |= (uint32_t)a[5 * i + 2] << 16;
+        r->coeffs[2 * i + 0] &= 0xFFFFF;
+
+        r->coeffs[2 * i + 1] = a[5 * i + 2] >> 4;
+        r->coeffs[2 * i + 1] |= (uint32_t)a[5 * i + 3] << 4;
+        r->coeffs[2 * i + 1] |= (uint32_t)a[5 * i + 4] << 12;
+        r->coeffs[2 * i + 0] &= 0xFFFFF;
+
+        r->coeffs[2 * i + 0] = GAMMA1_87 - r->coeffs[2 * i + 0];
+        r->coeffs[2 * i + 1] = GAMMA1_87 - r->coeffs[2 * i + 1];
+    }
 }
 
 /*************************************************
@@ -855,35 +911,52 @@ void polyz_unpack(poly * r, const uint8_t * a)
  *                            POLYW1_PACKEDBYTES bytes
  *              - const poly *a: pointer to input polynomial
  **************************************************/
-void polyw1_pack(uint8_t * r, const poly * a)
+void polyw1_pack_44(uint8_t * r, const poly * a)
 {
     unsigned int i;
-
-#if GAMMA2 == (Q - 1) / 88
     for (i = 0; i < N / 4; ++i)
     {
-        r[3 * i + 0] = a->coeffs[4 * i + 0];
-        r[3 * i + 0] |= a->coeffs[4 * i + 1] << 6;
-        r[3 * i + 1] = a->coeffs[4 * i + 1] >> 2;
-        r[3 * i + 1] |= a->coeffs[4 * i + 2] << 4;
-        r[3 * i + 2] = a->coeffs[4 * i + 2] >> 4;
-        r[3 * i + 2] |= a->coeffs[4 * i + 3] << 2;
+        r[3 * i + 0] = static_cast<uint8_t>(a->coeffs[4 * i + 0]);
+        r[3 * i + 0] |= static_cast<uint8_t>(a->coeffs[4 * i + 1] << 6);
+        r[3 * i + 1] = static_cast<uint8_t>(a->coeffs[4 * i + 1] >> 2);
+        r[3 * i + 1] |= static_cast<uint8_t>(a->coeffs[4 * i + 2] << 4);
+        r[3 * i + 2] = static_cast<uint8_t>(a->coeffs[4 * i + 2] >> 4);
+        r[3 * i + 2] |= static_cast<uint8_t>(a->coeffs[4 * i + 3] << 2);
     }
-#elif GAMMA2 == (Q - 1) / 32
+}
+void polyw1_pack_65(uint8_t * r, const poly * a)
+{
+    unsigned int i;
     for (i = 0; i < N / 2; ++i)
         r[i] = static_cast<uint8_t>(a->coeffs[2 * i + 0] | (a->coeffs[2 * i + 1] << 4));
-#endif
 }
+void polyw1_pack_87(uint8_t * r, const poly * a)
+{
+    unsigned int i;
+    for (i = 0; i < N / 2; ++i)
+        r[i] = static_cast<uint8_t>(a->coeffs[2 * i + 0] | (a->coeffs[2 * i + 1] << 4));
+}
+
+/*************************************************
+ * OLD FUNCTION WAS EDITED!!!!!!!
+ * Name:        poly_uniform_eta
+ *
+ * Description: Sample polynomial with uniformly random coefficients
+ *              in [-ETA,ETA] by performing rejection sampling on the
+ *              output stream from SHAKE256(seed|nonce) or AES256CTR(seed,nonce).
+ *
+ * Arguments:   - poly *a: pointer to output polynomial
+ *              - const uint8_t seed[]: byte array with seed of length SEEDBYTES
+ *              - uint16_t nonce: 2-byte nonce
+ **************************************************/
 
 #define POLY_UNIFORM_ETA_NBLOCKS_MLDSA_256 ((136 + STREAM256_BLOCKBYTES - 1) / STREAM256_BLOCKBYTES)
 
-void poly_uniform_etaMldsa(poly * a, const uint8_t seed[2 * SEEDBYTES], uint16_t nonce)
+void poly_uniform_etaMldsa(poly * a, const uint8_t seed[2 * SEEDBYTES], uint16_t nonce, uint8_t modeL)
 {
     unsigned int ctr;
-    unsigned int buflen = POLY_UNIFORM_ETA_NBLOCKS_MLDSA_256 *
-                          STREAM256_BLOCKBYTES; // POLY_UNIFORM_ETA_NBLOCKS_MLDSA * STREAM128_BLOCKBYTES;
-    uint8_t buf[POLY_UNIFORM_ETA_NBLOCKS_MLDSA_256 * STREAM256_BLOCKBYTES]; // buf[POLY_UNIFORM_ETA_NBLOCKS_MLDSA *
-                                                                            // STREAM128_BLOCKBYTES];
+    unsigned int buflen = POLY_UNIFORM_ETA_NBLOCKS_MLDSA_256 * STREAM256_BLOCKBYTES;
+    uint8_t buf[POLY_UNIFORM_ETA_NBLOCKS_MLDSA_256 * STREAM256_BLOCKBYTES];
 
     // experimental change. #changed. Was shake128
     stream256_state state;
@@ -896,18 +969,42 @@ void poly_uniform_etaMldsa(poly * a, const uint8_t seed[2 * SEEDBYTES], uint16_t
     shake256_finalize(&state);
     stream256_squeezeblocks(buf, POLY_UNIFORM_ETA_NBLOCKS_MLDSA_256, &state);
 
-    ctr = rej_eta(a->coeffs, N, buf, buflen);
 
-    while (ctr < N)
+    if (modeL == L_87)
     {
-        stream256_squeezeblocks(buf, 1, &state);                             // #changed. Was stream128_squeezeblocks
-        ctr += rej_eta(a->coeffs + ctr, N - ctr, buf, STREAM256_BLOCKBYTES); // #changed. Was STREAM128_BLOCKBYTES
+        ctr = rej_eta_87(a->coeffs, N, buf, buflen);
+        while (ctr < N)
+        {
+            stream256_squeezeblocks(buf, 1, &state);
+            ctr += rej_eta_87(a->coeffs + ctr, N - ctr, buf, STREAM256_BLOCKBYTES);
+        }
+    }
+    else if (modeL == L_65)
+    {
+        ctr = rej_eta_65(a->coeffs, N, buf, buflen);
+        while (ctr < N)
+        {
+            stream256_squeezeblocks(buf, 1, &state);
+            ctr += rej_eta_65(a->coeffs + ctr, N - ctr, buf, STREAM256_BLOCKBYTES);
+        }
+    }
+    else
+    {
+        ctr = rej_eta_44(a->coeffs, N, buf, buflen);
+        while (ctr < N)
+        {
+            stream256_squeezeblocks(buf, 1, &state);
+            ctr += rej_eta_44(a->coeffs + ctr, N - ctr, buf, STREAM256_BLOCKBYTES);
+        }
     }
 }
 
-void poly_uniform_gamma1Mldsa(poly * a, const uint8_t seed[2 * SEEDBYTES], uint16_t nonce)
+#define POLY_UNIFORM_GAMMA1_NBLOCKS_GAMMA1_17 ((576 + STREAM256_BLOCKBYTES - 1) / STREAM256_BLOCKBYTES)
+#define POLY_UNIFORM_GAMMA1_NBLOCKS_GAMMA1_19 ((640 + STREAM256_BLOCKBYTES - 1) / STREAM256_BLOCKBYTES)
+
+void poly_uniform_gamma1Mldsa_44(poly * a, const uint8_t seed[2 * SEEDBYTES], uint16_t nonce)
 {
-    uint8_t buf[POLY_UNIFORM_GAMMA1_NBLOCKS * STREAM256_BLOCKBYTES];
+    uint8_t buf[POLY_UNIFORM_GAMMA1_NBLOCKS_GAMMA1_17 * STREAM256_BLOCKBYTES];
     stream256_state state;
 
     uint8_t t[2];
@@ -918,19 +1015,81 @@ void poly_uniform_gamma1Mldsa(poly * a, const uint8_t seed[2 * SEEDBYTES], uint1
     shake256_absorb(&state, t, 2);
     shake256_finalize(&state);
 
-    stream256_squeezeblocks(buf, POLY_UNIFORM_GAMMA1_NBLOCKS, &state);
-    polyz_unpack(a, buf);
+    stream256_squeezeblocks(buf, POLY_UNIFORM_GAMMA1_NBLOCKS_GAMMA1_17, &state);
+    polyz_unpack_44(a, buf);
+}
+void poly_uniform_gamma1Mldsa_65(poly * a, const uint8_t seed[2 * SEEDBYTES], uint16_t nonce)
+{
+    uint8_t buf[POLY_UNIFORM_GAMMA1_NBLOCKS_GAMMA1_19 * STREAM256_BLOCKBYTES];
+    stream256_state state;
+
+    uint8_t t[2];
+    t[0] = ((uint8_t *)&nonce)[0];
+    t[1] = ((uint8_t *)&nonce)[1];
+    shake256_init(&state);
+    shake256_absorb(&state, seed, 2 * SEEDBYTES);
+    shake256_absorb(&state, t, 2);
+    shake256_finalize(&state);
+
+    stream256_squeezeblocks(buf, POLY_UNIFORM_GAMMA1_NBLOCKS_GAMMA1_19, &state);
+    polyz_unpack_65(a, buf);
+}
+void poly_uniform_gamma1Mldsa_87(poly * a, const uint8_t seed[2 * SEEDBYTES], uint16_t nonce)
+{
+    uint8_t buf[POLY_UNIFORM_GAMMA1_NBLOCKS_GAMMA1_19 * STREAM256_BLOCKBYTES];
+    stream256_state state;
+
+    uint8_t t[2];
+    t[0] = ((uint8_t *)&nonce)[0];
+    t[1] = ((uint8_t *)&nonce)[1];
+    shake256_init(&state);
+    shake256_absorb(&state, seed, 2 * SEEDBYTES);
+    shake256_absorb(&state, t, 2);
+    shake256_finalize(&state);
+
+    stream256_squeezeblocks(buf, POLY_UNIFORM_GAMMA1_NBLOCKS_GAMMA1_19, &state);
+    polyz_unpack_87(a, buf);
 }
 
-void poly_challengeMldsa(poly * c, const uint8_t seed[2 * SEEDBYTES])
+
+/*************************************************
+ * OLD FUNCTION WAS EDITED!!!!!!!
+ * Name:        challenge
+ *
+ * Description: Implementation of H. Samples polynomial with TAU nonzero
+ *              coefficients in {-1,1} using the output stream of
+ *              SHAKE256(seed).
+ *
+ * Arguments:   - poly *c: pointer to output polynomial
+ *              - const uint8_t mu[]: byte array containing seed of length SEEDBYTES
+ **************************************************/
+
+void poly_challengeMldsa(poly * c, const uint8_t seed[], uint8_t modeK)
 {
+    unsigned int CTILDEBYTES, TAU_varrible;
+    if (modeK == K_87)
+    {
+        CTILDEBYTES = CTILDEBYTES_87;
+        TAU_varrible = TAU_87;
+    }
+    else if (modeK == K_65)
+    {
+        CTILDEBYTES = CTILDEBYTES_65;
+        TAU_varrible = TAU_65;
+    }
+    else
+    {
+        CTILDEBYTES = CTILDEBYTES_44;
+        TAU_varrible = TAU_44;
+    }
+
     unsigned int i, b, pos;
     uint64_t signs;
     uint8_t buf[SHAKE256_RATE];
     keccak_state state;
 
     shake256_init(&state);
-    shake256_absorb(&state, seed, 2 * SEEDBYTES);
+    shake256_absorb(&state, seed, CTILDEBYTES);
     shake256_finalize(&state);
     shake256_squeezeblocks(buf, 1, &state);
 
@@ -941,7 +1100,7 @@ void poly_challengeMldsa(poly * c, const uint8_t seed[2 * SEEDBYTES])
 
     for (i = 0; i < N; ++i)
         c->coeffs[i] = 0;
-    for (i = N - TAU; i < N; ++i)
+    for (i = N - TAU_varrible; i < N; ++i)
     {
         do
         {

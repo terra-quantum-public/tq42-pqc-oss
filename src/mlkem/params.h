@@ -1,41 +1,54 @@
 #pragma once
 
-#ifndef KYBER_K
-#define KYBER_K 4 /* Change this for different security strengths */
-#endif
+#include <pqc/kyber.h>
+#include <pqc/ml-kem.h>
+#include <sha3.h>
 
-#define KYBER_N 256
-#define KYBER_Q 3329
+#define ML_N 256
+#define ML_Q 3329
+#define ML_RH_SIZE 32 /* size in bytes of hashes, and seeds */
+#define ML_ETA2 2
+#define ML_POLY_SIZE 384
 
+#define ML_KEM_512 0
+#define ML_KEM_768 1
+#define ML_KEM_1024 2
+#define KYBER_512 3
+#define KYBER_768 4
+#define KYBER_1024 5
 
-#define KYBER_SYMBYTES 32 /* size in bytes of hashes, and seeds */
-#define KYBER_SSBYTES 32  /* size in bytes of shared key */
+struct ParameterSet
+{
+    constexpr ParameterSet(
+        uint32_t id, size_t k, size_t eta_1, size_t du, size_t dv, size_t polycompr, size_t polyveccompr
+    )
+        : CIPHER_ID(id), K(k), ETA_1(eta_1), DU(du), DV(dv), POLYVEC_SIZE(K * ML_POLY_SIZE),
+          POLYCOMPRESSED_SIZE(polycompr), POLYVECCOMPRESSED_SIZE(polyveccompr),
+          PUBLIC_KEY_LEN(POLYVEC_SIZE + ML_RH_SIZE),
+          PRIVATE_KEY_LEN(POLYVEC_SIZE + PUBLIC_KEY_LEN + ML_RH_SIZE + ML_RH_SIZE), MESSAGE_LEN(32 * (DU * K + DV)),
+          SHARED_LEN(ML_RH_SIZE)
+    {
+    }
+    uint32_t CIPHER_ID;
+    size_t K;
+    size_t ETA_1;
+    size_t DU;
+    size_t DV;
 
-#define KYBER_POLYBYTES 384
-#define KYBER_POLYVECBYTES (KYBER_K * KYBER_POLYBYTES)
+    size_t POLYVEC_SIZE;
+    size_t POLYCOMPRESSED_SIZE;
+    size_t POLYVECCOMPRESSED_SIZE;
 
-#if KYBER_K == 2
-#define KYBER_ETA1 3
-#define KYBER_POLYCOMPRESSEDBYTES 128
-#define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * 320)
-#elif KYBER_K == 3
-#define KYBER_ETA1 2
-#define KYBER_POLYCOMPRESSEDBYTES 128
-#define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * 320)
-#elif KYBER_K == 4
-#define KYBER_ETA1 2
-#define KYBER_POLYCOMPRESSEDBYTES 160
-#define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * 352)
-#endif
+    size_t PUBLIC_KEY_LEN;
+    size_t PRIVATE_KEY_LEN;
+    size_t MESSAGE_LEN;
+    size_t SHARED_LEN;
+};
 
-#define KYBER_ETA2 2
-
-#define KYBER_INDCPA_MSGBYTES KYBER_SYMBYTES
-#define KYBER_INDCPA_PUBLICKEYBYTES (KYBER_POLYVECBYTES + KYBER_SYMBYTES)
-#define KYBER_INDCPA_SECRETKEYBYTES (KYBER_POLYVECBYTES)
-#define KYBER_INDCPA_BYTES (KYBER_POLYVECCOMPRESSEDBYTES + KYBER_POLYCOMPRESSEDBYTES)
-
-#define KYBER_PUBLICKEYBYTES (KYBER_INDCPA_PUBLICKEYBYTES)
-/* 32 bytes of additional space to save H(pk) */
-#define KYBER_SECRETKEYBYTES (KYBER_INDCPA_SECRETKEYBYTES + KYBER_INDCPA_PUBLICKEYBYTES + 2 * KYBER_SYMBYTES)
-#define KYBER_CIPHERTEXTBYTES KYBER_INDCPA_BYTES
+static constexpr ParameterSet ParameterSets[] = {
+    ParameterSet{PQC_CIPHER_ML_KEM_512, 2, 3, 10, 4, 128, 2 * 320},
+    ParameterSet{PQC_CIPHER_ML_KEM_768, 3, 2, 10, 4, 128, 3 * 320},
+    ParameterSet{PQC_CIPHER_ML_KEM_1024, 4, 2, 11, 5, 160, 4 * 352},
+    ParameterSet{PQC_CIPHER_KYBER_512, 2, 3, 10, 4, 128, 2 * 320},
+    ParameterSet{PQC_CIPHER_KYBER_768, 3, 2, 10, 4, 128, 3 * 320},
+    ParameterSet{PQC_CIPHER_KYBER_1024, 4, 2, 11, 5, 160, 4 * 352}};

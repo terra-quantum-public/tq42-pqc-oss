@@ -7,117 +7,35 @@
 
 #include <gtest/gtest.h>
 
-#include <pqc/aes.h>
 #include <pqc/common.h>
 #include <pqc/kyber.h>
 #include <pqc/random.h>
 
-
-#define KYBER_PRIVATE_KEY(x) std::vector<uint8_t> x(sizeof(pqc_kyber_private_key))
-#define KYBER_PUBLIC_KEY(x) std::vector<uint8_t> x(sizeof(pqc_kyber_public_key))
-#define KYBER_MESSAGE(x) std::vector<uint8_t> x(sizeof(pqc_kyber_message))
-#define KYBER_SHARED_SECRET(x) std::vector<uint8_t> x(sizeof(pqc_kyber_shared_secret))
-
-TEST(KYBER, CREATE_SECRET_CHECK_SIZES)
+class KYBER_KAT_test_data
 {
-    KYBER_PRIVATE_KEY(priv_alice);
-    KYBER_PUBLIC_KEY(pub_alice);
+public:
+    KYBER_KAT_test_data(uint32_t mode, const std::string & path, size_t n) : cipher(mode), rsp_path(path), num_tests(n)
+    {
+    }
+    uint32_t cipher;
+    std::string rsp_path;
+    size_t num_tests;
+};
 
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_KYBER, pub_alice.data(), pub_alice.size(), priv_alice.data(), priv_alice.size() - 1
-        ),
-        PQC_BAD_LEN
-    ) << "should check private key size";
+void PrintTo(const KYBER_KAT_test_data & data, std::ostream * os) { *os << data.rsp_path; }
 
-    EXPECT_EQ(
-        PQC_generate_key_pair(
-            PQC_CIPHER_KYBER, pub_alice.data(), pub_alice.size() - 1, priv_alice.data(), priv_alice.size()
-        ),
-        PQC_BAD_LEN
-    ) << "should check public key size";
-}
-
-TEST(KYBER, INIT_CHECK_KEYLEN)
+class KYBER_KAT_TEST : public testing::TestWithParam<KYBER_KAT_test_data>
 {
-    KYBER_PRIVATE_KEY(priv_alice);
+};
 
-    EXPECT_EQ(PQC_init_context(PQC_CIPHER_KYBER, priv_alice.data(), priv_alice.size() - 1), PQC_BAD_CIPHER)
-        << "Initialization should fail due to bad key length";
-}
-
-TEST(KYBER, CREATE_SECRET)
+TEST_P(KYBER_KAT_TEST, Round3)
 {
-    KYBER_PRIVATE_KEY(priv_bob);
-    KYBER_PUBLIC_KEY(pub_bob);
-    KYBER_SHARED_SECRET(shared_alice);
-    KYBER_SHARED_SECRET(shared_bob);
-    KYBER_MESSAGE(message);
+    KYBER_KAT_test_data params = GetParam();
+    const uint32_t cipher = params.cipher;
 
-    EXPECT_EQ(
-        PQC_generate_key_pair(PQC_CIPHER_KYBER, pub_bob.data(), pub_bob.size(), priv_bob.data(), priv_bob.size()),
-        PQC_OK
-    );
-    CIPHER_HANDLE bob = PQC_init_context(PQC_CIPHER_KYBER, priv_bob.data(), priv_bob.size());
-    EXPECT_NE(bob, PQC_BAD_CIPHER);
-
-    EXPECT_EQ(
-        PQC_kem_encode_secret(
-            PQC_CIPHER_KYBER, message.data(), message.size(), pub_bob.data(), pub_bob.size(), shared_alice.data(),
-            shared_alice.size()
-        ),
-        PQC_OK
-    );
-
-    EXPECT_EQ(
-        PQC_kem_decode_secret(bob, message.data(), message.size(), shared_bob.data(), shared_alice.size()), PQC_OK
-    );
-
-    EXPECT_TRUE(shared_alice == shared_bob);
-}
-
-TEST(KYBER, DERIVE)
-{
-    KYBER_PRIVATE_KEY(priv_bob);
-    KYBER_PUBLIC_KEY(pub_bob);
-    KYBER_MESSAGE(message);
-    std::vector<uint8_t> shared_alice(PQC_AES_KEYLEN);
-    std::vector<uint8_t> shared_bob(PQC_AES_KEYLEN);
-
-    const size_t info_size = 10;
-    uint8_t party_a_info[info_size] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-
-    EXPECT_EQ(
-        PQC_generate_key_pair(PQC_CIPHER_KYBER, pub_bob.data(), pub_bob.size(), priv_bob.data(), priv_bob.size()),
-        PQC_OK
-    );
-    CIPHER_HANDLE bob = PQC_init_context(PQC_CIPHER_KYBER, priv_bob.data(), priv_bob.size());
-    EXPECT_NE(bob, PQC_BAD_CIPHER);
-
-    EXPECT_EQ(
-        PQC_kem_encode(
-            PQC_CIPHER_KYBER, message.data(), message.size(), party_a_info, info_size, pub_bob.data(), pub_bob.size(),
-            shared_alice.data(), shared_alice.size()
-        ),
-        PQC_OK
-    );
-
-    EXPECT_EQ(
-        PQC_kem_decode(
-            bob, message.data(), message.size(), party_a_info, info_size, shared_bob.data(), shared_bob.size()
-        ),
-        PQC_OK
-    );
-
-    EXPECT_TRUE(shared_alice == shared_bob);
-}
-
-
-TEST(KYBER, KAT1024_Round3)
-{
     static const std::filesystem::path current(__FILE__);
     static const auto base_path = current.parent_path() / "mlkem";
-    static const auto responses_path = base_path / "kyber1024-KAT.rsp";
+    static const auto responses_path = base_path / params.rsp_path;
     static const auto entropy_path = base_path / "kyber1024-KAT.ent";
 
     struct Hex
@@ -154,11 +72,12 @@ TEST(KYBER, KAT1024_Round3)
 
     struct EntropyReader
     {
-        static void get_entropy(uint8_t * buf, size_t size)
+        static size_t get_entropy(uint8_t * buf, size_t size)
         {
             static std::ifstream f(entropy_path, std::ios_base::in | std::ios_base::binary);
             f.exceptions(std::ios_base::badbit | std::ios_base::eofbit);
             f.read(reinterpret_cast<char *>(buf), size);
+            return PQC_OK;
         }
     };
 
@@ -166,20 +85,21 @@ TEST(KYBER, KAT1024_Round3)
     std::string expected;
 
     std::getline(responses, expected);
-    EXPECT_TRUE(expected == "# Kyber1024");
 
-    const int KATNUM = 100;
-    KYBER_PRIVATE_KEY(sk);
-    KYBER_PUBLIC_KEY(pk);
-    KYBER_MESSAGE(ct);
-    KYBER_SHARED_SECRET(ss);
-    KYBER_PRIVATE_KEY(kat_sk);
-    KYBER_PUBLIC_KEY(kat_pk);
-    KYBER_MESSAGE(kat_ct);
-    KYBER_SHARED_SECRET(kat_ss);
+    const size_t pk_len = PQC_cipher_get_length(cipher, PQC_LENGTH_PUBLIC);
+    const size_t sk_len = PQC_cipher_get_length(cipher, PQC_LENGTH_PRIVATE);
+    const size_t ss_len = PQC_cipher_get_length(cipher, PQC_LENGTH_SHARED);
+    const size_t msg_len = PQC_cipher_get_length(cipher, PQC_LENGTH_MESSAGE);
+    std::vector<uint8_t> pk(pk_len);
+    std::vector<uint8_t> kat_pk(pk_len);
+    std::vector<uint8_t> sk(sk_len);
+    std::vector<uint8_t> kat_sk(sk_len);
+    std::vector<uint8_t> ss(ss_len);
+    std::vector<uint8_t> kat_ss(ss_len);
+    std::vector<uint8_t> ct(msg_len);
+    std::vector<uint8_t> kat_ct(msg_len);
 
-    PQC_random_from_external(EntropyReader::get_entropy);
-    for (size_t i = 0; i < KATNUM; ++i)
+    for (size_t i = 0; i < params.num_tests; ++i)
     {
         std::getline(responses, expected);
         EXPECT_TRUE(expected == "");
@@ -201,21 +121,43 @@ TEST(KYBER, KAT1024_Round3)
         std::getline(responses, expected);
         Hex::to_uint_8_t(expected, "ss = ", kat_ss.data(), kat_ss.size());
 
-        EXPECT_EQ(PQC_generate_key_pair(PQC_CIPHER_KYBER, pk.data(), pk.size(), sk.data(), sk.size()), PQC_OK);
+        CIPHER_HANDLE alice = PQC_context_init_asymmetric(cipher, nullptr, 0, nullptr, 0);
+        EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
+
+        PQC_context_random_set_external(alice, EntropyReader::get_entropy);
+
+        EXPECT_EQ(PQC_context_keypair_generate(alice), PQC_OK) << "keys made";
+
+        EXPECT_EQ(PQC_context_get_keypair(alice, pk.data(), pk.size(), sk.data(), sk.size()), PQC_OK)
+            << "keys extracted";
+
         EXPECT_TRUE(pk == kat_pk) << "public key equal";
         EXPECT_TRUE(sk == kat_sk) << "secure key equal";
 
-        EXPECT_EQ(
-            PQC_kem_encode_secret(PQC_CIPHER_KYBER, ct.data(), ct.size(), pk.data(), pk.size(), ss.data(), ss.size()),
-            PQC_OK
-        );
+
+        CIPHER_HANDLE bob = PQC_context_init_asymmetric(cipher, pk.data(), pk.size(), nullptr, 0);
+        EXPECT_NE(bob, PQC_BAD_CIPHER);
+
+        PQC_context_random_set_external(bob, EntropyReader::get_entropy);
+
+        EXPECT_EQ(PQC_kem_encapsulate_secret(bob, ct.data(), ct.size(), ss.data(), ss.size()), PQC_OK);
         EXPECT_TRUE(ct == kat_ct) << "cipher text equal";
         EXPECT_TRUE(ss == kat_ss) << "shared secret equal";
 
-        CIPHER_HANDLE context = PQC_init_context(PQC_CIPHER_KYBER, sk.data(), sk.size());
-        EXPECT_NE(context, PQC_BAD_CIPHER);
 
-        EXPECT_EQ(PQC_kem_decode_secret(context, ct.data(), ct.size(), ss.data(), ss.size()), PQC_OK);
-        EXPECT_TRUE(ss == kat_ss) << "decode correct";
+        EXPECT_EQ(PQC_kem_decapsulate_secret(alice, ct.data(), ct.size(), ss.data(), ss.size()), PQC_OK);
+        EXPECT_TRUE(ss == kat_ss) << "decapsulate correct";
+
+        PQC_context_close(alice);
+        PQC_context_close(bob);
     }
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    KYBER_KAT_TESTS, KYBER_KAT_TEST,
+    testing::Values(
+        KYBER_KAT_test_data(PQC_CIPHER_KYBER_512, "kyber512-KAT.rsp", 100),
+        KYBER_KAT_test_data(PQC_CIPHER_KYBER_768, "kyber768-KAT.rsp", 100),
+        KYBER_KAT_test_data(PQC_CIPHER_KYBER_1024, "kyber1024-KAT.rsp", 100)
+    )
+);

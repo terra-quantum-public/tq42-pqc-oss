@@ -16,13 +16,13 @@ data_len = len(data)
 def CTR_encrypt(pqc):
     def encrypt(key, data):
         # Initialize the context
-        context = pqc.PQC_init_context_iv(pqc.PQC_CIPHER_AES, key, iv)
+        context = pqc.PQC_context_init_iv(pqc.PQC_CIPHER_AES, key, iv)
 
         # Encrypt the data
-        buffer = pqc.PQC_encrypt(context, pqc.PQC_AES_M_CTR, data)
+        buffer = pqc.PQC_symmetric_encrypt(context, pqc.PQC_AES_M_CTR, data)
 
         # Close the context
-        pqc.PQC_close_context(context)
+        pqc.PQC_context_close(context)
 
         return buffer
 
@@ -34,13 +34,13 @@ def CTR_encrypt(pqc):
 def CTR_decrypt(pqc):
     def decrypt(key, data):
         # Initialize the context
-        context = pqc.PQC_init_context_iv(pqc.PQC_CIPHER_AES, key, iv)
+        context = pqc.PQC_context_init_iv(pqc.PQC_CIPHER_AES, key, iv)
 
         # Decrypt the data
-        buffer = pqc.PQC_decrypt(context, pqc.PQC_AES_M_CTR, data)
+        buffer = pqc.PQC_symmetric_decrypt(context, pqc.PQC_AES_M_CTR, data)
 
         # Close the context`
-        pqc.PQC_close_context(context)
+        pqc.PQC_context_close(context)
 
         return buffer
 

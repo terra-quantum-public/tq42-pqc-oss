@@ -62,12 +62,12 @@ API overview
 
 Include: `pqc/aes.h`
 
-### `PQC_init_context`
+### `PQC_context_init`
 
 **Function signature**
 
 ```cpp
-CIPHER_HANDLE PQC_init_context(uint32_t cipher, const uint8_t* key, size_t key_length);
+CIPHER_HANDLE PQC_context_init(uint32_t cipher, const uint8_t* key, size_t key_length);
 ```
 
 **Purpose**: This function is used to initialize an encryption context for a specific cipher with a given encryption key.
@@ -81,21 +81,21 @@ CIPHER_HANDLE PQC_init_context(uint32_t cipher, const uint8_t* key, size_t key_l
 *   `key_length`: Length of the encryption key.
 
 
-### `PQC_init_context_iv`
+### `PQC_context_init_iv`
 
 **Function signature**
 
 ```cpp
-CIPHER_HANDLE PQC_init_context_iv(uint32_t cipher, const uint8_t* key, const uint8_t* iv, size_t iv_length);
+CIPHER_HANDLE PQC_context_init_iv(uint32_t cipher, const uint8_t* key, const uint8_t* iv, size_t iv_length);
 ```
 
-**Purpose**: This function is similar to `PQC_init_context`, but it also allows for the initialization vector (IV) to be specified, if required by the desired operation mode.
+**Purpose**: This function is similar to `PQC_context_init`, but it also allows for the initialization vector (IV) to be specified, if required by the desired operation mode.
 
 **Parameters**:
 
-*   `cipher`: Constant to select a cipher algorithm, same as in `PQC_init_context`.
+*   `cipher`: Constant to select a cipher algorithm, same as in `PQC_context_init`.
     
-*   `key`: Pointer to the encryption key, same as in `PQC_init_context`.
+*   `key`: Pointer to the encryption key, same as in `PQC_context_init`.
     
 *   `iv`: Pointer to the initialization vector. IV length should match the used cipher, which for AES-256 should be 16 bytes.
     
@@ -108,15 +108,15 @@ For both functions, the return values are specified as follows:
     
 *   Otherwise: Returns the handle of the created encryption context.
 
-### `PQC_set_iv`
+### `PQC_context_set_iv`
 
 **Function signature**
 
 ```cpp
-size_t PQC_set_iv(CIPHER_HANDLE ctx, const uint8_t* iv, size_t iv_length);
+size_t PQC_context_set_iv(CIPHER_HANDLE ctx, const uint8_t* iv, size_t iv_length);
 ```
 
-**Purpose**: This function is used to set the initialization vector for an initialized encryption context if it was not provided during the initialization with `PQC_init_context_iv()`.
+**Purpose**: This function is used to set the initialization vector for an initialized encryption context if it was not provided during the initialization with `PQC_context_init_iv()`.
 
 **Parameters**:
 
@@ -140,12 +140,12 @@ The function returns the following values:
 
 The provided code snippet describes a function for encrypting data using an initialized encryption context. Let's break down the purpose and usage of the given function and its parameters.
 
-### `PQC_encrypt`
+### `PQC_symmetric_encrypt`
 
 **Function signature:**
 
 ```cpp
-size_t PQC_encrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t* buffer, size_t length);
+size_t PQC_symmetric_encrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t* buffer, size_t length);
 ```
 
 **Purpose**: This function is used to encrypt data using the specified encryption context and encryption mode.
@@ -176,12 +176,12 @@ The function returns the following values:
 *   `PQC_BAD_CIPHER`: Indicates that the selected cipher does not support symmetric encryption.
     
 
-### `PQC_decrypt`
+### `PQC_symmetric_decrypt`
 
 **Function signature:**
 
 ```cpp
-size_t PQC_decrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t* buffer, size_t length);
+size_t PQC_symmetric_decrypt(CIPHER_HANDLE ctx, uint32_t mode, uint8_t* buffer, size_t length);
 ```
 
 **Purpose**: This function is used to decrypt data using the specified encryption context and encryption mode.
@@ -346,12 +346,12 @@ The function returns the following values:
 *   `PQC_BAD_CIPHER`: Indicates that the selected cipher does not support symmetric encryption.
 
 
-### `PQC_close_context`
+### `PQC_context_close`
 
 **Function signature:**
 
 ```cpp
-size_t PQC_close_context(CIPHER_HANDLE ctx);
+size_t PQC_context_close(CIPHER_HANDLE ctx);
 ```
 
 **Purpose**: This function is used to release resources associated with an initialized encryption context when it is no longer needed.

@@ -8,6 +8,7 @@
 #include <buffer.h>
 #include <core.h>
 #include <falcon/inner.h>
+#include <rng/random_generator.h>
 
 
 #define FALCON_ERR_RANDOM -1
@@ -47,7 +48,7 @@ void falcon_sign_start(ConstBufferView nonce, shake256_context * hash_data);
 
 int falcon_sign_dyn_finish(
     ConstBufferView signature, int sign_type, ConstBufferView privkey, shake256_context * hash_data, const void * nonce,
-    ConstBufferView useData
+    ConstBufferView useData, IRandomGenerator * rng
 );
 
 int falcon_verify_start(shake256_context * hash_data, ConstBufferView signature);

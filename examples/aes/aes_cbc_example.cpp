@@ -17,11 +17,11 @@ void cbc_encrypt(uint8_t key[], uint8_t data[], const int data_len, uint8_t iv[]
 {
     CIPHER_HANDLE context;
 
-    context = PQC_init_context_iv(PQC_CIPHER_AES, key, PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
+    context = PQC_context_init_iv(PQC_CIPHER_AES, key, PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
 
-    PQC_encrypt(context, PQC_AES_M_CBC, data, data_len);
+    PQC_symmetric_encrypt(context, PQC_AES_M_CBC, data, data_len);
 
-    PQC_close_context(context);
+    PQC_context_close(context);
 }
 
 // Party B decrypts the ciphertext using the same key and iv.
@@ -30,11 +30,11 @@ void cbc_decrypt(uint8_t key[], uint8_t data[], const int data_len, uint8_t iv[]
 {
     CIPHER_HANDLE context;
 
-    context = PQC_init_context_iv(PQC_CIPHER_AES, key, PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
+    context = PQC_context_init_iv(PQC_CIPHER_AES, key, PQC_AES_KEYLEN, iv, PQC_AES_IVLEN);
 
-    PQC_decrypt(context, PQC_AES_M_CBC, data, data_len);
+    PQC_symmetric_decrypt(context, PQC_AES_M_CBC, data, data_len);
 
-    PQC_close_context(context);
+    PQC_context_close(context);
 }
 
 

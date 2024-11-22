@@ -584,7 +584,7 @@ void falcon_sign_start(ConstBufferView nonce, shake256_context * hash_data)
 
 int falcon_sign_dyn_finish(
     ConstBufferView signature, int sign_type, ConstBufferView privkey, shake256_context * hash_data, const void * nonce,
-    ConstBufferView useData
+    ConstBufferView useData, IRandomGenerator * rng
 )
 {
     size_t sign_size = signature.size();
@@ -698,7 +698,7 @@ int falcon_sign_dyn_finish(
         }
 
         oldcw = set_fpu_cw(2);
-        sign_dyn(sv, a, b, A, B, hm, degIndex, ause);
+        sign_dyn(sv, a, b, A, B, hm, degIndex, ause, rng);
 
         set_fpu_cw(oldcw);
         es = (uint8_t *)signature.const_data();

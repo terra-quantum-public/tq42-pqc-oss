@@ -49,7 +49,7 @@ int main()
     */
     pqc_falcon_private_key priv_alice;
     pqc_falcon_public_key pub_alice;
-    PQC_generate_key_pair(
+    PQC_keypair_generate(
         PQC_CIPHER_FALCON, (uint8_t *)&pub_alice, sizeof(pub_alice), (uint8_t *)&priv_alice, sizeof(priv_alice)
     );
 

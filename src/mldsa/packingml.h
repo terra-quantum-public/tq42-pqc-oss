@@ -8,27 +8,25 @@ namespace mldsa
 {
 
 void pack_pkMldsa(
-    uint8_t pk[PQC_ML_DSA_PUBLIC_KEY_LEN], // CRYPTO_PUBLICKEYBYTES
-    const uint8_t rho[SEEDBYTES], const polyveck * t1
+    uint8_t pk[], // CRYPTO_PUBLICKEYBYTES
+    const uint8_t rho[SEEDBYTES], const poly * t1, uint8_t modeK
 );
 
 void pack_skMldsa(
-    uint8_t sk[PQC_ML_DSA_PRIVATE_KEY_LEN], const uint8_t rho[SEEDBYTES], const uint8_t tr[2 * SEEDBYTES],
-    const uint8_t key[SEEDBYTES], const polyveck * t0, const polyvecl * s1, const polyveck * s2
+    uint8_t sk[], const uint8_t rho[SEEDBYTES], const uint8_t tr[2 * SEEDBYTES], const uint8_t key[SEEDBYTES],
+    const poly * t0, const poly * s1, const poly * s2, uint8_t modeK
 );
 
-void pack_sigMldsa(
-    uint8_t sig[PQC_ML_DSA_SIGNATURE_LEN], const uint8_t c[2 * SEEDBYTES], const polyvecl * z, const polyveck * h
-);
+void pack_sigMldsa(uint8_t sig[], const uint8_t c[], const poly * z, const poly * h, uint8_t modeK);
 
-void unpack_pkMldsa(uint8_t rho[SEEDBYTES], polyveck * t1, const uint8_t pk[PQC_ML_DSA_PUBLIC_KEY_LEN]);
+void unpack_pkMldsa(uint8_t rho[SEEDBYTES], poly * t1, const uint8_t pk[], uint8_t modeK);
 
 void unpack_skMldsa(
-    uint8_t rho[SEEDBYTES], uint8_t tr[2 * SEEDBYTES], uint8_t key[SEEDBYTES], polyveck * t0, polyvecl * s1,
-    polyveck * s2, const uint8_t sk[PQC_ML_DSA_PRIVATE_KEY_LEN]
+    uint8_t rho[SEEDBYTES], uint8_t tr[2 * SEEDBYTES], uint8_t key[SEEDBYTES], poly * t0, poly * s1, poly * s2,
+    const uint8_t sk[], uint8_t modeK
 );
 
 
-int unpack_sigMldsa(uint8_t c[2 * SEEDBYTES], polyvecl * z, polyveck * h, const uint8_t sig[PQC_ML_DSA_SIGNATURE_LEN]);
+int unpack_sigMldsa(uint8_t c[], poly * z, poly * h, const uint8_t sig[], uint8_t modeK);
 
 } // namespace mldsa

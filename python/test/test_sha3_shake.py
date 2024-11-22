@@ -48,9 +48,9 @@ def shake_data(request):
 
 def test_sha3_shake_partial(shake_data: shake_test_data, pqc: ModuleType):
     # Init context of sha3 SHAKE hash function using library API
-    sha3 = pqc.PQC_init_context_hash(pqc.PQC_CIPHER_SHA3, shake_data.shake_algorithm())
+    sha3 = pqc.PQC_context_init_hash(pqc.PQC_CIPHER_SHA3, shake_data.shake_algorithm())
 
-    # In detail. There is a function PQC_add_data(). It allows you to add data to the buffer from which the hash is taken.
+    # In detail. There is a function PQC_hash_update(). It allows you to add data to the buffer from which the hash is taken.
     # It is important to understand that this function can be applied to one hash function object many times. That is, if
     # you need to take a hash from data of this type "1234567890", then you can add "1234" first, and then additionally add
     # "567890" and take the hash. And it won't be any different from taking the hash from "1234567890". Moreover, you can
@@ -61,28 +61,28 @@ def test_sha3_shake_partial(shake_data: shake_test_data, pqc: ModuleType):
     # message. Then add "567890", take the hash again. And show that it is equal to our default message. After that, we will create
     # a new hash function object and take the hash from "1234567890". And let's show that it is also equal to our default message.
 
-    pqc.PQC_add_data(sha3, shake_data.message[: len(shake_data.message) // 2])
-    out = pqc.PQC_get_hash(sha3, hash_size)
+    pqc.PQC_hash_update(sha3, shake_data.message[: len(shake_data.message) // 2])
+    out = pqc.PQC_hash_retrieve(sha3, hash_size)
 
     # So, now in out is hash of SHAKE256 from half of the data. It should not be equal to expected size
 
     assert out != shake_data.expected
 
-    pqc.PQC_add_data(sha3, shake_data.message[len(shake_data.message) // 2 :])
-    actual = pqc.PQC_get_hash(sha3, hash_size)
+    pqc.PQC_hash_update(sha3, shake_data.message[len(shake_data.message) // 2 :])
+    actual = pqc.PQC_hash_retrieve(sha3, hash_size)
 
     # `actual` is a hash of "1234567890" and should equal expected value
 
     assert actual == shake_data.expected
 
-    pqc.PQC_close_context(sha3)
+    pqc.PQC_context_close(sha3)
 
 
 def test_sha3_shake(shake_data: shake_test_data, pqc: ModuleType):
-    sha3_new = pqc.PQC_init_context_hash(pqc.PQC_CIPHER_SHA3, shake_data.shake_algorithm())
-    pqc.PQC_add_data(sha3_new, shake_data.message)
-    actual = pqc.PQC_get_hash(sha3_new, hash_size)
+    sha3_new = pqc.PQC_context_init_hash(pqc.PQC_CIPHER_SHA3, shake_data.shake_algorithm())
+    pqc.PQC_hash_update(sha3_new, shake_data.message)
+    actual = pqc.PQC_hash_retrieve(sha3_new, hash_size)
 
     assert actual == shake_data.expected
 
-    pqc.PQC_close_context(sha3_new)
+    pqc.PQC_context_close(sha3_new)

@@ -11,9 +11,20 @@ int main()
     MyFile << "-1234567890123456789qwertyuiopas";
     MyFile.close();
 
-    PQC_file_delete(filename); // delete the file safely
+    CIPHER_HANDLE context = PQC_context_init_randomsource();
+    if (context == PQC_BAD_CONTEXT)
+    {
+        std::cout << "Context intialization failed" << std::endl;
+    }
+
+    if (PQC_file_delete(context, filename) != PQC_OK) // delete the file safely
+    {
+        std::cout << "File removal failed" << std::endl;
+    }
 
     if (std::filesystem::is_regular_file(filename))
-        std::cout << "file wasn't deleted";
+    {
+        std::cout << "file wasn't deleted" << std::endl;
+    }
     return 0;
 }

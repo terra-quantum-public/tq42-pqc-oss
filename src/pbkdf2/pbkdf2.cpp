@@ -42,10 +42,10 @@ std::unique_ptr<uint8_t[]> hmac(
     if (password_length > b)
     {
         SHA3 sha3_variables_1(static_cast<int>(hash_length));
-        sha3_variables_1.add_data(ConstBufferView(charset, password_length));
+        sha3_variables_1.update(ConstBufferView(charset, password_length));
 
         for (size_t i = 0; i < l; i++)
-            acceptable_input[i] = sha3_variables_1.get_hash()[i];
+            acceptable_input[i] = sha3_variables_1.retrieve()[i];
 
         for (size_t i = l; i < b; i++)
             acceptable_input[i] = 0;
@@ -72,22 +72,22 @@ std::unique_ptr<uint8_t[]> hmac(
 
 
     SHA3 sha3_variables_2(static_cast<int>(hash_length));
-    sha3_variables_2.add_data(ConstBufferView(ipad_xor.get(), b));
-    sha3_variables_2.add_data(ConstBufferView(U, U_size));
+    sha3_variables_2.update(ConstBufferView(ipad_xor.get(), b));
+    sha3_variables_2.update(ConstBufferView(U, U_size));
     auto hash_result = std::make_unique<uint8_t[]>(l);
     for (size_t i = 0; i < l; i++)
-        hash_result.get()[i] = sha3_variables_2.get_hash()[i];
+        hash_result.get()[i] = sha3_variables_2.retrieve()[i];
 
     auto opad_xor = std::make_unique<uint8_t[]>(b); // bitwise XOR c opad
     for (size_t i = 0; i < b; i++)
         opad_xor.get()[i] = acceptable_input[i] ^ 0x5c;
 
     SHA3 sha3_variables_3(static_cast<int>(hash_length));
-    sha3_variables_3.add_data(ConstBufferView(opad_xor.get(), b));
-    sha3_variables_3.add_data(ConstBufferView(hash_result.get(), l));
+    sha3_variables_3.update(ConstBufferView(opad_xor.get(), b));
+    sha3_variables_3.update(ConstBufferView(hash_result.get(), l));
     auto final_output = std::make_unique<uint8_t[]>(l);
     for (size_t i = 0; i < l; i++)
-        final_output[i] = sha3_variables_3.get_hash()[i];
+        final_output[i] = sha3_variables_3.retrieve()[i];
 
     return final_output;
 }

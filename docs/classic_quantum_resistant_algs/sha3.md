@@ -55,13 +55,13 @@ API Overview
 
 Include: pqc/sha3.h
 
-### `PQC_init_context_hash`
+### `PQC_context_init_hash`
 
 **Function Signature:**
 
 
 ```cpp
-    CIPHER_HANDLE PQC_init_context_hash(uint32_t algorithm, uint32_t mode);
+    CIPHER_HANDLE PQC_context_init_hash(uint32_t algorithm, uint32_t mode);
 ```
 
 **Purpose:**
@@ -83,13 +83,13 @@ Include: pqc/sha3.h
 *   Otherwise: The function returns a "handle" to the created encryption context.
     
 
-### `PQC_add_data`
+### `PQC_hash_update`
 
 **Function Signature:**
 
 
 ```cpp
-    int PQC_add_data(CIPHER_HANDLE ctx, uint8_t* buffer, size_t length);
+    int PQC_hash_update(CIPHER_HANDLE ctx, uint8_t* buffer, size_t length);
 ```
 
 **Purpose:**
@@ -99,11 +99,11 @@ Include: pqc/sha3.h
 
 **Parameters:**
 
-*   `ctx`: This is the cryptographic context handle which would have been initialized by a previous call to a setup function (like `PQC_init_context_hash`).
+*   `ctx`: This is the cryptographic context handle which would have been initialized by a previous call to a setup function (like `PQC_context_init_hash`).
     
 *   `buffer` (input): This is a pointer to a block of data to be processed. The data type `uint8_t*` implies that it is a pointer to an array of bytes, since `uint8_t` is typically defined as an unsigned 8-bit integer, representing a byte.
     
-*   `length`: This is the size of the `buffer` array, indicating how much data (in bytes) from the buffer should be processed by this call to `PQC_add_data`.
+*   `length`: This is the size of the `buffer` array, indicating how much data (in bytes) from the buffer should be processed by this call to `PQC_hash_update`.
     
 
 **Return Values:**
@@ -113,7 +113,7 @@ Include: pqc/sha3.h
 *   `PQC_BAD_CIPHER`: An error code indicating an issue with the cryptographic context, such as an unknown or unsupported cipher algorithm. This likely means that the context referred to by `ctx` was not properly initialized with a supported cipher.
     
 
-The caller should check the return value after each call to this function to ensure the data was processed correctly. `PQC_add_data` function is being used for hashing data with SHA-3, the typical sequence would involve initializing a context with `PQC_init_context_hash`, calling `PQC_add_data` one or multiple times to process the data chunks, and subsequently finalizing the hash computation.
+The caller should check the return value after each call to this function to ensure the data was processed correctly. `PQC_hash_update` function is being used for hashing data with SHA-3, the typical sequence would involve initializing a context with `PQC_context_init_hash`, calling `PQC_hash_update` one or multiple times to process the data chunks, and subsequently finalizing the hash computation.
 
 ### `PQC_hash_size`
 
@@ -130,7 +130,7 @@ The caller should check the return value after each call to this function to ens
 
 **Parameters:**
 
-*   `ctx`: This is a handle to the initialized encryption context. This context should have been previously set up for a hash operation, likely by a call to a function like `PQC_init_context_hash`.
+*   `ctx`: This is a handle to the initialized encryption context. This context should have been previously set up for a hash operation, likely by a call to a function like `PQC_context_init_hash`.
     
 
 **Return Values:**
@@ -142,12 +142,12 @@ The caller should check the return value after each call to this function to ens
 
 Understanding the size of the output is crucial, especially when allocating memory to hold the hash result or when interfacing with other systems that expect a hash of a specific size. In the case of SHAKE modes, since the output size is variable, the size value returned by this function is not useful other than to indicate that the context has been correctly set up for a SHAKE mode (since it returns `0` for these modes).
 
-### `PQC_get_hash`
+### `PQC_hash_retrieve`
 
 **Function Signature:**
 
 ```cpp
-    int PQC_get_hash(CIPHER_HANDLE ctx, uint8_t* hash, size_t hash_length);
+    int PQC_hash_retrieve(CIPHER_HANDLE ctx, uint8_t* hash, size_t hash_length);
 ```
 
 **Purpose:**
@@ -172,11 +172,11 @@ Understanding the size of the output is crucial, especially when allocating memo
 *   `PQC_BAD_LEN`: This error is returned if the hash buffer length (`hash_length`) does not match the expected size of the hash, as determined by the context's configuration.
     
 
-The description clarifies that you can interleave calls to `PQC_add_data` (which adds data to be hashed) with `PQC_get_hash`. No matter how many times `PQC_add_data` has been called, each invocation of `PQC_get_hash` will produce a hash for all the data added to the context since its creation.
+The description clarifies that you can interleave calls to `PQC_hash_update` (which adds data to be hashed) with `PQC_hash_retrieve`. No matter how many times `PQC_hash_update` has been called, each invocation of `PQC_hash_retrieve` will produce a hash for all the data added to the context since its creation.
 
 **Usage Notes**:
 
-* Before calling `PQC_get_hash`, data should have been added to the context using `PQC_add_data`.
+* Before calling `PQC_hash_retrieve`, data should have been added to the context using `PQC_hash_update`.
     
 * The buffer pointed to by `hash` should be of appropriate size to store the hash. This means you should either:
     *   Use `PQC_hash_size` to obtain the fixed hash size for SHA-3 variants and allocate the buffer accordingly or,
@@ -185,13 +185,13 @@ The description clarifies that you can interleave calls to `PQC_add_data` (which
 * You should handle the returned value by checking for errors (`PQC_BAD_CIPHER`, `PQC_BAD_LEN`) and ensuring successful operation (`PQC_OK`).
     
 
-Each call to `PQC_get_hash` effectively gives a snapshot of the cumulative hash of the data processed by the context up to that point. The operation's correctness relies on the proper sequence of calls, correct buffer sizes, and the monitoring of return values for error handling.
+Each call to `PQC_hash_retrieve` effectively gives a snapshot of the cumulative hash of the data processed by the context up to that point. The operation's correctness relies on the proper sequence of calls, correct buffer sizes, and the monitoring of return values for error handling.
 
-### `PQC_close_context`
+### `PQC_context_close`
 
 **Function Signature:**
 ```cpp
-    int PQC_close_context(CIPHER_HANDLE ctx);
+    int PQC_context_close(CIPHER_HANDLE ctx);
  ```   
 
 **Purpose:**
@@ -209,13 +209,13 @@ Each call to `PQC_get_hash` effectively gives a snapshot of the cumulative hash 
 *   `PQC_OK`: This indicates that the operation was successful, signaling that the context has been closed and all associated resources have been freed.
     
 
-By calling `PQC_close_context`, users ensure that their program behaves responsibly with system resources. It is a standard best practice for C, which don't have automatic garbage collection, that every resource allocated should be paired with a corresponding deallocation.
+By calling `PQC_context_close`, users ensure that their program behaves responsibly with system resources. It is a standard best practice for C, which don't have automatic garbage collection, that every resource allocated should be paired with a corresponding deallocation.
 
 **Usage Notes**:
 
-* You should only call `PQC_close_context` once for each initialized context. Attempting to free an already freed context can lead to undefined behavior, including crashes.
+* You should only call `PQC_context_close` once for each initialized context. Attempting to free an already freed context can lead to undefined behavior, including crashes.
     
-* After `PQC_close_context` has been called with a particular context handle, that handle should not be used again unless it is reassigned by re-initializing a new context.
+* After `PQC_context_close` has been called with a particular context handle, that handle should not be used again unless it is reassigned by re-initializing a new context.
     
 
 Example

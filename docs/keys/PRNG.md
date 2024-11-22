@@ -61,19 +61,20 @@ API
 Include `pqc/random.h`
 
 
-### `PQC_random_from_pq_17`
+### `PQC_context_random_set_pq_17`
 
-is used to select the PQ17 PRNG as the randomness source for the library:
+is used to select the PQ17 PRNG as the randomness source for the context:
 
 **Function signature:**
 
 ```cpp
-int PQC_random_from_pq_17(const uint8_t* key, size_t key_len, const uint8_t* iv, size_t iv_len);
+size_t PQC_API PQC_context_random_set_pq_17(CIPHER_HANDLE ctx, const uint8_t * key, size_t key_len, const uint8_t * iv, size_t iv_len);
 ```
 
 This function initializes the PQ17 pseudo-random number generator with a specified AES (Advanced Encryption Standard) key and initialization vector (IV).
 
 **Parameters:**
+*   `ctx`: The encryption context handle.
 
 *   `key`: This is a pointer to the memory location where the AES key is stored, which the PQ17 algorithm will use. This should either point to a `pqc_aes_key` structure or a buffer of size `PQC_AES_KEYLEN`, which is defined as 32 bytes (256 bits).
     
@@ -87,44 +88,63 @@ This function initializes the PQ17 pseudo-random number generator with a specifi
 **Return values:**
 
 *   `PQC_OK`: Indicates the operation was successful and the PQ17 pseudo-random generator was initialized correctly.
+
+*   `PQC_BAD_CONTEXT`: `ctx` parameter is invalid.
     
 *   `PQC_BAD_LEN`: Indicates that an invalid length for either the key or the IV was passed to the function. The valid lengths are 32 bytes for the key and 16 bytes for the IV [1](https://www.geeksforgeeks.org/pseudo-random-number-generator-prng/).
 
+The initialization of the PRNG with `PQC_random_set_pq_17` influences the randomness source for subsequent operations within the context that require random data.
 
-The initialization of the PRNG with `PQC_random_from_pq_17` influences the randomness source for subsequent operations within the library that require random data.
-
-### `PQC_random_from_external`
+### `PQC_context_random_set_external`
 
 is used to set custom RNG as the randomness source for the library:
 
 ```cpp
-void PQC_random_from_external(void (* _get_external_random)(uint8_t * buf, size_t size) get_ext_random);
+size_t PQC_API PQC_context_random_set_external(CIPHER_HANDLE ctx, _get_external_random get_ext_random);
 ```    
 
 **Parameters:**
+*   `ctx`: The encryption context handle.
 
-*   `get_ext_random`: This is a pointer to the function which will be called for random bytes generation. On each call that function should fill the provided buffer `buf` with random bytes for the specified length `size`. 
+*   `get_ext_random`: This is a pointer to the function which will be called for random bytes generation. On each call that function should fill the provided buffer `buf` with random bytes for the specified length `size`. The function should return `PQC_OK` if operation was successfull. If function will return other value, the operation performed in the context will be aborted and return value will be `PQC_RANDOM_FAILURE`. Synchronization is not provided by the library when calling `get_ext_random`. It should provide neccessary synchronization itself in case it can be called from different threads.
 
+The initialization of the PRNG with `PQC_random_set_external` influences the randomness source for subsequent operations within the context that require random data.
 
-The initialization of the PRNG with `PQC_random_from_external` influences the randomness source for subsequent operations within the library that require random data.
+**Return values:**
 
-### `PQC_random_bytes`
-is used to obtain random bytes from the currently selected random number generator:
+*   `PQC_OK`: Indicates the operation was successful and the PQ17 pseudo-random generator was initialized correctly.
+
+*   `PQC_BAD_CONTEXT`: `ctx` parameter is invalid.
+
+### `PQC_context_random_get_bytes`
+is used to obtain random bytes from the currently selected random number generator of the context:
 
 ```cpp
-void PQC_random_bytes(void* buffer, size_t length);
+size_t PQC_API PQC_context_random_get_bytes(CIPHER_HANDLE ctx, void * buffer, size_t length);
 ```    
 
 **Parameters:**
+*   `ctx`: The encryption context handle. If one need to obtain random numbers without affecting other context, a "random source only" context can be created with `PQC_context_init_randomsource`.
 
 *   `buffer`: This is a pointer to the buffer where the random bytes will be stored.
     
 *   `length`: This indicates the number of random bytes that should be written to the buffer.
-    
 
 The function fills the provided buffer with random bytes for the specified length. These bytes could be used for various cryptographic operations requiring randomness such as key generation or nonces.
 
-The random number generator provided by TQ42 Cryptography is not inherently thread-safe, meaning that simultaneous access by multiple threads could lead to unpredictable results. In a multi-threaded program, the caller is responsible for ensuring that access to the random number generator is properly synchronized, such as through the use of mutexes or other synchronization mechanisms.
+The random number generator provided by TQ42 Cryptography is not inherently thread-safe, meaning that simultaneous access by multiple threads to generator in single context could lead to unpredictable results. In a multi-threaded program, the caller is responsible for ensuring that access to the random number generator is properly synchronized, such as through the use of mutexes or other synchronization mechanisms if a single context can be used as random source in multiple threads. Using different contexts in different threads is thread-safe.
+
+#### `PQC_context_init_randomsource`
+
+Function signature:
+
+```cpp
+CIPHER_HANDLE PQC_context_init_randomsource();
+```
+
+The `PQC_context_init_randomsource` function initializes an encryption context that can be used for random number generation only.
+
+This returns a `CIPHER_HANDLE`, a handle for the created encryption context, unless an error occurs, indicated by return codes such as `PQC_BAD_CIPHER`. Handle should be closed using `PQC_context_close` when it is not required any longer.
 
 Example
 -------

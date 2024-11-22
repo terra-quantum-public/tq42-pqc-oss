@@ -9,10 +9,11 @@
 #include <vector>
 
 #include <pqc/delete.h>
+#include <rng/random_generator.h>
 
 struct error
 {
     int code;
 };
 
-int file_delete(const char * filename);
+int file_delete(const char * filename, IRandomGenerator * rng);

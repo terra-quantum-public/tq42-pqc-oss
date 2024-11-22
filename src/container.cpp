@@ -10,38 +10,40 @@
 #include <aes.h>
 #include <buffer.h>
 #include <container.h>
-#include <rng/rng.h>
 #include <sha3.h>
 
 
-SymmetricKeyContainer::SymmetricKeyContainer()
+SymmetricKeyContainer::SymmetricKeyContainer(IRandomGenerator * rng)
 {
     for (int i = 0; i < PQC_SYMMETRIC_CONTAINER_NUM_KEYS; ++i)
     {
-        randombytes(_data.key_data[i].key);
+        rng->random_bytes(_data.key_data[i].key);
     }
 
     _data.creation_ts = std::time(nullptr);
 
     _mask = std::make_shared<Mask>();
-    randombytes(*_mask);
-
-    mask(&_data);
-}
-
-SymmetricKeyContainer::SymmetricKeyContainer(const uint8_t * data, const pqc_aes_key * key, const pqc_aes_iv * iv)
-{
-    memcpy(&_data, data, sizeof(_data));
-    decrypt(&_data, *key, *iv);
-
-    _mask = std::make_shared<Mask>();
-    randombytes(*_mask);
+    rng->random_bytes(*_mask);
 
     mask(&_data);
 }
 
 SymmetricKeyContainer::SymmetricKeyContainer(
-    std::shared_ptr<SymmetricKeyContainerFile> file, std::shared_ptr<pqc_aes_key> key, std::shared_ptr<pqc_aes_iv> iv
+    const uint8_t * data, const pqc_aes_key * key, const pqc_aes_iv * iv, IRandomGenerator * rng
+)
+{
+    memcpy(&_data, data, sizeof(_data));
+    decrypt(&_data, *key, *iv);
+
+    _mask = std::make_shared<Mask>();
+    rng->random_bytes(*_mask);
+
+    mask(&_data);
+}
+
+SymmetricKeyContainer::SymmetricKeyContainer(
+    std::shared_ptr<SymmetricKeyContainerFile> file, std::shared_ptr<pqc_aes_key> key, std::shared_ptr<pqc_aes_iv> iv,
+    IRandomGenerator * rng
 )
     : _file_master_key(key), _file_iv(iv), _file(file)
 {
@@ -49,7 +51,7 @@ SymmetricKeyContainer::SymmetricKeyContainer(
     decrypt(&_data, *key, *iv);
 
     _mask = std::make_shared<Mask>();
-    randombytes(*_mask);
+    rng->random_bytes(*_mask);
 
     mask(&_data);
 }
@@ -127,11 +129,11 @@ void SymmetricKeyContainer::encrypt(
     for (int key = 0; key < PQC_SYMMETRIC_CONTAINER_NUM_KEYS; ++key)
     {
         SHA3 hash(PQC_SHA3_256);
-        hash.add_data(ConstBufferView(master_key.key, PQC_AES_KEYLEN));
-        hash.add_data(ConstBufferView::from_single(key));
+        hash.update(ConstBufferView(master_key.key, PQC_AES_KEYLEN));
+        hash.update(ConstBufferView::from_single(key));
 
         pqc_aes_key local_key = {0};
-        memcpy(&local_key, hash.get_hash(), std::min((int)hash.hash_size(), PQC_AES_KEYLEN));
+        memcpy(&local_key, hash.retrieve(), std::min((int)hash.hash_size(), PQC_AES_KEYLEN));
 
         AES cipher(ConstBufferView::from_single(local_key), ConstBufferView::from_single(iv));
         BufferView dataBuf = BufferView(reinterpret_cast<uint8_t *>(&data->key_data[key]), sizeof(KeyData));
@@ -146,11 +148,11 @@ void SymmetricKeyContainer::decrypt(
     for (int key = 0; key < PQC_SYMMETRIC_CONTAINER_NUM_KEYS; ++key)
     {
         SHA3 hash(PQC_SHA3_256);
-        hash.add_data(ConstBufferView(master_key.key, PQC_AES_KEYLEN));
-        hash.add_data(ConstBufferView::from_single(key));
+        hash.update(ConstBufferView(master_key.key, PQC_AES_KEYLEN));
+        hash.update(ConstBufferView::from_single(key));
 
         pqc_aes_key local_key = {0};
-        memcpy(&local_key, hash.get_hash(), std::min((int)hash.hash_size(), PQC_AES_KEYLEN));
+        memcpy(&local_key, hash.retrieve(), std::min((int)hash.hash_size(), PQC_AES_KEYLEN));
 
         AES cipher(ConstBufferView::from_single(local_key), ConstBufferView::from_single(iv));
         BufferView dataBuf = BufferView(reinterpret_cast<uint8_t *>(&data->key_data[key]), sizeof(KeyData));

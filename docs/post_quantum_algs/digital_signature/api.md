@@ -35,81 +35,122 @@ Useful links:
 ### Signature scheme API overview
 
 
-#### `PQC_generate_key_pair`
+#### `PQC_keypair_generate`
 
 Function signature:
 
 ```cpp
-int PQC_generate_key_pair(   uint32_t cipher,
-                            uint8_t *public_key,
-                            size_t public_length,
-                            uint8_t *private_key,
+int PQC_keypair_generate(   uint32_t cipher, 
+                            uint8_t *public_key, 
+                            size_t public_length, 
+                            uint8_t *private_key, 
                             size_t private_length);
 ```
 
-This function is designed to create a public-private key pair for cryptographic operations.
+To begin using a post-quantum cryptography algorithm like McEliece for encrypting communications, you first need to generate a pair of public and private keys. The function `PQC_keypair_generate` facilitates this by accepting several parameters:
 
-**Parameters**
+*   `cipher`: This specifies the algorithm to be used. For instance, `PQC_CIPHER_MCELIECE` is used to indicate that the McEliece cipher will be utilized for the key generation process.
+    
+*   `public_key` and `private_key` (output parameters): These are pointers to memory locations where the generated keys will be stored. The keys are generated based on the algorithm selected with the `cipher` parameter. For McEliece, specific structures or buffers sized according to `PQC_MCELIECE_PUBLIC_KEYLEN` and `PQC_MCELIECE_PRIVATE_KEYLEN` should be used for public and private keys, respectively.
+    
+This function uses pseudo-random source provided by PQ17 algorithm with default parameters. It is recommended to use `PQC_context_keypair_generate` instead, as it allows control on source of randomness used for key generation. 
 
-*   `cipher`: A constant that selects the cipher algorithm to be used for the key pair generation. The only specified value here is `PQC_CIPHER_FALCON`, indicating the Falcon algorithm. Falcon is known for its security against quantum computer attacks, making it a forward-looking choice for digital security.
+
+The function returns `PQC_OK` on successful generation, with other codes indicating various failure modes such as unsupported cipher (`PQC_BAD_CIPHER`), incorrect key size (`PQC_BAD_LEN`), or internal errors (`PQC_INTERNAL_ERROR`).
+
+#### `PQC_context_init_asymmetric`
+
+Function signature:
+
+```cpp
+CIPHER_HANDLE PQC_API PQC_context_init_asymmetric(uint32_t cipher, uint8_t * public_key, size_t public_size, uint8_t * private_key, size_t private_size);
+```
+
+The `PQC_context_init_asymmetric` function initializes an encryption context for further operations like key encoding. The parameters include:
+
+*   `cipher`: Identifies the encryption algorithm to be used. [`Cipher constants`](common_functions.html#cipher)
     
-*   `private_key (out)`: This is a pointer to a memory location where the generated private key will be stored. The format of this private key must match the requirements of the chosen cipher, which, in the case of Falcon, could be a `pqc_falcon_private_key` structure or any buffer size equivalent to `PQC_FALCON_PRIVATE_KEYLEN`. The private key is critical for signing operations and must be kept securely.
+*   `public_key` and `public_size`: Point to the public key and its length, respectively. The key format and length should match the requirements of the selected cipher. Can be null.
+
+*   `private_key` and `private_size`: Point to the private key and its length, respectively. The key format and length should match the requirements of the selected cipher.Can be null.
     
-*   `public_key (out)`: A pointer to the storage location for the generated public key, following the same format requirements as the private key relative to the chosen cipher. For the Falcon algorithm, this could mean using the `pqc_falcon_public_key` structure or an appropriately sized buffer (`PQC_FALCON_PUBLIC_KEYLEN`). The public key will be used in the verification process of signatures and can be distributed openly.
+If pointer to a key is null context will be created without corresponding key. This can be usefull when you need only one key for desired operation (i.e. only private key is required to sign document, and only public key is required to verify it). In order to generate a keypair first create a context with both keys not set, and than create a key pair in context by calling `PQC_context_keypair_generate`.
+
+This returns a `CIPHER_HANDLE`, a handle for the created encryption context, unless an error occurs, indicated by return codes such as `PQC_BAD_CIPHER`. Handle should be closed using `PQC_context_close` when it is not required any longer.
+
+#### `PQC_context_keypair_generate`
+
+Function signature:
+
+```cpp
+int PQC_context_keypair_generate(CIPHER_HANDLE ctx);
+```
+
+To begin using a post-quantum cryptography algorithm like McEliece for encrypting communications, you first need to generate a pair of public and private keys. The function `PQC_context_keypair_generate` facilitates this by accepting several parameters:
+
+*   `ctx`: The encryption context handle.
+    
+This function uses pseudo-random source selected for given context. If not set, it will use PQ17 algorithm with default parameters. Use `PQC_context_random_set_pq_17` or `PQC_context_random_set_external` to select desired source of randomness. Keys will be stored in context and can be used from there. Otherwise, they can be extracted with `PQC_context_get_keypair` or `PQC_context_get_public_key` functions. If context had keys set before they will be overwritten.
+
+The function returns `PQC_OK` on successful generation, with other codes indicating various failure modes such as unsupported cipher (`PQC_BAD_CIPHER`), external random generator error (`PQC_RANDOM_FAILURE`), or internal errors (`PQC_INTERNAL_ERROR`).
+
+#### `PQC_context_get_keypair`
+
+Function signature:
+
+```cpp
+int PQC_context_get_keypair(CIPHER_HANDLE ctx, 
+                            uint8_t *public_key, 
+                            size_t public_length, 
+                            uint8_t *private_key, 
+                            size_t private_length);
+```
+
+This function can be used to extract both public and private keys from the context. Parameters are:
+
+*   `ctx`: The encryption context handle.
+    
+*   `public_key` and `private_key` (output parameters): These are pointers to memory locations where the keys will be stored.
+
+* 	`public_length` and `private_length`: Length of buffer available for storing public and private keys repectly. Buffer size should match key size for algorithm used by given context. 
+    
+The function returns `PQC_OK` on success, with other codes indicating various failure modes such as incorrect context handle (`PQC_BAD_CONTEXT`), incorrect key size (`PQC_BAD_LEN`). If public or private key is not set in context function will return `PQC_KEY_NOT_SET`.
+
+#### `PQC_context_get_public_key`
+
+Function signature:
+
+```cpp
+int PQC_context_get_public_key(CIPHER_HANDLE ctx, 
+                               uint8_t *public_key, 
+                               size_t public_length);
+```
+
+This function can be used to extract public key from the context. Parameters are:
+
+*   `ctx`: The encryption context handle.
+    
+*   `public_key` (output parameter): Pointer to memory location where the public key will be stored.
+
+* 	`public_length`: Length of buffer available for storing public keys. Buffer size should match key size for algorithm used by given context. 
+    
+The function returns `PQC_OK` on success, with other codes indicating various failure modes such as incorrect context handle (`PQC_BAD_CONTEXT`), incorrect key size (`PQC_BAD_LEN`). If public key is not set in context function will return `PQC_KEY_NOT_SET`.
     
 
-**Return Values**
-
-*   `PQC_OK`: Indicates that the operation was successful and the key pair was generated as expected.
-    
-*   `PQC_BAD_CIPHER`: This return value suggests that the specified cipher is unknown or unsupported by the function, hinting at a potential typo or an attempt to use an algorithm not implemented in the library.
-    
-*   `PQC_BAD_LEN`: Returned if the sizes of the provided buffers for the private or public keys do not meet the requirements for the selected cipher algorithm. This could be due to incorrect buffer initialization prior to calling the function.
-    
-*   `PQC_INTERNAL_ERROR`: Signifies an error occurred during the operation of the cipher algorithm. This could be the result of a variety of issues, including, but not limited to, hardware faults, memory corruption, or bugs within the cipher's implementation.
-    
-
-#### `PQC_init_context`
+#### `PQC_signature_create`
 
 Function signature:
 ```cpp
-CIPHER_HANDLE PQC_init_context(uint32_t cipher, const uint8_t* key, size_t key_length);
+int PQC_signature_create(CIPHER_HANDLE ctx, uint8_t* buffer, size_t length, uint8_t* signature, size_t signature_len);
 ```
 
 **Purpose**
 
-This function initializes a cryptographic context that is needed for performing encryption, decryption, or digital signing operations. The context is generated based on the provided private key and the selected cipher algorithm.
+To create a digital signature for a specified message using a previously initialized encryption context. This context encapsulates the cryptographic settings and should have private key set.
 
 **Parameters**
 
-*   `cipher`: A constant used to select the signature (or encryption) algorithm. The function supports specific values, one of which is `PQC_CIPHER_FALCON`, indicating the Falcon algorithm. Falcon is known for its security against quantum computer attacks, emphasizing the function's reach towards future-proof cryptography.
-    
-*   `key`: A pointer to the private key, which is used to initialize the cryptographic context. The format and size of this key must comply with the standards of the selected cipher. For Falcon, specifically, the key could be structured as a `pqc_falcon_private_key` or simply as a buffer of size `PQC_FALCON_PRIVATE_KEYLEN`. This parameter is critical as it directly influences the security and efficacy of the cryptographic operations executed within the context.
-    
-*   `key_length`: This parameter signifies the length of the private key. It's crucial that this length matches the expected size for the selected cipher algorithm to ensure proper initialization and operation of the cryptographic context. For the Falcon cipher, this length would correspond to the value of `PQC_FALCON_PRIVATE_KEYLEN`.
-    
-
-**Return Values**
-
-*   `PQC_BAD_CIPHER`: This return code indicates an error has occurred during the context initialization process. Specifically, it signals that either the specified cipher is not supported (unknown or unsupported cipher) or the size of the provided private key does not match what is expected for the specified cipher. This error serves as a critical check to ensure that the initialization of the cryptographic operations can only proceed with valid and supported configurations.
-    
-*   **Otherwise (Handle of Created Encryption Context)**: If the initialization is successful, the function returns a handle to the newly created encryption context. This handle is then used for various cryptographic operations, encapsulating the specifics of the algorithm and key used during its creation. It effectively represents an operational state that can be passed to functions requiring a cryptographic context.
-    
-
-#### `PQC_sign`
-
-Function signature:
-```cpp
-int PQC_sign(CIPHER_HANDLE ctx, uint8_t* buffer, size_t length, uint8_t* signature, size_t signature_len);
-```
-
-**Purpose**
-
-To create a digital signature for a specified message using a previously initialized encryption context. This context encapsulates the cryptographic settings and keys.
-
-**Parameters**
-
-*   `ctx`: This is a handle to an encryption context that has been initialized earlier. The context must be set up with the correct cipher and key for signing operations. It represents the state and configurations needed for the cryptographic operation.
+*   `ctx`: This is a handle to an encryption context that has been initialized earlier. The context must be set up with the correct cipher and private key for signing operations. It represents the state and configurations needed for the cryptographic operation.
     
 *   `buffer` (in): A pointer to the start of the message that is to be signed. This message is the input for which the digital signature will be generated. The content here is not modified by the function.
     
@@ -119,6 +160,7 @@ To create a digital signature for a specified message using a previously initial
     
 *   `signature_len`: Specifies the length of the `signature` buffer. It is critical that this length is correctly set to accommodate the signature generated by the algorithm in use.
     
+This function uses pseudo-random source selected for given context. If not set, it will use PQ17 algorithm with default parameters. Use `PQC_context_random_set_pq_17` or `PQC_context_random_set_external` to select desired source of randomness.
 
 **Return Values**
 
@@ -132,15 +174,16 @@ To create a digital signature for a specified message using a previously initial
     
 *   `PQC_BAD_LEN`: Indicates a mismatch in the expected size of the signature. The `signature_len` might not match what is expected by the used algorithm, possibly leading to partial or failed signature writes.
     
+*	`PQC_RANDOM_FAILURE`: External random source returns error.
 
-#### `PQC_verify`
+*	`PQC_KEY_NOT_SET`: Private key was not set in context
+
+#### `PQC_signature_verify`
 
 Function signature:
 
 ```cpp
-int PQC_verify(  uint32_t cipher,
-                const uint8_t* public_key,
-                size_t public_keylen,
+int PQC_signature_verify(CIPHER_HANDLE ctx,
                 const uint8_t* buffer,
                 size_t length,
                 const uint8_t* signature,
@@ -150,15 +193,13 @@ int PQC_verify(  uint32_t cipher,
 
 **Purpose**
 
-The primary purpose of `PQC_verify` is to validate a digital signature against a message using the signer's public key. Successful verification indicates that the message has not changed since it was signed and that it was signed by the holder of the corresponding private key.
+The primary purpose of `PQC_signature_verify` is to validate a digital signature against a message using the signer's public key. Successful verification indicates that the message has not changed since it was signed and that it was signed by the holder of the corresponding private key.
 
 **Parameters**
 
 *   `cipher`: This parameter identifies the cryptographic algorithm used for the signature. The function supports specific ciphers, such as `PQC_CIPHER_FALCON` for the Falcon signature algorithm, designed to be secure against quantum computer attacks.
     
-*   `public_key` (in): A pointer to the public key used for verification. The format and size of this public key must be compatible with the selected cipher. For Falcon, it could be a structured type (`pqc_falcon_public_key`) or a buffer of a specific size (`PQC_FALCON_PUBLIC_KEYLEN`).
-    
-*   `public_keylen`: The actual length of the public key in bytes. This length must correspond to the expected size for the specified cipher algorithm.
+*   `ctx`: This is a handle to an encryption context that has been initialized earlier. It should have public key set.
     
 *   `buffer` (in): Points to the original message that was signed. The integrity of this message is what's being verified against the signature.
     
@@ -175,25 +216,28 @@ The primary purpose of `PQC_verify` is to validate a digital signature against a
     
 *   `PQC_BAD_SIGNATURE`: The verification has failed; the provided signature does not match the given message when using the specified public key. This could indicate tampering or misalignment in the verification process.
     
-*   `PQC_BAD_CONTEXT`: Suggests that the function encountered an improperly initialized context or parameters not set up correctly, although this specific error is less common in pure verification functions that do not require an extensive context as signing might.
+*   `PQC_BAD_CONTEXT`: Suggests that the function encountered an improperly initialized context or parameters not set up correctly.
     
-*   `PQC_BAD_CIPHER`: The specified cipher algorithm is unknown or unsupported. This indicates that the cipher parameter was not a valid choice or the implementation does not support it.
-    
+*	`PQC_BAD_CIPHER`: Function was called for context configured with algorithm that do not support digital signature operations.	
+
 *   `PQC_BAD_LEN`: The length of the public key does not match what is expected by the selected cryptographic cipher. This error might also reference an incorrect signature length in some implementations or descriptions.
     
+*	`PQC_KEY_NOT_SET`: Public key was not set in context	
+	
+*   `PQC_INTERNAL_ERROR`: Signifies that an internal error occurred during the signing operation. This could be due to various reasons, including failures in the cryptographic library or resources.	
 
-#### `PQC_close_context`
+#### `PQC_context_close`
 
 Function signature:
 
 ```cpp
-int PQC_close_context(CIPHER_HANDLE ctx);
+int PQC_context_close(CIPHER_HANDLE ctx);
 ```
 
 
 **Purpose**
 
-The primary aim of the `PQC_close_context` function is to clean up and securely release all resources associated with a given cryptographic context. This includes memory, cryptographic keys, and any other data that were allocated or initialized as part of the context.
+The primary aim of the `PQC_context_close` function is to clean up and securely release all resources associated with a given cryptographic context. This includes memory, cryptographic keys, and any other data that were allocated or initialized as part of the context.
 
 **Parameters**
 

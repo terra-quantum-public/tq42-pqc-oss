@@ -5,8 +5,10 @@ from test import pqc
 
 
 def test_symmetric_container(pqc):
+    ctx = pqc.PQC_context_init_randomsource()
+    
     # Creating a symmetric key container for AES encryption.
-    new_container = pqc.PQC_symmetric_container_create()
+    new_container = pqc.PQC_symmetric_container_create(ctx)
 
     # Assert the size is not empty
     size = pqc.PQC_symmetric_container_size(new_container)
@@ -37,6 +39,7 @@ def test_symmetric_container(pqc):
         assert False, f"An unexpected error occurred while retrieving the key under normal conditions: {e}"
 
     pqc.PQC_symmetric_container_close(new_container)
+    pqc.PQC_context_close(ctx)
 
 
 # In this test, we will create a container, transform it into a special string of bytes,
@@ -44,7 +47,9 @@ def test_symmetric_container(pqc):
 
 
 def test_symmetric_container_from_string(pqc):
-    new_container = pqc.PQC_symmetric_container_create()
+    ctx = pqc.PQC_context_init_randomsource()
+        
+    new_container = pqc.PQC_symmetric_container_create(ctx)
 
     size = pqc.PQC_symmetric_container_size(new_container)
 
@@ -82,7 +87,7 @@ def test_symmetric_container_from_string(pqc):
 
     pqc.PQC_symmetric_container_close(new_container)  # delete old container
 
-    container_a = pqc.PQC_symmetric_container_from_data(container_data, creation_key, creation_iv)
+    container_a = pqc.PQC_symmetric_container_from_data(ctx, container_data, creation_key, creation_iv)
 
     testKey2 = pqc.PQC_symmetric_container_get_key(container_a, 0, 100, pqc.PQC_CIPHER_AES, pqc.PQC_AES_M_ECB)
     version2 = pqc.PQC_symmetric_container_get_version(container_a)
@@ -95,13 +100,16 @@ def test_symmetric_container_from_string(pqc):
     assert expiration_ts1 == expiration_ts2
 
     pqc.PQC_symmetric_container_close(container_a)  # delete container
+    pqc.PQC_context_close(ctx)
 
 
 # In this test, we will write the container to a file and extract the record from the file.
 
 
 def test_symmetric_container_file_io(pqc):
-    new_container = pqc.PQC_symmetric_container_create()
+    ctx = pqc.PQC_context_init_randomsource()
+    
+    new_container = pqc.PQC_symmetric_container_create(ctx)
 
     # Now let's try to save the container to a file.
     # You need to understand that you should provide an unique filename to avoid possible collisions.
@@ -118,7 +126,7 @@ def test_symmetric_container_file_io(pqc):
 
     pqc.PQC_symmetric_container_close(new_container)
 
-    container_io = pqc.PQC_symmetric_container_open("test_symmetric_container_file_io-1.pqc", "password", "salt")
+    container_io = pqc.PQC_symmetric_container_open(ctx, "test_symmetric_container_file_io-1.pqc", "password", "salt")
     testKey2 = pqc.PQC_symmetric_container_get_key(container_io, 0, 100, pqc.PQC_CIPHER_AES, pqc.PQC_AES_M_OFB)
     version2 = pqc.PQC_symmetric_container_get_version(container_io)
     creation_ts2 = pqc.PQC_symmetric_container_get_creation_time(container_io)
@@ -129,13 +137,19 @@ def test_symmetric_container_file_io(pqc):
     assert version1 == version2
     assert creation_ts1 == creation_ts2
     assert expiration_ts1 == expiration_ts2
+    
+    pqc.PQC_context_close(ctx)
 
 
 def test_symmetric_container_file_delete(pqc):
-    new_container = pqc.PQC_symmetric_container_create()
+    ctx = pqc.PQC_context_init_randomsource()
+    
+    new_container = pqc.PQC_symmetric_container_create(ctx)
 
     pqc.PQC_symmetric_container_save_as(new_container, "test_symmetric_container_file_delete.pqc", "password", "salt")
 
     pqc.PQC_symmetric_container_close(new_container)
 
-    pqc.PQC_symmetric_container_delete("test_symmetric_container_file_delete.pqc")
+    pqc.PQC_symmetric_container_delete(ctx, "test_symmetric_container_file_delete.pqc")
+
+    pqc.PQC_context_close(ctx)
