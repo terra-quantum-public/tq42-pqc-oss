@@ -118,4 +118,4 @@ Below you may find the reference to the all API methods or examples that exist i
 ## Common functions
 - [`PQC_cipher_get_length`](common_functions.html#pqc_cipher_get_length)
 - [`PQC_context_get_length`](common_functions.html#pqc_context_get_length)
-- [Constants](common_functions.html#сonstants)
+- [Constants](common_functions.html#constants)

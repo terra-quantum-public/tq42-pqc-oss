@@ -60,7 +60,7 @@ size_t PQC_API PQC_context_get_length(CIPHER_HANDLE context, uint32_t type);
 *   `0`: Indicates an error, such as an invalid context or type.
     
 
-## Сonstants
+## Constants
 
 ### Cipher:
 

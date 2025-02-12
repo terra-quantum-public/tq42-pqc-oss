@@ -66,7 +66,7 @@ size_t PQC_API PQC_pbkdf_2(
 *   `key_length`: The length of the key buffer.
 *   `master_key`:  Buffer for storing the derived key.
 *   `master_key_length`: Define the length of the master key to be derived.
-*   `salt`: Salt value used in file encryption. It’s recommended to use a constant specific to the application for enhanced security.
+*   `salt`: Salt value used in file encryption. It's recommended to use a constant specific to the application for enhanced security.
 *   `salt_length`: The length of the salt.
 *   `iterations`: Number of iterations, positive integer value.
     

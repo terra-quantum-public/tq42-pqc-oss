@@ -38,7 +38,7 @@ public:
     void ecb_decrypt(const BufferView & data);
 
     // CBC
-    // buffer size MUST be mutile of AES_BLOCKLEN;
+    // buffer size MUST be multiple of AES_BLOCKLEN;
     // NOTES: you need to set IV in ctx via AES_init_ctx_iv() or AES_ctx_set_iv()
     //        no IV should ever be reused with the same key
     void cbc_encrypt_buffer(const BufferView & data);

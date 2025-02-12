@@ -9,7 +9,7 @@
 // OFB
 
 // OFB  takes a fixed length iv, fixed-length key and
-// fixed-length plaintext. Plaintext size MUST be mutile of AES_BLOCKLEN;
+// fixed-length plaintext. Plaintext size MUST be multiple of AES_BLOCKLEN;
 // Decryption works in the same way
 
 // Party A encrypts its plaintext using a key and iv. Then data, its length, key and iv must be

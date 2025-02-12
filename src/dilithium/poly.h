@@ -54,6 +54,4 @@ void poly_uniform_etaMldsa(poly * a, const uint8_t seed[2 * SEEDBYTES], uint16_t
 
 void poly_uniform_gamma1Mldsa(poly * a, const uint8_t seed[2 * SEEDBYTES], uint16_t nonce);
 
-void poly_challengeMldsa(poly * c, const uint8_t seed[], uint8_t modeK);
-
 } // namespace dilithium

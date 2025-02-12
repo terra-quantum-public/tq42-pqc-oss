@@ -282,3 +282,71 @@ INSTANTIATE_TEST_SUITE_P(
     ),
     TestDataToString
 );
+
+class SigningWithContextTestSuite : public testing::TestWithParam<Signing_test_data>
+{
+public:
+    uint32_t cipher() { return GetParam()._cipher; }
+    size_t private_size() { return PQC_cipher_get_length(cipher(), PQC_LENGTH_PRIVATE); }
+    size_t public_size() { return PQC_cipher_get_length(cipher(), PQC_LENGTH_PUBLIC); }
+    size_t signature_size() { return PQC_cipher_get_length(cipher(), PQC_LENGTH_SIGNATURE); }
+};
+
+TEST_P(SigningWithContextTestSuite, CHECK_CONTEXT_SIZE)
+{
+    std::vector<uint8_t> public_key(public_size(), 0);
+
+    CIPHER_HANDLE handle = PQC_context_init_asymmetric(cipher(), public_key.data(), public_key.size(), nullptr, 0);
+
+    std::vector<uint8_t> ctx(300, 0);
+    EXPECT_EQ(PQC_context_set_iv(handle, ctx.data(), ctx.size()), PQC_BAD_LEN);
+
+    PQC_context_close(handle);
+}
+
+TEST_P(SigningWithContextTestSuite, SIGN_VERIFY)
+{
+    std::vector<uint8_t> public_key(public_size(), 0);
+    std::vector<uint8_t> signature(signature_size(), 0);
+
+    CIPHER_HANDLE alice = PQC_context_init_asymmetric(cipher(), nullptr, 0, nullptr, 0);
+    EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
+
+    EXPECT_EQ(PQC_context_keypair_generate(alice), PQC_OK) << "key generation should succeed";
+
+    EXPECT_EQ(PQC_context_get_public_key(alice, public_key.data(), public_key.size()), PQC_OK)
+        << "PQC_context_get_public_key should return OK";
+
+    CIPHER_HANDLE bob = PQC_context_init_asymmetric(cipher(), public_key.data(), public_key.size(), nullptr, 0);
+    EXPECT_NE(bob, PQC_BAD_CIPHER) << "context initialization should pass";
+
+    char message[] = "The quick brown fox jumps over the lazy dog.";
+
+    const size_t message_len = strlen(message) + 1;
+
+    std::vector<uint8_t> ctx(200, 5);
+    EXPECT_EQ(PQC_context_set_iv(alice, ctx.data(), ctx.size()), PQC_OK);
+    EXPECT_EQ(PQC_context_set_iv(bob, ctx.data(), ctx.size()), PQC_OK);
+
+    EXPECT_EQ(PQC_signature_create(alice, (uint8_t *)message, message_len, signature.data(), signature.size()), PQC_OK)
+        << "signing should succeed";
+
+    EXPECT_EQ(PQC_signature_verify(bob, (uint8_t *)message, message_len, signature.data(), signature.size()), PQC_OK)
+        << "signature should match";
+
+    ctx[0] = 0;
+    EXPECT_EQ(PQC_context_set_iv(bob, ctx.data(), ctx.size()), PQC_OK);
+    EXPECT_NE(PQC_signature_verify(bob, (uint8_t *)message, message_len, signature.data(), signature.size()), PQC_OK)
+        << "signature shouldn't match";
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Asymmetric, SigningWithContextTestSuite,
+    testing::Values(
+        TEST_DATA(PQC_CIPHER_SLH_DSA_SHAKE_128F), TEST_DATA(PQC_CIPHER_SLH_DSA_SHAKE_128S),
+        TEST_DATA(PQC_CIPHER_SLH_DSA_SHAKE_192F), TEST_DATA(PQC_CIPHER_SLH_DSA_SHAKE_192S),
+        TEST_DATA(PQC_CIPHER_SLH_DSA_SHAKE_256F), TEST_DATA(PQC_CIPHER_SLH_DSA_SHAKE_256S),
+        TEST_DATA(PQC_CIPHER_ML_DSA_44), TEST_DATA(PQC_CIPHER_ML_DSA_65), TEST_DATA(PQC_CIPHER_ML_DSA_87)
+    ),
+    TestDataToString
+);

@@ -133,7 +133,7 @@ public:
 
     uint64_t load_64_be(size_t index) const { return load_64_be_offset(index << 3); }
 
-    /// `offset` — byte offset
+    /// `offset` - byte offset
     uint64_t load_64_le_offset(size_t offset) const
     {
 #ifndef NDEBUG
@@ -150,7 +150,7 @@ public:
                ((uint64_t)data[offset + 7] << 56);
     }
 
-    /// `offset` — byte offset
+    /// `offset` - byte offset
     uint64_t load_64_be_offset(size_t offset) const
     {
 #ifndef NDEBUG
@@ -320,7 +320,7 @@ public:
 
     void store_64_le(size_t index, uint64_t value) const { store_64_le_offset(index << 3, value); }
 
-    /// `offset` — byte offset
+    /// `offset` - byte offset
     void store_64_le_offset(size_t offset, uint64_t value) const
     {
 #ifndef NDEBUG
@@ -342,7 +342,7 @@ public:
 
     void store_64_be(size_t index, uint64_t value) const { store_64_be_offset(index << 3, value); }
 
-    /// `offset` — byte offset
+    /// `offset` - byte offset
     void store_64_be_offset(size_t offset, uint64_t value) const
     {
 #ifndef NDEBUG

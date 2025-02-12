@@ -43,12 +43,13 @@ jobs:
           architecture: x86_64
 
         - os: Linux
-          image: ubuntu-latest
+          image: ubuntu-22.04
           configuration: Release
           sanitize: ON
           coverage: OFF
           haswell: OFF
           compiler: GCC
+          gcc: 11
           architecture: x86_64
 
         - os: Linux

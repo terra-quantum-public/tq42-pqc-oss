@@ -11,7 +11,7 @@ The Key Encapsulation Mechanisms (KEMs) for post-quantum algorithms serve as cry
 
 The operational framework of a KEM in post-quantum cryptography involves three main algorithms:
 
-1.  **Key Generation (Generate):** This algorithm is responsible for generating a pair of keys—an openly shared public key and a privately kept secret key.
+1.  **Key Generation (Generate):** This algorithm is responsible for generating a pair of keys - an openly shared public key and a privately kept secret key.
     
 2.  **Encapsulation (Encapsulate):** In this step, a sender utilizes the recipient's public key to encapsulate a shared secret, resulting in a pair consisting of a ciphertext (or "encapsulation") and a shared secret value, enabling the derivation of encryption keys.
     

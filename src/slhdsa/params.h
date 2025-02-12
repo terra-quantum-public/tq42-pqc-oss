@@ -15,6 +15,8 @@ namespace slh_dsa
 
 #define PQC_SLH_DSA_SIGN_RANDOMIZED 1
 
+constexpr size_t MAX_CONTEXT_LEN = 255;
+
 struct ParameterSet
 {
     constexpr ParameterSet(
@@ -67,6 +69,21 @@ inline void function_Hmsg(
     shake256_hash.retrieve(hash);
 }
 
+inline void function_Hmsg_ctx(
+    const ConstBufferView & R, const ConstBufferView & PKseed, const ConstBufferView & PKroot,
+    const ConstBufferView & header, const ConstBufferView & ctx, const ConstBufferView & M, const BufferView & hash
+)
+{
+    SHA3 shake256_hash(PQC_SHAKE_256);
+    shake256_hash.update(R);
+    shake256_hash.update(PKseed);
+    shake256_hash.update(PKroot);
+    shake256_hash.update(header);
+    shake256_hash.update(ctx);
+    shake256_hash.update(M);
+    shake256_hash.retrieve(hash);
+}
+
 inline void function_PRF(
     const ConstBufferView & PKseed, const ConstBufferView & ADRS, const ConstBufferView & SKseed,
     const BufferView & hash
@@ -86,6 +103,20 @@ inline void function_PRFmsg(
     SHA3 shake256_hash(PQC_SHAKE_256);
     shake256_hash.update(SKprf);
     shake256_hash.update(opt_rand);
+    shake256_hash.update(M);
+    shake256_hash.retrieve(hash);
+}
+
+inline void function_PRFmsg_ctx(
+    const ConstBufferView & SKprf, const ConstBufferView & opt_rand, const ConstBufferView & header,
+    const ConstBufferView & ctx, const ConstBufferView & M, const BufferView & hash
+)
+{
+    SHA3 shake256_hash(PQC_SHAKE_256);
+    shake256_hash.update(SKprf);
+    shake256_hash.update(opt_rand);
+    shake256_hash.update(header);
+    shake256_hash.update(ctx);
     shake256_hash.update(M);
     shake256_hash.retrieve(hash);
 }

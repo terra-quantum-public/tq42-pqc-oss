@@ -22,12 +22,14 @@ jobs:
         python3 -c 'if True:
           import difflib
           import os
+          import re
           import subprocess
           import sys
 
           import gitignorefile
 
           gi = gitignorefile.Cache()
+          r_pattern = re.compile("[^\\u0000-\\u00FF]", re.U)
           errors = 0
           for root, directories, names in os.walk(os.getcwd()):
             directories[:] = [d for d in directories if d != ".git" and not gi(os.path.join(root, d))]
@@ -53,6 +55,16 @@ jobs:
                   elif tag == "delete":
                     print(f"::error file={rp},line={i1+1},endLine={i2}::{rp}:{i1+1} Please remove line(s) {i1+1}-{i2}")
                     errors += 1
+
+              if os.path.splitext(name)[1] not in (".ico", ".png", ".ent", ".shake") and not gi(path):
+                with open(path) as f:
+                  for row_n, row in enumerate(f, start = 1):
+                    found = r_pattern.findall(row)
+                    if found:
+                      rp = os.path.relpath(path)
+                      print(f"Error: Found symbols {found} in {rp}:")
+                      print(f"Line {row_n}: {row}")
+                      errors += 1
 
           sys.exit(int(bool(errors)))
         '

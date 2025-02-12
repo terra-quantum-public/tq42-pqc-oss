@@ -1,14 +1,21 @@
 #pragma once
+
+#include <cstddef>
+#include <cstdint>
+
 #include <pqc/dilithium.h>
 
 #define DILITHIUM_RANDOMIZED_SIGNING
+
+using std::int32_t;
+using std::size_t;
+using std::uint8_t;
 
 #define SEEDBYTES 32
 #define CRHBYTES 48
 #define N 256
 #define Q 8380417
 #define D 13
-#define ROOT_OF_UNITY 1753
 
 #define POLYT1_PACKEDBYTES 320
 #define POLYT0_PACKEDBYTES 416

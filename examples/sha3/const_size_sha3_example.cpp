@@ -3,6 +3,7 @@
 // Look shake_sha3_example.cpp to use arbitary size of hash.
 #include <cstring>
 #include <iostream>
+#include <memory>
 
 #include <pqc/sha3.h>
 
@@ -50,10 +51,10 @@ int main(void)
         std::cout << "\nERROR!!! Returned value must be equal to hash size of this mode!" << std::endl;
 
     // create memory space for hash result
-    uint8_t * hash = new uint8_t[hash_size];
+    std::shared_ptr<uint8_t[]> hash(new uint8_t[hash_size]);
 
     size_t pqc_hash_retrieve_return = PQC_hash_retrieve(
-        sha3, hash, hash_size
+        sha3, hash.get(), hash_size
     ); // PQC_hash_retrieve gets hash from message. pqc_hash_retrieve_return should be equal to PQC_OK
     if (pqc_hash_retrieve_return != PQC_OK)
         std::cout << "\nERROR!!! Returned value must be PQC_OK if operation was done successfully";
@@ -65,7 +66,7 @@ int main(void)
 
 
     // Verification. Hash should be similar with constant digest message for this initial message
-    if (memcmp(hash, expected, sha_len / 8) == 0)
+    if (memcmp(hash.get(), expected, sha_len / 8) == 0)
     {
         std::cout << "Verification successfull" << std::endl;
     }
@@ -73,9 +74,6 @@ int main(void)
     {
         std::cout << "Verification failed" << std::endl;
     }
-
-    // Free memory
-    delete[] hash;
 
     return 0;
 }

@@ -3,9 +3,7 @@
 #include <dilithium/dilithium.h>
 #include <falcon/falcon_main.h>
 #include <mceliece/mceliece.h>
-#include <mldsa/ml-dsa_44.h>
-#include <mldsa/ml-dsa_65.h>
-#include <mldsa/ml-dsa_87.h>
+#include <mldsa/ml-dsa.h>
 #include <mlkem/kyber.h>
 #include <mlkem/ml-kem.h>
 #include <slhdsa/slh-dsa.h>
@@ -24,9 +22,9 @@ AlgorithmRegistry::AlgorithmRegistry()
     register_factory(std::make_unique<const MLKEMFactory<ML_KEM_512>>());
     register_factory(std::make_unique<const MLKEMFactory<ML_KEM_768>>());
     register_factory(std::make_unique<const MLKEMFactory<ML_KEM_1024>>());
-    register_factory(std::make_unique<const MLDSAFactory>());
-    register_factory(std::make_unique<const MLDSAFactory_87>());
-    register_factory(std::make_unique<const MLDSAFactory_44>());
+    register_factory(std::make_unique<const MLDSAFactory<mldsa::MODE_44>>());
+    register_factory(std::make_unique<const MLDSAFactory<mldsa::MODE_65>>());
+    register_factory(std::make_unique<const MLDSAFactory<mldsa::MODE_87>>());
     register_factory(std::make_unique<const SHA3Factory>());
     register_factory(std::make_unique<const SLHDSAFactory<SLH_DSA_SHAKE_128S>>());
     register_factory(std::make_unique<const SLHDSAFactory<SLH_DSA_SHAKE_128F>>());

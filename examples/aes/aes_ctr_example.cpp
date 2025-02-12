@@ -6,7 +6,7 @@
 // parties can obtain a common key through asymmetric key exchange
 
 // CTR encryption doesn't need an iv. It takes a fixed-length key and
-// fixed-length plaintext. Plaintext size MUST be mutile of AES_BLOCKLEN;
+// fixed-length plaintext. Plaintext size MUST be multiple of AES_BLOCKLEN;
 // Decryption works in the same way
 
 // Party A encrypts its plaintext using a key. Then data, its length, and key must be

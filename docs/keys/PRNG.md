@@ -42,7 +42,7 @@ Algorithm
     
     * **Hash Truncation and Reuse**: The resulting hash is then truncated, taking a portion of the hash and overwriting the original elements of `dt` with this truncated hash data. This step is essential to mix the entropy and reduce predictability.
     
-    * **Initial AES Encryption**: The array `dt` is then encrypted using the AES block cipher in OFB mode. This mode of operation turns a block cipher into a stream cipher, producing a keystream that is then XORed with the plaintext—in this case, the data in `dt`.
+    * **Initial AES Encryption**: The array `dt` is then encrypted using the AES block cipher in OFB mode. This mode of operation turns a block cipher into a stream cipher, producing a keystream that is then XORed with the plaintext - in this case, the data in `dt`.
     
     * **XOR with Internal State**: After the encryption, the `dt` array is XORed with an internal state array `v`. The result of this XOR is stored in a new array `r`.
     

@@ -84,6 +84,6 @@ The diagram shows one of the options for building a blockchain based on TQ42 Cry
 
 ![image](img/use_cases_PFS.png)
 
-In the example **Perfect Forward Secrecy (PFS)** example, TQ42 Cryptography is used in such a way that each node contributes its share of entropy to the overall symmetric session key. None of the nodes forward the final encryption key in its entirety, and no one from outside can learn the session key by breaking the long-term keys incompletely (n-1 broken keys will not yield the session key).
+In the **Perfect Forward Secrecy (PFS)** example, TQ42 Cryptography is used in such a way that each node contributes its share of entropy to the overall symmetric session key. None of the nodes forward the final encryption key in its entirety, and no one from outside can learn the session key by breaking the long-term keys incompletely (n-1 broken keys will not yield the session key).
 
 In the above example, we can integrate TQ42 Cryptography into the overall PFS scheme. To start information sharing, the user obtains keys (TQ42 Cryptography), which are then put into a shared repository where each user must retrieve them. Once the keys are obtained and the shared key is computed, the information sharing between users will be considered secure.

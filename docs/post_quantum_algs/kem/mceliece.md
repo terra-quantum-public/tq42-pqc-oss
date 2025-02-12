@@ -34,7 +34,7 @@ The McEliece algorithm implementation has successfully passed the Known Answer T
 
 ## Leveraging McEliece and True Entropy
 The customization of the McEliece algorithm within TQ42 Cryptography is designed to work in synergy with true entropy, sourced from the Single Photon Quantum Random Number Generator (QRNG). This technology ensures that the randomness required for cryptographic keys is of the highest quality, providing unparalleled security for company data.
-Since the effectiveness of any cryptographic algorithm heavily relies on the randomness of its keys, incorporating QRNG-derived true entropy with TQ42’s customized McEliece algorithm ensures that your company’s sensitive information is safeguarded in the most robust manner possible.
+Since the effectiveness of any cryptographic algorithm heavily relies on the randomness of its keys, incorporating QRNG-derived true entropy with TQ42's customized McEliece algorithm ensures that your company's sensitive information is safeguarded in the most robust manner possible.
 
 ## Classic McEliece 8192128f - Parameter set summary
 
@@ -74,7 +74,7 @@ The latest state of the NIST standardization process for the McEliece Key Encaps
 - **Unique Position**: Unlike some other algorithms being considered for standardization, Classic McEliece does not directly compete with many as a general-purpose KEM. Its primary competition, in terms of lattice-based approaches like ML-KEM, differs in key aspects, such as key sizes and computational efficiency. Nevertheless, NIST is evaluating Classic McEliece along with others for its potential unique benefits, such as its long-standing security assumptions resilience to certain types of attacks (<https://blog.cloudflare.com/pq-2024>).
 
 - **Performance Considerations**: Although Classic McEliece provides certain advantages, 
-including a high level of security, its performance aspects–particularly in terms of key sizes–do not directly compete 
+including a high level of security, its performance aspects-particularly in terms of key sizes - do not directly compete 
 with some of the more computationally efficient algorithms like ML-KEM. This factor is crucial as NIST also considers the 
 practicality of implementing these algorithms in real-world systems.
 

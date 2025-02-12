@@ -6,15 +6,10 @@
 
 #include <gtest/gtest.h>
 
+#include <mldsa/mldsa_internal.h>
+#include <mldsa/params.h>
+#include <pqc/ml-dsa.h>
 #include <pqc/random.h>
-#include <pqc/slh-dsa.h>
-#include <slhdsa/params.h>
-#include <slhdsa/slhdsa_internal.h>
-
-std::map<size_t, size_t> SLH_DSA_INTERNAL_MODE{
-    {PQC_CIPHER_SLH_DSA_SHAKE_128F, SLH_DSA_SHAKE_128F}, {PQC_CIPHER_SLH_DSA_SHAKE_128S, SLH_DSA_SHAKE_128S},
-    {PQC_CIPHER_SLH_DSA_SHAKE_192F, SLH_DSA_SHAKE_192F}, {PQC_CIPHER_SLH_DSA_SHAKE_192S, SLH_DSA_SHAKE_192S},
-    {PQC_CIPHER_SLH_DSA_SHAKE_256S, SLH_DSA_SHAKE_256S}, {PQC_CIPHER_SLH_DSA_SHAKE_256F, SLH_DSA_SHAKE_256F}};
 
 struct Hex
 {
@@ -48,11 +43,10 @@ struct Hex
     }
 };
 
-class SLH_DSA_KAT_test_data
+class ML_DSA_KAT_test_data
 {
 public:
-    SLH_DSA_KAT_test_data(uint32_t mode, const std::string & path, size_t n)
-        : cipher(mode), rsp_path(path), num_tests(n)
+    ML_DSA_KAT_test_data(uint32_t mode, const std::string & path, size_t n) : cipher(mode), rsp_path(path), num_tests(n)
     {
     }
     uint32_t cipher;
@@ -60,19 +54,19 @@ public:
     size_t num_tests;
 };
 
-void PrintTo(const SLH_DSA_KAT_test_data & data, std::ostream * os) { *os << data.rsp_path; }
+void PrintTo(const ML_DSA_KAT_test_data & data, std::ostream * os) { *os << data.rsp_path; }
 
-class SLH_DSA_KEYGEN_TEST : public testing::TestWithParam<SLH_DSA_KAT_test_data>
+class ML_DSA_KEYGEN_TEST : public testing::TestWithParam<ML_DSA_KAT_test_data>
 {
 };
 
-TEST_P(SLH_DSA_KEYGEN_TEST, KAT)
+TEST_P(ML_DSA_KEYGEN_TEST, KAT)
 {
-    SLH_DSA_KAT_test_data params = GetParam();
+    ML_DSA_KAT_test_data params = GetParam();
     const uint32_t cipher = params.cipher;
 
     static const std::filesystem::path current(__FILE__);
-    static const auto base_path = current.parent_path() / "slhdsa";
+    static const auto base_path = current.parent_path() / "mldsa";
     const auto responses_path = base_path / params.rsp_path;
 
     const size_t pk_len = PQC_cipher_get_length(cipher, PQC_LENGTH_PUBLIC);
@@ -82,13 +76,8 @@ TEST_P(SLH_DSA_KEYGEN_TEST, KAT)
     std::vector<uint8_t> kat_pk(pk_len);
     std::vector<uint8_t> kat_sk(sk_len);
 
-    const size_t n = pk_len / 2;
-    static std::vector<uint8_t> entropy;
+    static std::vector<uint8_t> entropy(64);
     static size_t offset = 0;
-
-    offset = 0;
-    entropy.resize(n * 3, 0);
-
     struct EntropyEmulator
     {
         static size_t get_entropy(uint8_t * buf, size_t size)
@@ -115,19 +104,13 @@ TEST_P(SLH_DSA_KEYGEN_TEST, KAT)
         EXPECT_TRUE(expected == ("count = " + std::to_string(i)));
 
         std::getline(responses, expected);
-        Hex::to_uint_8_t(expected, "skSeed = ", entropy.data(), n);
-
-        std::getline(responses, expected);
-        Hex::to_uint_8_t(expected, "skPrf = ", entropy.data() + n, n);
-
-        std::getline(responses, expected);
-        Hex::to_uint_8_t(expected, "pkSeed = ", entropy.data() + 2 * n, n);
-
-        std::getline(responses, expected);
-        Hex::to_uint_8_t(expected, "sk = ", kat_sk.data(), kat_sk.size());
+        Hex::to_uint_8_t(expected, "seed = ", entropy.data(), 32);
 
         std::getline(responses, expected);
         Hex::to_uint_8_t(expected, "pk = ", kat_pk.data(), kat_pk.size());
+
+        std::getline(responses, expected);
+        Hex::to_uint_8_t(expected, "sk = ", kat_sk.data(), kat_sk.size());
 
         CIPHER_HANDLE alice = PQC_context_init_asymmetric(cipher, nullptr, 0, kat_sk.data(), kat_sk.size());
         EXPECT_NE(alice, PQC_BAD_CIPHER) << "context initialization should pass";
@@ -144,25 +127,26 @@ TEST_P(SLH_DSA_KEYGEN_TEST, KAT)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    SLH_DSA_KEYGEN_KAT_TESTS, SLH_DSA_KEYGEN_TEST,
+    ML_DSA_KEYGEN_KAT_TESTS, ML_DSA_KEYGEN_TEST,
     testing::Values(
-        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_192S, "shake-192s-keygen.rsp", 10),
-        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_256F, "shake-256f-keygen.rsp", 10),
-        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_256F, "shake-256f-keygen-atsec.rsp", 10)
+        ML_DSA_KAT_test_data(PQC_CIPHER_ML_DSA_44, "ml-dsa-44-keygen.rsp", 25),
+        ML_DSA_KAT_test_data(PQC_CIPHER_ML_DSA_65, "ml-dsa-65-keygen.rsp", 25),
+        ML_DSA_KAT_test_data(PQC_CIPHER_ML_DSA_87, "ml-dsa-87-keygen.rsp", 25),
+        ML_DSA_KAT_test_data(PQC_CIPHER_ML_DSA_87, "ml-dsa-87-keygen-2.rsp", 25)
     )
 );
 
-class SLH_DSA_SIGGEN_TEST : public testing::TestWithParam<SLH_DSA_KAT_test_data>
+class ML_DSA_SIGGEN_TEST : public testing::TestWithParam<ML_DSA_KAT_test_data>
 {
 };
 
-TEST_P(SLH_DSA_SIGGEN_TEST, KAT)
+TEST_P(ML_DSA_SIGGEN_TEST, KAT)
 {
-    SLH_DSA_KAT_test_data params = GetParam();
+    ML_DSA_KAT_test_data params = GetParam();
     const uint32_t cipher = params.cipher;
 
     static const std::filesystem::path current(__FILE__);
-    static const auto base_path = current.parent_path() / "slhdsa";
+    static const auto base_path = current.parent_path() / "mldsa";
     const auto responses_path = base_path / params.rsp_path;
 
     const size_t sk_len = PQC_cipher_get_length(cipher, PQC_LENGTH_PRIVATE);
@@ -171,20 +155,7 @@ TEST_P(SLH_DSA_SIGGEN_TEST, KAT)
     std::vector<uint8_t> sig(sig_len);
     std::vector<uint8_t> kat_sig(sig_len);
 
-    const size_t n = sk_len / 4;
-    static std::vector<uint8_t> entropy;
-    static size_t offset = 0;
-    offset = 0;
-    entropy.resize(n * 3, 0);
-    struct EntropyEmulator
-    {
-        static size_t get_entropy(uint8_t * buf, size_t size)
-        {
-            std::copy_n(entropy.begin() + offset, size, buf);
-            offset += size;
-            return PQC_OK;
-        }
-    };
+    static std::vector<uint8_t> entropy(64);
 
     std::string expected;
 
@@ -193,8 +164,6 @@ TEST_P(SLH_DSA_SIGGEN_TEST, KAT)
 
     for (size_t i = 0; i < params.num_tests; ++i)
     {
-        offset = 0;
-
         std::getline(responses, expected);
         EXPECT_TRUE(expected == "");
 
@@ -205,61 +174,56 @@ TEST_P(SLH_DSA_SIGGEN_TEST, KAT)
         Hex::to_uint_8_t(expected, "sk = ", sk.data(), sk.size());
 
         std::getline(responses, expected);
-        Hex::to_uint_8_t(expected, "seed = ", entropy.data(), n);
+        std::vector<uint8_t> msg((expected.substr(std::string("message = ").length()).length()) / 2);
+        Hex::to_uint_8_t(expected, "message = ", msg.data(), msg.size());
 
         std::getline(responses, expected);
-        unsigned long long smlen = Hex::to_ull(expected, "msglen = ");
-
-        std::getline(responses, expected);
-        std::vector<uint8_t> msg(smlen / 8);
-        Hex::to_uint_8_t(expected, "msg = ", msg.data(), msg.size());
+        Hex::to_uint_8_t(expected, "rnd = ", entropy.data(), 32);
 
         std::getline(responses, expected);
         Hex::to_uint_8_t(expected, "signature = ", kat_sig.data(), kat_sig.size());
 
-        const size_t m = SLH_DSA_INTERNAL_MODE[cipher];
-        slh_dsa::slh_sign_internal(
-            ConstBufferView(msg.data(), msg.size()), ConstBufferView(sk.data(), sk.size()),
-            ConstBufferView(entropy.data(), n), BufferView(sig.data(), sig.size()), m
-        );
+        if (cipher == PQC_CIPHER_ML_DSA_44)
+            mldsa::mldsa_sign_internal_44(
+                ConstBufferView(msg.data(), msg.size()), ConstBufferView(sk.data(), sk.size()),
+                ConstBufferView(entropy.data(), 32), BufferView(sig.data(), sig.size()), mldsa::MODE_44
+            );
+        else if (cipher == PQC_CIPHER_ML_DSA_65)
+            mldsa::mldsa_sign_internal_65(
+                ConstBufferView(msg.data(), msg.size()), ConstBufferView(sk.data(), sk.size()),
+                ConstBufferView(entropy.data(), 32), BufferView(sig.data(), sig.size()), mldsa::MODE_65
+            );
+        else if (cipher == PQC_CIPHER_ML_DSA_87)
+            mldsa::mldsa_sign_internal_87(
+                ConstBufferView(msg.data(), msg.size()), ConstBufferView(sk.data(), sk.size()),
+                ConstBufferView(entropy.data(), 32), BufferView(sig.data(), sig.size()), mldsa::MODE_87
+            );
 
         EXPECT_TRUE(sig == kat_sig) << "signature equal";
     }
 }
 
-#ifndef NDEBUG
 INSTANTIATE_TEST_SUITE_P(
-    SLH_DSA_SIGGEN_KAT_TESTS, SLH_DSA_SIGGEN_TEST,
+    ML_DSA_SIGGEN_KAT_TESTS, ML_DSA_SIGGEN_TEST,
     testing::Values(
-        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_128F, "shake-128f-siggen.rsp", 2),
-        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_192S, "shake-192s-siggen.rsp", 1),
-        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_256F, "shake-256f-siggen.rsp", 2),
-        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_256F, "shake-256f-siggen-atsec.rsp", 2)
+        ML_DSA_KAT_test_data(PQC_CIPHER_ML_DSA_44, "ml-dsa-44-siggen-hedged.rsp", 10),
+        ML_DSA_KAT_test_data(PQC_CIPHER_ML_DSA_65, "ml-dsa-65-siggen-hedged.rsp", 10),
+        ML_DSA_KAT_test_data(PQC_CIPHER_ML_DSA_87, "ml-dsa-87-siggen-hedged.rsp", 10),
+        ML_DSA_KAT_test_data(PQC_CIPHER_ML_DSA_87, "ml-dsa87-siggen-hedged-2.rsp", 10)
     )
 );
-#else
-INSTANTIATE_TEST_SUITE_P(
-    SLH_DSA_SIGGEN_KAT_TESTS, SLH_DSA_SIGGEN_TEST,
-    testing::Values(
-        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_128F, "shake-128f-siggen.rsp", 10),
-        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_192S, "shake-192s-siggen.rsp", 7),
-        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_256F, "shake-256f-siggen.rsp", 10),
-        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_256F, "shake-256f-siggen-atsec.rsp", 10)
-    )
-);
-#endif
 
-class SLH_DSA_SIGVER_TEST : public testing::TestWithParam<SLH_DSA_KAT_test_data>
+class ML_DSA_SIGVER_TEST : public testing::TestWithParam<ML_DSA_KAT_test_data>
 {
 };
 
-TEST_P(SLH_DSA_SIGVER_TEST, KAT)
+TEST_P(ML_DSA_SIGVER_TEST, KAT)
 {
-    SLH_DSA_KAT_test_data params = GetParam();
+    ML_DSA_KAT_test_data params = GetParam();
     const uint32_t cipher = params.cipher;
 
     static const std::filesystem::path current(__FILE__);
-    static const auto base_path = current.parent_path() / "slhdsa";
+    static const auto base_path = current.parent_path() / "mldsa";
     const auto responses_path = base_path / params.rsp_path;
 
     const size_t pk_len = PQC_cipher_get_length(cipher, PQC_LENGTH_PUBLIC);
@@ -267,9 +231,11 @@ TEST_P(SLH_DSA_SIGVER_TEST, KAT)
 
     std::string expected;
     std::ifstream responses(responses_path);
-
+    std::getline(responses, expected);
     std::getline(responses, expected);
 
+    std::getline(responses, expected);
+    Hex::to_uint_8_t(expected, "pk = ", pk.data(), pk.size());
     for (size_t i = 0; i < params.num_tests; ++i)
     {
         std::getline(responses, expected);
@@ -282,36 +248,39 @@ TEST_P(SLH_DSA_SIGVER_TEST, KAT)
         unsigned long long passed = Hex::to_ull(expected, "testPassed = ");
 
         std::getline(responses, expected);
-        Hex::to_uint_8_t(expected, "pk = ", pk.data(), pk.size());
-
-        std::getline(responses, expected);
-        unsigned long long mlen = Hex::to_ull(expected, "msglen = ");
-
-        std::getline(responses, expected);
-        std::vector<uint8_t> msg(mlen / 8);
+        std::vector<uint8_t> msg((expected.substr(std::string("message = ").length()).length()) / 2);
         Hex::to_uint_8_t(expected, "message = ", msg.data(), msg.size());
 
         std::getline(responses, expected);
         std::vector<uint8_t> sig((expected.substr(std::string("signature = ").length()).length()) / 2);
         Hex::to_uint_8_t(expected, "signature = ", sig.data(), sig.size());
 
-        const size_t m = SLH_DSA_INTERNAL_MODE[cipher];
-        EXPECT_EQ(
-            slh_dsa::slh_verify_internal(
+        bool result = false;
+        if (cipher == PQC_CIPHER_ML_DSA_44)
+            result = mldsa::mldsa_verify_internal_44(
                 ConstBufferView(msg.data(), msg.size()), ConstBufferView(pk.data(), pk.size()),
-                ConstBufferView(sig.data(), sig.size()), m
-            ),
-            passed
-        );
+                ConstBufferView(sig.data(), sig.size()), mldsa::MODE_44
+            );
+        else if (cipher == PQC_CIPHER_ML_DSA_65)
+            result = mldsa::mldsa_verify_internal_65(
+                ConstBufferView(msg.data(), msg.size()), ConstBufferView(pk.data(), pk.size()),
+                ConstBufferView(sig.data(), sig.size()), mldsa::MODE_65
+            );
+        else if (cipher == PQC_CIPHER_ML_DSA_87)
+            result = mldsa::mldsa_verify_internal_87(
+                ConstBufferView(msg.data(), msg.size()), ConstBufferView(pk.data(), pk.size()),
+                ConstBufferView(sig.data(), sig.size()), mldsa::MODE_87
+            );
+        EXPECT_EQ(result, passed);
     }
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    SLH_DSA_SIGVER_KAT_TESTS, SLH_DSA_SIGVER_TEST,
+    ML_DSA_SIGVER_KAT_TESTS, ML_DSA_SIGVER_TEST,
     testing::Values(
-        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_128F, "shake-128f-sigver.rsp", 9),
-        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_192S, "shake-192s-sigver.rsp", 9),
-        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_256F, "shake-256f-sigver.rsp", 7),
-        SLH_DSA_KAT_test_data(PQC_CIPHER_SLH_DSA_SHAKE_256F, "shake-256f-sigver-atsec.rsp", 9)
+        ML_DSA_KAT_test_data(PQC_CIPHER_ML_DSA_44, "ml-dsa-44-sigver.rsp", 15),
+        ML_DSA_KAT_test_data(PQC_CIPHER_ML_DSA_65, "ml-dsa-65-sigver.rsp", 15),
+        ML_DSA_KAT_test_data(PQC_CIPHER_ML_DSA_87, "ml-dsa-87-sigver.rsp", 15),
+        ML_DSA_KAT_test_data(PQC_CIPHER_ML_DSA_87, "ml-dsa87-sigver-2.rsp", 15)
     )
 );

@@ -39,7 +39,7 @@ int main()
     /*
     We can transform container to the encrypted byte string. Let's do it
     */
-    uint8_t * container_data = new uint8_t[PQC_asymmetric_container_size(new_container)];
+    std::shared_ptr<uint8_t[]> container_data(new uint8_t[PQC_asymmetric_container_size(new_container)]);
 
     // aes will use for string encryption
     uint8_t creation_key[PQC_AES_KEYLEN] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6,
@@ -47,7 +47,7 @@ int main()
     uint8_t creation_iv[PQC_AES_IVLEN] = {9, 8, 7, 6, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6};
 
     size_t result = PQC_asymmetric_container_get_data(
-        new_container, container_data, PQC_asymmetric_container_size(new_container), creation_key, PQC_AES_KEYLEN,
+        new_container, container_data.get(), PQC_asymmetric_container_size(new_container), creation_key, PQC_AES_KEYLEN,
         creation_iv, PQC_AES_IVLEN
     );
     if (result != PQC_OK)
@@ -60,8 +60,8 @@ int main()
     Let's restore container from string. The keys inside should be equal with others we generated before
     */
     PQC_CONTAINER_HANDLE resultContainer = PQC_asymmetric_container_from_data(
-        PQC_CIPHER_MCELIECE, container_data, PQC_asymmetric_container_size(new_container), creation_key, PQC_AES_KEYLEN,
-        creation_iv, PQC_AES_IVLEN
+        PQC_CIPHER_MCELIECE, container_data.get(), PQC_asymmetric_container_size(new_container), creation_key,
+        PQC_AES_KEYLEN, creation_iv, PQC_AES_IVLEN
     );
     if (resultContainer == PQC_FAILED_TO_CREATE_CONTAINER)
     {
@@ -87,8 +87,6 @@ int main()
         std::cout << "\nERROR!!! Keys are not equal!!!\n";
         return 1;
     }
-
-    delete[] container_data;
 
     PQC_asymmetric_container_close(new_container);
     PQC_asymmetric_container_close(resultContainer);

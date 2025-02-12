@@ -1,6 +1,6 @@
 #pragma once
 
-#include <mldsa/params.h>
+#include <dilithium/params.h>
 #include <stdint.h>
 
 namespace dilithium
